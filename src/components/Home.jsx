@@ -26,7 +26,7 @@ const Home = () => {
           >
             <Box
               component="img"
-              src="/avatar.jpg"
+              src="./avatar.jpg"
               alt="HandyWote"
               sx={{
                 width: 180,
