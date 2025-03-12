@@ -29,8 +29,8 @@ const Home = () => {
               src="./avatar.jpg"
               alt="HandyWote"
               sx={{
-                width: 180,
-                height: 180,
+                width: { xs: 140, sm: 180 },
+                height: { xs: 140, sm: 180 },
                 borderRadius: '50%',
                 mb: 2,
                 border: '4px solid rgba(255, 255, 255, 0.2)'
@@ -38,18 +38,18 @@ const Home = () => {
             />
           </motion.div>
 
-          <Typography variant="h2" component="h1" sx={{ mb: 1 }}>
+          <Typography variant="h2" component="h1" sx={{ mb: 1, fontSize: { xs: '2rem', sm: '3rem' } }}>
             HandyWote
           </Typography>
 
           <Typography
             variant="h4"
-            sx={{ mb: 1, fontStyle: 'italic', color: 'text.secondary' }}
+            sx={{ mb: 1, fontStyle: 'italic', color: 'text.secondary', fontSize: { xs: '1.5rem', sm: '2rem' } }}
           >
             少年侠气交结五都雄！
           </Typography>
 
-          <Typography variant="h6" sx={{ mb: 2 }}>
+          <Typography variant="h6" sx={{ mb: 2, fontSize: { xs: '1rem', sm: '1.25rem' } }}>
             汕头大学 | 黄应辉
           </Typography>
 
@@ -67,8 +67,10 @@ const Home = () => {
               rel="noopener noreferrer"
               sx={{
                 borderRadius: '2rem',
-                px: 4,
-                py: 1,
+                px: { xs: 3, sm: 4 },
+                py: { xs: 1.5, sm: 1 },
+                minWidth: '48px',
+                minHeight: '48px',
                 borderColor: 'rgba(255, 255, 255, 0.3)',
                 color: 'text.primary',
                 '&:hover': {

@@ -39,12 +39,12 @@ const Skills = () => {
             variant="h3"
             component="h2"
             gutterBottom
-            sx={{ textAlign: 'center', mb: 4 }}
+            sx={{ textAlign: 'center', mb: 4, fontSize: { xs: '2rem', sm: '3rem' } }}
           >
             技能专长
           </Typography>
 
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 3, sm: 2 } }}>
             {skills.map((skill, index) => (
               <motion.div
                 key={skill.name}
@@ -54,18 +54,18 @@ const Skills = () => {
                 viewport={{ once: true }}
                 variants={skillVariants}
               >
-                <Box sx={{ mb: 1 }}>
-                  <Typography variant="h6" gutterBottom>
+                <Box sx={{ mb: { xs: 2, sm: 1 } }}>
+                  <Typography variant="h6" gutterBottom sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
                     {skill.name}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                     {skill.description}
                   </Typography>
                   <LinearProgress
                     variant="determinate"
                     value={skill.level}
                     sx={{
-                      height: 8,
+                      height: { xs: 10, sm: 8 },
                       borderRadius: 4,
                       backgroundColor: 'rgba(255, 255, 255, 0.1)',
                       '& .MuiLinearProgress-bar': {

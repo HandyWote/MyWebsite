@@ -23,12 +23,12 @@ const Contact = () => {
             variant="h3"
             component="h2"
             gutterBottom
-            sx={{ textAlign: 'center', mb: 4 }}
+            sx={{ textAlign: 'center', mb: 4, fontSize: { xs: '2rem', sm: '3rem' } }}
           >
             联系方式
           </Typography>
 
-          <Typography variant="body1" sx={{ mb: 4 }}>
+          <Typography variant="body1" sx={{ mb: 4, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
             如果您对我的工作感兴趣，或者想要了解更多信息，欢迎通过以下方式与我联系：
           </Typography>
 
@@ -44,10 +44,13 @@ const Contact = () => {
               href="mailto:24yhhuang2@stu.edu.cn"
               sx={{
                 borderRadius: '2rem',
-                px: 4,
-                py: 1.5,
+                px: { xs: 3, sm: 4 },
+                py: { xs: 1.5, sm: 1.5 },
+                minWidth: '48px',
+                minHeight: '48px',
                 borderColor: 'rgba(255, 255, 255, 0.3)',
                 color: 'text.primary',
+                fontSize: { xs: '0.875rem', sm: '1rem' },
                 '&:hover': {
                   borderColor: 'primary.main',
                   backgroundColor: 'rgba(255, 255, 255, 0.1)'

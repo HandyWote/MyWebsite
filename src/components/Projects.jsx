@@ -52,12 +52,12 @@ const Projects = () => {
             variant="h3"
             component="h2"
             gutterBottom
-            sx={{ textAlign: 'center', mb: 4 }}
+            sx={{ textAlign: 'center', mb: 4, fontSize: { xs: '2rem', sm: '3rem' } }}
           >
             项目作品
           </Typography>
 
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 3, sm: 2 } }}>
             {projects.map((project, index) => (
               <motion.div
                 key={project.title}
@@ -75,15 +75,15 @@ const Projects = () => {
                     borderRadius: '1rem'
                   }}
                 >
-                  <CardContent sx={{ pb: 1 }}>
-                    <Typography variant="h5" gutterBottom>
+                  <CardContent sx={{ pb: { xs: 2, sm: 1 } }}>
+                    <Typography variant="h5" gutterBottom sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
                       {project.title}
                     </Typography>
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                       {project.description}
                     </Typography>
                   </CardContent>
-                  <CardActions sx={{ justifyContent: 'flex-end', p: 1 }}>
+                  <CardActions sx={{ justifyContent: 'flex-end', p: { xs: 2, sm: 1 } }}>
                     <Button
                       variant="outlined"
                       startIcon={<GitHubIcon />}
@@ -92,6 +92,10 @@ const Projects = () => {
                       rel="noopener noreferrer"
                       sx={{
                         borderRadius: '2rem',
+                        px: { xs: 3, sm: 2 },
+                        py: { xs: 1.5, sm: 1 },
+                        minWidth: '48px',
+                        minHeight: '48px',
                         borderColor: 'rgba(255, 255, 255, 0.3)',
                         color: 'text.primary',
                         '&:hover': {
