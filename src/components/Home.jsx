@@ -82,6 +82,47 @@ const Home = () => {
               GitHub
             </Button>
           </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.8, duration: 0.5 }}
+            style={{ marginTop: '2rem' }}
+          >
+            <Box
+              className="glass-effect"
+              sx={{
+                p: { xs: 2, sm: 3 },
+                borderRadius: '1rem',
+                overflow: 'hidden',
+                maxWidth: '100%',
+                '& img': {
+                  width: '100%',
+                  height: 'auto',
+                  display: 'block'
+                }
+              }}
+            >
+              <Typography
+                variant="h6"
+                sx={{ mb: 2, fontSize: { xs: '1rem', sm: '1.25rem' }, color: 'text.secondary' }}
+              >
+                GitHub 贡献日历
+              </Typography>
+              <Box
+                component="img"
+                src="https://ghchart.rshah.org/HandyWote"
+                alt="GitHub Contributions"
+                sx={{
+                  filter: 'opacity(0.9)',
+                  transition: 'filter 0.3s ease',
+                  '&:hover': {
+                    filter: 'opacity(1)'
+                  }
+                }}
+              />
+            </Box>
+          </motion.div>
         </motion.div>
       </Container>
     </section>
