@@ -1,87 +1,115 @@
 # HandyWote的个人网站
 
-这是一个使用React + Vite构建的个人网站项目，展示了个人信息、技能和项目经历。
+这是一个使用现代前端技术栈构建的个人展示网站，采用响应式设计，支持多设备访问，并集成了流畅的动画效果。
 
-## 环境要求
+## 技术原理
+
+### 核心技术栈
+
+- **React 18**: 采用最新的React框架，利用其强大的组件化和Hooks特性
+- **Vite**: 基于ESM的构建工具，提供快速的开发体验和高效的构建过程
+- **Material-UI**: 使用Material Design设计系统，提供美观且一致的UI组件
+- **Framer Motion**: 实现流畅的页面动画和交互效果
+- **React Scroll**: 实现平滑的页面滚动和导航功能
+
+### 项目结构
+
+```
+src/
+  ├── components/     # 组件目录
+  │   ├── Navbar.jsx  # 导航栏组件
+  │   ├── Home.jsx    # 首页组件
+  │   ├── About.jsx   # 关于页组件
+  │   ├── Skills.jsx  # 技能展示组件
+  │   ├── Projects.jsx# 项目展示组件
+  │   └── Contact.jsx # 联系方式组件
+  ├── App.jsx         # 应用主组件
+  ├── main.jsx        # 应用入口
+  └── index.css       # 全局样式
+```
+
+### 主要功能实现
+
+1. **响应式设计**: 使用Material-UI的响应式布局系统，适配不同屏幕尺寸
+2. **动画效果**: 通过Framer Motion实现组件的进入、退出和交互动画
+3. **导航系统**: 使用React Scroll实现平滑的页面内导航
+4. **项目展示**: 通过GitHub API动态获取并展示个人项目
+
+## 使用指南
+
+### 环境要求
 
 - Node.js 16.0.0 或更高版本
 - npm 7.0.0 或更高版本
 
-## 本地开发
+### 安装步骤
 
-1. 克隆项目到本地：
-
+1. 克隆项目
 ```bash
-git clone https://github.com/HandyWote/personal-website.git
-cd personal-website
+git clone https://github.com/HandyWote/handywote.git
+cd handywote
 ```
 
-2. 安装依赖：
-
+2. 安装依赖
 ```bash
 npm install
 ```
 
-3. 启动开发服务器：
-
+3. 启动开发服务器
 ```bash
 npm run dev
 ```
 
-启动后，打开浏览器访问 http://localhost:5173 即可查看网站。
-
-## 部署说明
-
-### 构建项目
-
-1. 执行构建命令：
-
+4. 构建生产版本
 ```bash
 npm run build
 ```
 
-构建完成后，所有静态文件将生成在 `dist` 目录中。
+### 部署方法
 
-### 部署到服务器
-
-你可以选择以下任意方式部署：
-
-1. 静态托管服务（推荐）：
-   - GitHub Pages
-   - Netlify
-   - Vercel
-
-2. 传统服务器：
-   - 将 `dist` 目录中的所有文件上传到服务器的网站根目录
-   - 配置服务器（Apache/Nginx）将所有请求重定向到 index.html
-
-### Nginx配置示例
-
-```nginx
-server {
-    listen 80;
-    server_name your-domain.com;
-    root /path/to/dist;
-    index index.html;
-
-    location / {
-        try_files $uri $uri/ /index.html;
-    }
-}
+1. 构建项目
+```bash
+npm run build
 ```
 
-## 技术栈
-
-- React 18
-- Vite
-- Material-UI
-- Framer Motion
-- React Scroll
+2. 部署dist目录到你的Web服务器或托管平台
 
 ## 开发建议
 
-如果你计划进行二次开发，建议：
+### 代码规范
 
 1. 使用TypeScript重构项目以获得更好的类型支持
-2. 添加单元测试
+2. 添加单元测试提高代码质量
 3. 使用ESLint和Prettier规范代码风格
+
+### 性能优化
+
+1. 实现组件懒加载
+2. 优化图片资源
+3. 添加缓存策略
+4. 使用性能监控工具
+
+### 功能扩展
+
+1. 添加博客功能
+2. 集成评论系统
+3. 添加深色模式
+4. 支持多语言
+
+### 移动端优化
+
+1. 优化触摸交互
+2. 改善移动端性能
+3. 适配不同移动设备
+
+## 贡献指南
+
+欢迎提交Issue和Pull Request来改进项目。在提交代码前，请确保：
+
+1. 代码符合项目规范
+2. 添加必要的测试
+3. 更新相关文档
+
+## 许可证
+
+本项目采用MIT许可证。
