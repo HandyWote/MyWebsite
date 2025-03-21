@@ -22,7 +22,7 @@ const Projects = () => {
   useEffect(() => {
     const fetchProjects = async () => {
       try {
-        const response = await fetch('https://api.github.com/users/HandyWote/repos');
+        const response = await fetch('https://api.github.com/users/HandyWote/pinned');
         const data = await response.json();
         const sortedProjects = data
           .filter(repo => !repo.fork) // 过滤掉 fork 的仓库
