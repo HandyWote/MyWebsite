@@ -22,11 +22,24 @@ const Projects = () => {
   useEffect(() => {
     const fetchProjects = async () => {
       try {
-        const response = await fetch('https://api.github.com/users/HandyWote/pinned');
+        // 获取用户所有仓库
+        const response = await fetch('https://api.github.com/users/HandyWote/repos');
         const data = await response.json();
+        // 筛选出置顶的仓库
+        // GitHub API不直接提供置顶仓库的接口，我们通过筛选特定标记或使用其他特征来模拟
+        // 这里我们假设置顶的仓库通常是：非fork的、最近更新的、有描述的、星标较多的
         const sortedProjects = data
           .filter(repo => !repo.fork) // 过滤掉 fork 的仓库
-          .sort((a, b) => b.stargazers_count - a.stargazers_count) // 按星标数量排序
+          .sort((a, b) => {
+            // 优先考虑有描述的仓库
+            if (!!a.description !== !!b.description) return !!b.description - !!a.description;
+            // 其次按星标数排序
+            if (b.stargazers_count !== a.stargazers_count) return b.stargazers_count - a.stargazers_count;
+            // 最后按更新时间排序
+            return new Date(b.updated_at) - new Date(a.updated_at);
+          })
+          // 只取前3个作为"置顶"仓库
+          // .slice(0, 3)
           .map(repo => ({
             title: repo.name,
             description: repo.description || '暂无描述',
