@@ -1,10 +1,12 @@
+// 导入必要的React hooks和组件
 import { useState, useEffect } from 'react';
-import { Link } from 'react-scroll';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Link } from 'react-scroll';  // 用于实现平滑滚动
+import { motion, AnimatePresence } from 'framer-motion';  // 用于添加动画效果
 import { AppBar, Toolbar, IconButton, Box, useMediaQuery, useTheme } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import CloseIcon from '@mui/icons-material/Close';
 
+// 定义导航项配置
 const navItems = [
   { title: '首页', to: 'home' },
   { title: '关于我', to: 'about' },
@@ -13,22 +15,33 @@ const navItems = [
   { title: '联系', to: 'contact' }
 ];
 
+/**
+ * Navbar组件 - 响应式导航栏
+ * 实现了以下功能：
+ * 1. 响应式设计：在移动端显示汉堡菜单
+ * 2. 滚动检测：根据滚动位置改变导航栏样式
+ * 3. 平滑滚动：点击导航项平滑滚动到对应区域
+ * 4. 动画效果：使用framer-motion实现菜单动画
+ */
 const Navbar = () => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
+  // 状态管理
+  const [isOpen, setIsOpen] = useState(false);  // 控制移动端菜单的开关状态
+  const [scrolled, setScrolled] = useState(false);  // 追踪页面滚动状态
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));  // 响应式断点检测
 
+  // 监听滚动事件
   useEffect(() => {
     const handleScroll = () => {
       const offset = window.scrollY;
-      setScrolled(offset > 50);
+      setScrolled(offset > 50);  // 当滚动超过50px时更新状态
     };
 
     window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);  // 清理事件监听
   }, []);
 
+  // 定义菜单动画变体
   const menuVariants = {
     closed: {
       opacity: 0,

@@ -1,115 +1,91 @@
 # HandyWote的个人网站
 
-这是一个使用现代前端技术栈构建的个人展示网站，采用响应式设计，支持多设备访问，并集成了流畅的动画效果。
+[![GitHub stars](https://img.shields.io/github/stars/HandyWote/handywote)](https://github.com/HandyWote/handywote/stargazers)
+[![GitHub license](https://img.shields.io/github/license/HandyWote/handywote)](https://github.com/HandyWote/handywote/blob/main/LICENSE)
+[![Website](https://img.shields.io/website?url=https%3A%2F%2Fhandywote.github.io)](https://handywote.github.io)
 
-## 技术原理
+## 📝 项目简介
 
-### 核心技术栈
+一个现代化的个人展示网站，采用最新前端技术栈构建，特点是响应式设计和流畅的动画效果。
 
-- **React 18**: 采用最新的React框架，利用其强大的组件化和Hooks特性
-- **Vite**: 基于ESM的构建工具，提供快速的开发体验和高效的构建过程
-- **Material-UI**: 使用Material Design设计系统，提供美观且一致的UI组件
-- **Framer Motion**: 实现流畅的页面动画和交互效果
-- **React Scroll**: 实现平滑的页面滚动和导航功能
+### ✨ 特色功能
 
-### 项目结构
+- 🎨 精美的UI设计和流畅的动画效果
+- 📱 完全响应式，支持各种设备访问
+- 🔄 实时展示GitHub项目动态
+- 🚀 优秀的性能和加载速度
+
+## 🛠️ 技术栈
+
+- **React 18** - 现代化的UI开发框架
+- **Vite** - 新一代前端构建工具
+- **Material-UI** - 优雅的UI组件库
+- **Framer Motion** - 强大的动画解决方案
+- **React Scroll** - 平滑的页面导航体验
+
+## 🚀 快速开始
+
+### 环境准备
+
+```bash
+# 检查Node.js版本（需要16.0.0+）
+node -v
+
+# 检查npm版本（需要7.0.0+）
+npm -v
+```
+
+### 安装和运行
+
+```bash
+# 克隆项目
+git clone https://github.com/HandyWote/handywote.git
+cd handywote
+
+# 安装依赖
+npm install
+
+# 启动开发服务器
+npm run dev
+
+# 构建生产版本
+npm run build
+```
+
+## 📦 项目结构
 
 ```
 src/
-  ├── components/     # 组件目录
-  │   ├── Navbar.jsx  # 导航栏组件
-  │   ├── Home.jsx    # 首页组件
-  │   ├── About.jsx   # 关于页组件
-  │   ├── Skills.jsx  # 技能展示组件
-  │   ├── Projects.jsx# 项目展示组件
-  │   └── Contact.jsx # 联系方式组件
-  ├── App.jsx         # 应用主组件
-  ├── main.jsx        # 应用入口
-  └── index.css       # 全局样式
+├── components/     # 功能组件
+├── styles/         # 样式文件
+├── utils/          # 工具函数
+├── App.jsx         # 应用入口
+└── main.jsx        # 渲染入口
 ```
 
-### 主要功能实现
+## 🔧 配置说明
 
-1. **响应式设计**: 使用Material-UI的响应式布局系统，适配不同屏幕尺寸
-2. **动画效果**: 通过Framer Motion实现组件的进入、退出和交互动画
-3. **导航系统**: 使用React Scroll实现平滑的页面内导航
-4. **项目展示**: 通过GitHub API动态获取并展示个人项目
+- 环境变量配置在 `.env` 文件中
+- 构建配置在 `vite.config.js` 中
+- 样式主题配置在 `src/styles/theme.js` 中
 
-## 使用指南
+## 📈 未来规划
 
-### 环境要求
+- [ ] 引入TypeScript增强代码健壮性
+- [ ] 添加单元测试提升代码质量
+- [ ] 实现暗黑模式主题切换
+- [ ] 优化首屏加载性能
+- [ ] 添加国际化支持
+- [ ] 集成更多交互功能
 
-- Node.js 16.0.0 或更高版本
-- npm 7.0.0 或更高版本
+## 🤝 贡献指南
 
-### 安装步骤
+欢迎提交Issue和PR！在提交代码前，请确保：
 
-1. 克隆项目
-```bash
-git clone https://github.com/HandyWote/handywote.git
-cd handywote
-```
+1. 遵循项目的代码规范
+2. 编写必要的测试用例
+3. 更新相关文档说明
 
-2. 安装依赖
-```bash
-npm install
-```
+## 📄 开源协议
 
-3. 启动开发服务器
-```bash
-npm run dev
-```
-
-4. 构建生产版本
-```bash
-npm run build
-```
-
-### 部署方法
-
-1. 构建项目
-```bash
-npm run build
-```
-
-2. 部署dist目录到你的Web服务器或托管平台
-
-## 开发建议
-
-### 代码规范
-
-1. 使用TypeScript重构项目以获得更好的类型支持
-2. 添加单元测试提高代码质量
-3. 使用ESLint和Prettier规范代码风格
-
-### 性能优化
-
-1. 实现组件懒加载
-2. 优化图片资源
-3. 添加缓存策略
-4. 使用性能监控工具
-
-### 功能扩展
-
-1. 添加博客功能
-2. 集成评论系统
-3. 添加深色模式
-4. 支持多语言
-
-### 移动端优化
-
-1. 优化触摸交互
-2. 改善移动端性能
-3. 适配不同移动设备
-
-## 贡献指南
-
-欢迎提交Issue和Pull Request来改进项目。在提交代码前，请确保：
-
-1. 代码符合项目规范
-2. 添加必要的测试
-3. 更新相关文档
-
-## 许可证
-
-本项目采用MIT许可证。
+本项目采用 [MIT](./LICENSE) 协议。

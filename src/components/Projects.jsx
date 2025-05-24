@@ -1,35 +1,49 @@
-import { motion } from 'framer-motion';
-import { Box, Typography, Container, Card, CardContent, CardActions, Button } from '@mui/material';
-import GitHubIcon from '@mui/icons-material/GitHub';
-import { useState, useEffect } from 'react';
+// 导入必要的组件和hooks
+import { motion } from 'framer-motion';  // 用于实现动画效果
+import { Box, Typography, Container, Card, CardContent, CardActions, Button } from '@mui/material';  // Material-UI组件
+import GitHubIcon from '@mui/icons-material/GitHub';  // GitHub图标
+import { useState, useEffect } from 'react';  // React hooks
 
+// 定义项目卡片的动画变体
 const projectVariants = {
-  hidden: { opacity: 0, y: 20 },
+  hidden: { opacity: 0, y: 20 },  // 初始隐藏状态
   visible: (i) => ({
     opacity: 1,
     y: 0,
     transition: {
-      delay: i * 0.2,
-      duration: 0.5
+      delay: i * 0.2,    // 每个项目依次显示，间隔0.2秒
+      duration: 0.5     // 动画持续0.5秒
     }
   })
 };
 
+/**
+ * Projects组件 - 项目展示页面
+ * 包含以下特点：
+ * 1. GitHub API集成：自动获取和展示GitHub仓库信息
+ * 2. 智能排序：根据描述、星标数和更新时间对项目进行排序
+ * 3. 动画效果：
+ *    - 整体内容淡入动画
+ *    - 项目卡片依次显示的动画
+ * 4. 响应式设计：布局适配不同屏幕尺寸
+ * 5. 错误处理：包含加载状态和错误处理机制
+ */
 const Projects = () => {
-  const [projects, setProjects] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // 状态管理
+  const [projects, setProjects] = useState([]);  // 存储项目数据
+  const [loading, setLoading] = useState(true);  // 控制加载状态
 
+  // 在组件挂载时获取GitHub项目数据
   useEffect(() => {
     const fetchProjects = async () => {
       try {
         // 获取用户所有仓库
         const response = await fetch('https://api.github.com/users/HandyWote/repos');
         const data = await response.json();
-        // 筛选出置顶的仓库
-        // GitHub API不直接提供置顶仓库的接口，我们通过筛选特定标记或使用其他特征来模拟
-        // 这里我们假设置顶的仓库通常是：非fork的、最近更新的、有描述的、星标较多的
+
+        // 项目智能排序逻辑
         const sortedProjects = data
-          .filter(repo => !repo.fork) // 过滤掉 fork 的仓库
+          .filter(repo => !repo.fork)  // 过滤掉fork的仓库
           .sort((a, b) => {
             // 优先考虑有描述的仓库
             if (!!a.description !== !!b.description) return !!b.description - !!a.description;
@@ -38,15 +52,15 @@ const Projects = () => {
             // 最后按更新时间排序
             return new Date(b.updated_at) - new Date(a.updated_at);
           })
-          // 只取前3个作为"置顶"仓库
-          // .slice(0, 3)
+          // 格式化项目数据
           .map(repo => ({
             title: repo.name,
             description: repo.description || '暂无描述',
             link: repo.html_url,
             stars: repo.stargazers_count
           }));
-        setProjects(sortedProjects);
+
+        setProjects(sortedProjects);  // 更新项目列表
       } catch (error) {
         console.error('Error fetching GitHub repos:', error);
         // 如果API请求失败，使用默认项目数据

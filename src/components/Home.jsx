@@ -1,15 +1,25 @@
-import { motion } from 'framer-motion';
-import { Box, Typography, Container, Button } from '@mui/material';
-import GitHubIcon from '@mui/icons-material/GitHub';
+// 导入必要的组件和图标
+import { motion } from 'framer-motion';  // 用于实现动画效果
+import { Box, Typography, Container, Button } from '@mui/material';  // Material-UI组件
+import GitHubIcon from '@mui/icons-material/GitHub';  // GitHub图标
 
+/**
+ * Home组件 - 个人主页首屏
+ * 包含以下特点：
+ * 1. 响应式设计：适配不同屏幕尺寸
+ * 2. 动画效果：使用framer-motion实现淡入和缩放动画
+ * 3. 玻璃态设计：使用glass-effect类实现磨砂玻璃效果
+ * 4. 个人信息展示：头像、名称和个性签名
+ */
 const Home = () => {
   return (
     <section id="home" className="section">
       <Container>
+        {/* 主要内容容器，带有淡入动画效果 */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
+          initial={{ opacity: 0, y: 20 }}  // 初始状态：透明度为0，向下偏移20px
+          animate={{ opacity: 1, y: 0 }}   // 动画结束状态：完全显示，回到原位
+          transition={{ duration: 0.8 }}   // 动画持续时间0.8秒
           className="glass-effect"
           style={{
             padding: '2rem',
@@ -19,29 +29,32 @@ const Home = () => {
             margin: '0 auto'
           }}
         >
+          {/* 头像容器，带有缩放动画效果 */}
           <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ delay: 0.3, duration: 0.5 }}
+            initial={{ scale: 0 }}         // 初始状态：缩放为0
+            animate={{ scale: 1 }}         // 动画结束状态：原始大小
+            transition={{ delay: 0.3, duration: 0.5 }}  // 延迟0.3秒开始，持续0.5秒
           >
             <Box
               component="img"
               src="./avatar.jpg"
               alt="HandyWote"
               sx={{
-                width: { xs: 140, sm: 180 },
-                height: { xs: 140, sm: 180 },
-                borderRadius: '50%',
-                mb: 2,
-                border: '4px solid rgba(255, 255, 255, 0.2)'
+                width: { xs: 140, sm: 180 },     // 响应式宽度
+                height: { xs: 140, sm: 180 },    // 响应式高度
+                borderRadius: '50%',             // 圆形头像
+                mb: 2,                          // 下边距
+                border: '4px solid rgba(255, 255, 255, 0.2)'  // 半透明边框
               }}
             />
           </motion.div>
 
+          {/* 名称标题 */}
           <Typography variant="h2" component="h1" sx={{ mb: 1, fontSize: { xs: '2rem', sm: '3rem' } }}>
             HandyWote
           </Typography>
 
+          {/* 个性签名 */}
           <Typography
             variant="h4"
             sx={{ mb: 1, fontStyle: 'italic', color: 'text.secondary', fontSize: { xs: '1.5rem', sm: '2rem' } }}
