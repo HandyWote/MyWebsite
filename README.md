@@ -1,8 +1,8 @@
 # HandyWote的个人网站
 
-[![GitHub stars](https://img.shields.io/github/stars/HandyWote/handywote)](https://github.com/HandyWote/handywote/stargazers)
-[![GitHub license](https://img.shields.io/github/license/HandyWote/handywote)](https://github.com/HandyWote/handywote/blob/main/LICENSE)
-[![Website](https://img.shields.io/website?url=https%3A%2F%2Fhandywote.github.io)](https://handywote.github.io)
+[![GitHub stars](https://img.shields.io/github/stars/HandyWote/MyWebsite)](https://github.com/HandyWote/MyWebsite/stargazers)
+[![GitHub license](https://img.shields.io/github/license/HandyWote/MyWebsite)](https://github.com/HandyWote/MyWebsite/blob/main/LICENSE)
+[![Website](https://img.shields.io/website?url=https%3A%2F%2Fhandywote.github.io)](https://handywote.github.io/MyWebsite/)
 
 ## 📝 项目简介
 
