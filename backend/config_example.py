@@ -3,33 +3,42 @@
 请复制此文件为 config.py 并修改相应的配置
 """
 
-import os
-
 class Config:
-    """基础配置类"""
-    SECRET_KEY = os.environ.get('SECRET_KEY') or 'your-secret-key-here'
+    # 基础安全
+    SECRET_KEY = 'your-secret-key-here'
+    JWT_SECRET_KEY = 'your-jwt-secret-here'
+
+    # 管理员账号
+    ADMIN_USERNAME = 'admin'
+    ADMIN_PASSWORD = 'yourpassword'
+
+    # 数据库
+    SQLALCHEMY_DATABASE_URI = 'postgresql://username:password@localhost:5432/yourdb'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    UPLOAD_FOLDER = 'uploads'
-    MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB
+
+    # 上传相关
+    UPLOAD_FOLDER = 'backend/uploads'
+    MAX_CONTENT_LENGTH = 5 * 1024 * 1024  # 5MB
+    ALLOWED_IMAGE_EXTENSIONS = {'jpg', 'jpeg', 'png', 'webp'}
+
+    # OpenAI 配置
+    OPENAI_API_KEY = 'sk-xxxx'
+    OPENAI_MODEL = 'gpt-3.5-turbo'
+
+    # JWT 有效期
+    JWT_ACCESS_TOKEN_EXPIRES = 86400  # 1天
+    JWT_REMEMBER_TOKEN_EXPIRES = 604800  # 7天
 
 class DevelopmentConfig(Config):
-    """开发环境配置"""
     DEBUG = True
-    # 修改为你的数据库连接信息
-    SQLALCHEMY_DATABASE_URI = 'postgresql://username:password@localhost/handywote_articles'
 
 class ProductionConfig(Config):
-    """生产环境配置"""
     DEBUG = False
-    # 使用环境变量获取数据库连接
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL')
 
 class TestingConfig(Config):
-    """测试环境配置"""
     TESTING = True
     SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
 
-# 配置字典
 config = {
     'development': DevelopmentConfig,
     'production': ProductionConfig,
