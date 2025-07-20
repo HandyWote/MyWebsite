@@ -6,6 +6,7 @@ import Home from './components/Home';
 import Projects from './components/Projects';
 import Articles from './components/Articles';
 import ArticleDetail from './components/ArticleDetail';
+import AdminRoutes from './admin/routes';
 
 /**
  * App组件 - 应用程序的根组件
@@ -30,6 +31,8 @@ function App() {
         <Routes>
           {/* 文章详情页面路由 */}
           <Route path="/articles/:id" element={<ArticleDetail />} />
+          {/* 管理后台路由 */}
+          <Route path="/admin/*" element={<AdminRoutes />} />
           {/* 主页面路由，只保留首页合并内容 */}
           <Route path="/" element={
             <>
