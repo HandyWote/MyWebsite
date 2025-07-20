@@ -11,8 +11,9 @@ const navItems = [
   { title: '首页', to: 'home' },
   { title: '关于我', to: 'about' },
   { title: '技能', to: 'skills' },
+  { title: '联系', to: 'contact' },
   { title: '项目', to: 'projects' },
-  { title: '联系', to: 'contact' }
+  { title: '文章', to: 'articles' }
 ];
 
 /**
