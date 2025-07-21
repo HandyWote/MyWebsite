@@ -2,7 +2,6 @@ import React from 'react';
 import { Box, Typography, Paper, TextField, Button, Divider } from '@mui/material';
 
 const SiteContentEditor = () => {
-  // TODO: 这里应从API加载和保存数据
   return (
     <Box>
       <Typography variant="h5" gutterBottom>内容管理</Typography>

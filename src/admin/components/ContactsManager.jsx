@@ -1,14 +1,36 @@
-import React from 'react';
-import { Box, Typography, Paper, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, IconButton } from '@mui/material';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
+import React, { useEffect, useState, useRef } from 'react';
+import { Box, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper } from '@mui/material';
+
+const WS_NAMESPACE = 'ws://localhost:5000/ws/contacts';
+const API_PATH = '/api/admin/contacts';
 
 const ContactsManager = () => {
-  // TODO: 这里应从API加载联系方式数据
+  const [contacts, setContacts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const wsRef = useRef(null);
+
+  const fetchContacts = async () => {
+    setLoading(true);
+    const res = await fetch(API_PATH);
+    const data = await res.json();
+    setContacts(data.contacts || []);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchContacts();
+    wsRef.current = new WebSocket(WS_NAMESPACE);
+    wsRef.current.onmessage = () => {
+      fetchContacts();
+    };
+    return () => {
+      wsRef.current && wsRef.current.close();
+    };
+  }, []);
+
   return (
     <Box>
-      <Typography variant="h5" gutterBottom>联系方式管理</Typography>
-      <Button variant="contained" sx={{ mb: 2 }}>新增联系方式</Button>
+      <Button variant="contained" sx={{ mb: 2 }} onClick={fetchContacts}>手动刷新</Button>
       <TableContainer component={Paper}>
         <Table>
           <TableHead>
@@ -19,23 +41,15 @@ const ContactsManager = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {/* 示例数据 */}
-            <TableRow>
-              <TableCell>邮箱</TableCell>
-              <TableCell>example@email.com</TableCell>
-              <TableCell>
-                <IconButton><EditIcon /></IconButton>
-                <IconButton color="error"><DeleteIcon /></IconButton>
-              </TableCell>
-            </TableRow>
-            <TableRow>
-              <TableCell>微信</TableCell>
-              <TableCell>mywechatid</TableCell>
-              <TableCell>
-                <IconButton><EditIcon /></IconButton>
-                <IconButton color="error"><DeleteIcon /></IconButton>
-              </TableCell>
-            </TableRow>
+            {contacts.map(contact => (
+              <TableRow key={contact.id}>
+                <TableCell>{contact.type}</TableCell>
+                <TableCell>{contact.value}</TableCell>
+                <TableCell>
+                  {/* 编辑、删除按钮 */}
+                </TableCell>
+              </TableRow>
+            ))}
           </TableBody>
         </Table>
       </TableContainer>

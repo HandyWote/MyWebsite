@@ -1,13 +1,38 @@
-import React from 'react';
-import { Box, Typography, Paper, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, IconButton } from '@mui/material';
+import React, { useEffect, useState, useRef } from 'react';
+import { Box, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, IconButton } from '@mui/material';
 import RestoreIcon from '@mui/icons-material/Restore';
 import DeleteForeverIcon from '@mui/icons-material/DeleteForever';
 
+const WS_NAMESPACE = 'ws://localhost:5000/ws/recycle-bin';
+const API_PATH = '/api/admin/recycle-bin';
+
 const RecycleBin = () => {
-  // TODO: 这里应从API加载回收站数据
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const wsRef = useRef(null);
+
+  const fetchItems = async () => {
+    setLoading(true);
+    const res = await fetch(API_PATH);
+    const data = await res.json();
+    setItems(data.recycle_bin || []);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchItems();
+    wsRef.current = new WebSocket(WS_NAMESPACE);
+    wsRef.current.onmessage = () => {
+      fetchItems();
+    };
+    return () => {
+      wsRef.current && wsRef.current.close();
+    };
+  }, []);
+
   return (
     <Box>
-      <Typography variant="h5" gutterBottom>回收站</Typography>
+      <Button variant="contained" sx={{ mb: 2 }} onClick={fetchItems}>手动刷新</Button>
       <TableContainer component={Paper}>
         <Table>
           <TableHead>
@@ -19,25 +44,17 @@ const RecycleBin = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {/* 示例数据 */}
-            <TableRow>
-              <TableCell>文章</TableCell>
-              <TableCell>示例文章1</TableCell>
-              <TableCell>2024-05-01</TableCell>
-              <TableCell>
-                <IconButton color="primary"><RestoreIcon /></IconButton>
-                <IconButton color="error"><DeleteForeverIcon /></IconButton>
-              </TableCell>
-            </TableRow>
-            <TableRow>
-              <TableCell>技能</TableCell>
-              <TableCell>Python</TableCell>
-              <TableCell>2024-05-02</TableCell>
-              <TableCell>
-                <IconButton color="primary"><RestoreIcon /></IconButton>
-                <IconButton color="error"><DeleteForeverIcon /></IconButton>
-              </TableCell>
-            </TableRow>
+            {items.map(item => (
+              <TableRow key={item.id}>
+                <TableCell>{item.type}</TableCell>
+                <TableCell>{item.summary}</TableCell>
+                <TableCell>{item.deleted_at}</TableCell>
+                <TableCell>
+                  <IconButton color="primary"><RestoreIcon /></IconButton>
+                  <IconButton color="error"><DeleteForeverIcon /></IconButton>
+                </TableCell>
+              </TableRow>
+            ))}
           </TableBody>
         </Table>
       </TableContainer>

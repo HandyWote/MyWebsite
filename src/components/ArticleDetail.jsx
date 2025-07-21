@@ -580,7 +580,8 @@ const ArticleDetail = () => {
           style={{
             padding: '2rem',
             borderRadius: '1rem',
-            maxWidth: '800px',
+            maxWidth: '1200px', // 调大宽度
+            width: '100%',      // 宽度自适应
             margin: '0 auto',
             minHeight: '100vh'
           }}

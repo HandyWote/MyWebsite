@@ -1,14 +1,37 @@
-import React from 'react';
-import { Box, Typography, Paper, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, IconButton } from '@mui/material';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
+import React, { useEffect, useState, useRef } from 'react';
+import { Box, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper } from '@mui/material';
+
+const WS_NAMESPACE = 'ws://localhost:5000/ws/skills';
+const API_PATH = '/api/admin/skills';
 
 const SkillsManager = () => {
-  // TODO: 这里应从API加载技能数据
+  const [skills, setSkills] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const wsRef = useRef(null);
+
+  // 拉取技能数据
+  const fetchSkills = async () => {
+    setLoading(true);
+    const res = await fetch(API_PATH);
+    const data = await res.json();
+    setSkills(data.skills || []);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchSkills();
+    wsRef.current = new WebSocket(WS_NAMESPACE);
+    wsRef.current.onmessage = () => {
+      fetchSkills();
+    };
+    return () => {
+      wsRef.current && wsRef.current.close();
+    };
+  }, []);
+
   return (
     <Box>
-      <Typography variant="h5" gutterBottom>技能管理</Typography>
-      <Button variant="contained" sx={{ mb: 2 }}>新增技能</Button>
+      <Button variant="contained" sx={{ mb: 2 }} onClick={fetchSkills}>手动刷新</Button>
       <TableContainer component={Paper}>
         <Table>
           <TableHead>
@@ -20,25 +43,16 @@ const SkillsManager = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {/* 示例数据 */}
-            <TableRow>
-              <TableCell>React</TableCell>
-              <TableCell>前端开发框架</TableCell>
-              <TableCell>90</TableCell>
-              <TableCell>
-                <IconButton><EditIcon /></IconButton>
-                <IconButton color="error"><DeleteIcon /></IconButton>
-              </TableCell>
-            </TableRow>
-            <TableRow>
-              <TableCell>Python</TableCell>
-              <TableCell>后端开发语言</TableCell>
-              <TableCell>85</TableCell>
-              <TableCell>
-                <IconButton><EditIcon /></IconButton>
-                <IconButton color="error"><DeleteIcon /></IconButton>
-              </TableCell>
-            </TableRow>
+            {skills.map(skill => (
+              <TableRow key={skill.id}>
+                <TableCell>{skill.name}</TableCell>
+                <TableCell>{skill.description}</TableCell>
+                <TableCell>{skill.level}</TableCell>
+                <TableCell>
+                  {/* 编辑、删除按钮 */}
+                </TableCell>
+              </TableRow>
+            ))}
           </TableBody>
         </Table>
       </TableContainer>

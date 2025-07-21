@@ -1,11 +1,36 @@
-import React from 'react';
-import { Box, Typography, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from '@mui/material';
+import React, { useEffect, useState, useRef } from 'react';
+import { Box, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper } from '@mui/material';
+
+const WS_NAMESPACE = 'ws://localhost:5000/ws/logs';
+const API_PATH = '/api/admin/logs';
 
 const LogsViewer = () => {
-  // TODO: 这里应从API加载日志数据
+  const [logs, setLogs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const wsRef = useRef(null);
+
+  const fetchLogs = async () => {
+    setLoading(true);
+    const res = await fetch(API_PATH);
+    const data = await res.json();
+    setLogs(data.logs || []);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchLogs();
+    wsRef.current = new WebSocket(WS_NAMESPACE);
+    wsRef.current.onmessage = () => {
+      fetchLogs();
+    };
+    return () => {
+      wsRef.current && wsRef.current.close();
+    };
+  }, []);
+
   return (
     <Box>
-      <Typography variant="h5" gutterBottom>操作日志</Typography>
+      <Button variant="contained" sx={{ mb: 2 }} onClick={fetchLogs}>手动刷新</Button>
       <TableContainer component={Paper}>
         <Table>
           <TableHead>
@@ -17,19 +42,14 @@ const LogsViewer = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {/* 示例数据 */}
-            <TableRow>
-              <TableCell>admin</TableCell>
-              <TableCell>2024-05-01 12:00</TableCell>
-              <TableCell>新增文章</TableCell>
-              <TableCell>标题：示例文章1</TableCell>
-            </TableRow>
-            <TableRow>
-              <TableCell>admin</TableCell>
-              <TableCell>2024-05-02 09:30</TableCell>
-              <TableCell>删除技能</TableCell>
-              <TableCell>技能：Python</TableCell>
-            </TableRow>
+            {logs.map(log => (
+              <TableRow key={log.id}>
+                <TableCell>{log.user}</TableCell>
+                <TableCell>{log.time}</TableCell>
+                <TableCell>{log.type}</TableCell>
+                <TableCell>{log.detail}</TableCell>
+              </TableRow>
+            ))}
           </TableBody>
         </Table>
       </TableContainer>

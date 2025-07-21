@@ -14,8 +14,8 @@ import DataImportExport from './components/DataImportExport';
 export default function AdminRoutes() {
   return (
     <Routes>
-      <Route path="/admin/login" element={<Login />} />
-      <Route path="/admin" element={<AdminLayout />}>
+      <Route path="login" element={<Login />} />
+      <Route path="" element={<AdminLayout />}>
         <Route index element={<SiteContentEditor />} />
         <Route path="content" element={<SiteContentEditor />} />
         <Route path="skills" element={<SkillsManager />} />
