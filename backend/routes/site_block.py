@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required
 from extensions import db
 from models.site_block import SiteBlock
+from app import socketio
 
 site_block_bp = Blueprint('site_block', __name__)
 
@@ -22,4 +23,5 @@ def update_site_blocks():
         if block:
             block.content = item['content']
             db.session.commit()
+    socketio.emit('site_block_updated')
     return jsonify({'code': 0, 'msg': '更新成功'}) 

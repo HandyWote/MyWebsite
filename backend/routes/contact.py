@@ -3,6 +3,7 @@ from flask_jwt_extended import jwt_required
 from extensions import db
 from models.contact import Contact
 from datetime import datetime
+from app import socketio
 
 contact_bp = Blueprint('contact', __name__)
 
@@ -21,6 +22,7 @@ def add_contact():
     contact = Contact(type=data['type'], value=data['value'])
     db.session.add(contact)
     db.session.commit()
+    socketio.emit('contacts_updated')
     return jsonify({'code': 0, 'msg': '新增成功', 'id': contact.id})
 
 @contact_bp.route('/contacts/<int:contact_id>', methods=['PUT'])
@@ -32,6 +34,7 @@ def update_contact(contact_id):
     contact.value = data.get('value', contact.value)
     contact.updated_at = datetime.utcnow()
     db.session.commit()
+    socketio.emit('contacts_updated')
     return jsonify({'code': 0, 'msg': '更新成功'})
 
 @contact_bp.route('/contacts/<int:contact_id>', methods=['DELETE'])
@@ -40,4 +43,5 @@ def delete_contact(contact_id):
     contact = Contact.query.get_or_404(contact_id)
     contact.deleted_at = datetime.utcnow()
     db.session.commit()
+    socketio.emit('contacts_updated')
     return jsonify({'code': 0, 'msg': '删除成功'}) 

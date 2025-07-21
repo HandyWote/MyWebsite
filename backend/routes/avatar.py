@@ -6,6 +6,7 @@ from models.avatar import Avatar
 from datetime import datetime
 import os
 import uuid
+from app import socketio
 
 avatar_bp = Blueprint('avatar', __name__)
 
@@ -35,6 +36,7 @@ def upload_avatar():
     db.session.add(avatar)
     db.session.commit()
     url = f"/api/admin/avatars/file/{filename}"
+    socketio.emit('avatars_updated')
     return jsonify({'code': 0, 'msg': '上传成功', 'url': url, 'id': avatar.id})
 
 @avatar_bp.route('/avatars/file/<filename>')
@@ -48,6 +50,7 @@ def set_current_avatar(avatar_id):
     avatar = Avatar.query.get_or_404(avatar_id)
     avatar.is_current = True
     db.session.commit()
+    socketio.emit('avatars_updated')
     return jsonify({'code': 0, 'msg': '已设为当前头像'})
 
 @avatar_bp.route('/avatars/<int:avatar_id>', methods=['DELETE'])
@@ -56,4 +59,5 @@ def delete_avatar(avatar_id):
     avatar = Avatar.query.get_or_404(avatar_id)
     avatar.deleted_at = datetime.utcnow()
     db.session.commit()
+    socketio.emit('avatars_updated')
     return jsonify({'code': 0, 'msg': '删除成功'}) 

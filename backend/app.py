@@ -80,8 +80,9 @@ def ws_logs_connect():
     emit('message', {'msg': 'logs ws connected'})
 
 if __name__ == '__main__':
+    # -----------------------------
+    # 使用 eventlet 启动，支持 WebSocket
+    # -----------------------------
     import eventlet
-    import eventlet.wsgi
-    import eventlet.green.select  # 关键：确保 select 被打补丁
-    eventlet.monkey_patch()       # 关键：确保所有标准库被打补丁
+    eventlet.monkey_patch()  # 必须：打补丁以支持协程和 WebSocket
     socketio.run(app, host='0.0.0.0', port=5000, debug=True) 
