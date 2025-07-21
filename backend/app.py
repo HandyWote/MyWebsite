@@ -9,7 +9,20 @@ from services.recycle_bin import clear_expired_recycle_bin
 
 def create_app():
     app = Flask(__name__)
-    app.config.from_object(Config)
+    config = Config()
+    # 正确设置所有配置项
+    app.config["SQLALCHEMY_DATABASE_URI"] = config.SQLALCHEMY_DATABASE_URI
+    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = config.SQLALCHEMY_TRACK_MODIFICATIONS
+    app.config["SECRET_KEY"] = config.SECRET_KEY
+    app.config["JWT_SECRET_KEY"] = config.JWT_SECRET_KEY
+    app.config["UPLOAD_FOLDER"] = config.UPLOAD_FOLDER
+    app.config["MAX_CONTENT_LENGTH"] = config.MAX_CONTENT_LENGTH
+    app.config["ALLOWED_IMAGE_EXTENSIONS"] = config.ALLOWED_IMAGE_EXTENSIONS
+    app.config["OPENAI_API_KEY"] = config.OPENAI_API_KEY
+    app.config["OPENAI_MODEL"] = config.OPENAI_MODEL
+    app.config["JWT_ACCESS_TOKEN_EXPIRES"] = config.JWT_ACCESS_TOKEN_EXPIRES
+    app.config["JWT_REMEMBER_TOKEN_EXPIRES"] = config.JWT_REMEMBER_TOKEN_EXPIRES
+    # 其它配置项如有需要可继续添加
 
     # 启用 CORS
     CORS(app, resources={r"/api/*": {"origins": "*"}})

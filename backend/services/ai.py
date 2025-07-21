@@ -1,5 +1,5 @@
 import requests
-from config import Config
+from setup import Config
 
 def complete_article_category_and_tags(title, summary, content):
     """

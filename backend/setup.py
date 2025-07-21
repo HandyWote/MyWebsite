@@ -92,50 +92,32 @@ JWT_REMEMBER_TOKEN_EXPIRES=604800
 def setup_database():
     """设置 PostgreSQL 数据库"""
     config = Config()
-    
+    print("=== 环境变量实际读取 ===")
+    print("DB_HOST:", repr(config.DB_HOST))
+    print("DB_PORT:", repr(config.DB_PORT))
+    print("DB_USER:", repr(config.DB_USER))
+    print("DB_PASSWORD:", repr(config.DB_PASSWORD))
+    print("DB_NAME:", repr(config.DB_NAME))
+    print("SQLALCHEMY_DATABASE_URI:", config.SQLALCHEMY_DATABASE_URI)
+    print("======================")
     try:
-        # 连接到 PostgreSQL 服务器
+        print(f"准备连接数据库: host={config.DB_HOST}, port={config.DB_PORT}, user={config.DB_USER}, password={config.DB_PASSWORD}, database={config.DB_NAME}")
         conn = psycopg2.connect(
             host=config.DB_HOST,
             port=config.DB_PORT,
             user=config.DB_USER,
             password=config.DB_PASSWORD,
-            database="postgres"
+            database=config.DB_NAME
         )
-        conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
-        cursor = conn.cursor()
-        
-        # 创建数据库
-        print("🔧 正在创建数据库...")
-        cursor.execute(f"CREATE DATABASE {config.DB_NAME}")
-        print(f"✅ 数据库 '{config.DB_NAME}' 创建成功")
-        
-        cursor.close()
+        print(f"连接到 {config.DB_NAME} 数据库成功")
         conn.close()
-        
-    except psycopg2.OperationalError as e:
-        if "password authentication failed" in str(e):
-            print("❌ 数据库连接失败：密码错误")
-            print(f"请检查 PostgreSQL 密码是否正确")
-            print(f"当前配置：{config.DB_USER}:{config.DB_PASSWORD}@{config.DB_HOST}:{config.DB_PORT}")
-            return False
-        elif "connection to server" in str(e):
-            print("❌ 数据库连接失败：PostgreSQL 服务未启动")
-            print("请确保 PostgreSQL 服务正在运行")
-            return False
-        else:
-            print(f"❌ 数据库连接失败：{e}")
-            return False
-    except psycopg2.ProgrammingError as e:
-        if "already exists" in str(e):
-            print(f"✅ 数据库 '{config.DB_NAME}' 已存在")
-        else:
-            print(f"❌ 数据库操作失败：{e}")
-            return False
     except Exception as e:
-        print(f"❌ 未知错误：{e}")
+        print("❌ 数据库连接或操作异常！")
+        print("异常类型：", type(e))
+        print("异常内容：", e)
+        import traceback
+        traceback.print_exc()
         return False
-    
     return True
 
 def init_database():
@@ -154,6 +136,7 @@ def init_database():
         from datetime import datetime
         
         with app.app_context():
+            print("准备初始化数据库表结构，连接字符串：", db.engine.url)
             # 创建表结构
             db.create_all()
             print("✅ 数据库表创建成功")
@@ -202,7 +185,9 @@ def init_database():
                 print("✅ 示例文章插入成功")
                 
     except Exception as e:
-        print(f"❌ 数据库初始化失败: {e}")
+        print("❌ 数据库初始化失败: ", e)
+        import traceback
+        traceback.print_exc()
         return False
     
     return True
