@@ -266,7 +266,8 @@ const Articles = () => {
             padding: '2rem',
             borderRadius: '1rem',
             maxWidth: '800px',
-            margin: '0 auto'
+            margin: '0 auto',
+            minHeight: '100vh'
           }}
         >
           {/* 演示模式提示 */}
@@ -495,7 +496,7 @@ const Articles = () => {
                   >
                     <Card
                       sx={{
-                        height: '200px', // 固定高度
+                        height: 'auto',
                         display: 'flex',
                         flexDirection: 'row', // 水平布局
                         transition: 'transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out',
@@ -521,8 +522,8 @@ const Articles = () => {
                         <CardMedia
                           component="img"
                           sx={{ 
-                            width: '200px', // 固定宽度
-                            height: '200px', // 固定高度
+                            width: { xs: '150px', sm: '180px', md: '200px' },
+                            height: 'auto',
                             objectFit: 'cover',
                             flexShrink: 0 // 防止图片被压缩
                           }}
@@ -535,10 +536,9 @@ const Articles = () => {
                         flexGrow: 1, 
                         display: 'flex', 
                         flexDirection: 'column',
-                        justifyContent: 'space-between',
                         padding: '1.5rem'
                       }}>
-                        <Box>
+                        <Box sx={{ flexGrow: 1 }}>
                           {/* 分类 */}
                           <Chip
                             label={article.category}
@@ -577,14 +577,23 @@ const Articles = () => {
                           <Typography
                             variant="body2"
                             color="text.secondary"
-                            sx={{ mb: 2, flexGrow: 1 }}
+                            sx={{ 
+                              mb: 2, 
+                              flexGrow: 1,
+                              lineHeight: 1.6
+                            }}
                           >
                             {article.summary}
                           </Typography>
 
                           {/* 标签 */}
                           {article.tags && article.tags.length > 0 && (
-                            <Box sx={{ mb: 2, display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                            <Box sx={{ 
+                              mb: 2, 
+                              display: 'flex', 
+                              flexWrap: 'wrap', 
+                              gap: 0.5
+                            }}>
                               {article.tags.slice(0, 3).map((tag) => (
                                 <Chip
                                   key={tag}
@@ -604,29 +613,35 @@ const Articles = () => {
                           )}
 
                           {/* 统计信息 */}
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                          <Box sx={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 1, 
+                            mb: 2,
+                            flexWrap: 'wrap'
+                          }}>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                               <VisibilityIcon fontSize="small" color="action" />
-                              <Typography variant="body2" color="text.secondary">
+                              <Typography variant="caption" color="text.secondary">
                                 {article.views}
                               </Typography>
                             </Box>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                               <CommentIcon fontSize="small" color="action" />
-                              <Typography variant="body2" color="text.secondary">
+                              <Typography variant="caption" color="text.secondary">
                                 {article.comment_count}
                               </Typography>
                             </Box>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                               <CalendarIcon fontSize="small" color="action" />
-                              <Typography variant="body2" color="text.secondary">
+                              <Typography variant="caption" color="text.secondary">
                                 {formatDate(article.created_at)}
                               </Typography>
                             </Box>
                           </Box>
 
                           {/* 操作按钮 */}
-                          <Box sx={{ display: 'flex', gap: 1 }}>
+                          <Box sx={{ display: 'flex', gap: 1, mt: 'auto', pt: 2 }}>
                             <Button
                               variant="contained"
                               size="small"

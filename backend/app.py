@@ -1,5 +1,6 @@
 from flask import Flask
-from config import Config
+from flask_cors import CORS
+from setup import Config
 from extensions import db, jwt, scheduler
 from routes import register_all_blueprints
 import os
@@ -9,6 +10,9 @@ from services.recycle_bin import clear_expired_recycle_bin
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
+
+    # 启用 CORS
+    CORS(app, resources={r"/api/*": {"origins": "*"}})
 
     # 初始化扩展
     db.init_app(app)

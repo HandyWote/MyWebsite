@@ -581,7 +581,8 @@ const ArticleDetail = () => {
             padding: '2rem',
             borderRadius: '1rem',
             maxWidth: '800px',
-            margin: '0 auto'
+            margin: '0 auto',
+            minHeight: '100vh'
           }}
         >
         {/* 返回按钮 */}
@@ -734,6 +735,9 @@ const ArticleDetail = () => {
         >
           <Box
             sx={{
+              minHeight: { xs: '300px', sm: '400px', md: '500px' },
+              height: { xs: 'auto', sm: '100%' },
+              overflow: 'auto',
               '& h1, & h2, & h3, & h4, & h5, & h6': {
                 mt: 4,
                 mb: 2,
