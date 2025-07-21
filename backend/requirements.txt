@@ -8,3 +8,5 @@ Werkzeug==2.3.7
 python-dotenv==1.0.0
 requests==2.31.0
 Pillow==10.0.1 
+Flask-SocketIO==5.3.6
+eventlet==0.33.3 

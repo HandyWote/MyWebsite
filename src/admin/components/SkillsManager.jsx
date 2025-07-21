@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Box, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper } from '@mui/material';
+import { io } from 'socket.io-client';
 
 const WS_NAMESPACE = 'ws://localhost:5000/ws/skills';
-const API_PATH = '/api/admin/skills';
+const API_PATH = 'http://localhost:5000/api/admin/skills';
 
 const SkillsManager = () => {
   const [skills, setSkills] = useState([]);
@@ -12,7 +13,12 @@ const SkillsManager = () => {
   // 拉取技能数据
   const fetchSkills = async () => {
     setLoading(true);
-    const res = await fetch(API_PATH);
+    const token = localStorage.getItem('token');
+    const res = await fetch(API_PATH, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
     const data = await res.json();
     setSkills(data.skills || []);
     setLoading(false);
@@ -20,12 +26,18 @@ const SkillsManager = () => {
 
   useEffect(() => {
     fetchSkills();
-    wsRef.current = new WebSocket(WS_NAMESPACE);
-    wsRef.current.onmessage = () => {
+    const socket = io('ws://localhost:5000/skills', {
+      transports: ['websocket'],
+      path: '/socket.io',
+    });
+    socket.on('connect', () => {
+      console.log('skills ws connected');
+    });
+    socket.on('message', () => {
       fetchSkills();
-    };
+    });
     return () => {
-      wsRef.current && wsRef.current.close();
+      socket.disconnect();
     };
   }, []);
 

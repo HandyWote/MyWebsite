@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
 import Login from './components/Login';
 import AdminLayout from './components/AdminLayout';
 import SiteContentEditor from './components/SiteContentEditor';
@@ -10,12 +10,27 @@ import ArticleEditor from './components/ArticleEditor';
 import LogsViewer from './components/LogsViewer';
 import RecycleBin from './components/RecycleBin';
 import DataImportExport from './components/DataImportExport';
+import React from 'react';
+
+// 登录守卫组件
+function RequireAuth({ children }) {
+  const token = localStorage.getItem('token');
+  const location = useLocation();
+  if (!token) {
+    return <Navigate to="/admin/login" state={{ from: location }} replace />;
+  }
+  return children;
+}
 
 export default function AdminRoutes() {
   return (
     <Routes>
       <Route path="login" element={<Login />} />
-      <Route path="" element={<AdminLayout />}>
+      <Route path="" element={
+        <RequireAuth>
+          <AdminLayout />
+        </RequireAuth>
+      }>
         <Route index element={<SiteContentEditor />} />
         <Route path="content" element={<SiteContentEditor />} />
         <Route path="skills" element={<SkillsManager />} />

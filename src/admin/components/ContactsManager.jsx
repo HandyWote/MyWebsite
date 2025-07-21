@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Box, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper } from '@mui/material';
+import { io } from 'socket.io-client';
 
 const WS_NAMESPACE = 'ws://localhost:5000/ws/contacts';
-const API_PATH = '/api/admin/contacts';
+const API_PATH = 'http://localhost:5000/api/admin/contacts';
 
 const ContactsManager = () => {
   const [contacts, setContacts] = useState([]);
@@ -11,7 +12,12 @@ const ContactsManager = () => {
 
   const fetchContacts = async () => {
     setLoading(true);
-    const res = await fetch(API_PATH);
+    const token = localStorage.getItem('token');
+    const res = await fetch(API_PATH, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
     const data = await res.json();
     setContacts(data.contacts || []);
     setLoading(false);
@@ -19,12 +25,18 @@ const ContactsManager = () => {
 
   useEffect(() => {
     fetchContacts();
-    wsRef.current = new WebSocket(WS_NAMESPACE);
-    wsRef.current.onmessage = () => {
+    const socket = io('ws://localhost:5000/contacts', {
+      transports: ['websocket'],
+      path: '/socket.io',
+    });
+    socket.on('connect', () => {
+      console.log('contacts ws connected');
+    });
+    socket.on('message', () => {
       fetchContacts();
-    };
+    });
     return () => {
-      wsRef.current && wsRef.current.close();
+      socket.disconnect();
     };
   }, []);
 

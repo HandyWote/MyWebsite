@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Box, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper } from '@mui/material';
+import { io } from 'socket.io-client';
 
 const WS_NAMESPACE = 'ws://localhost:5000/ws/articles';
-const API_PATH = '/api/admin/articles';
+const API_PATH = 'http://localhost:5000/api/admin/articles';
 
 const ArticlesManager = () => {
   const [articles, setArticles] = useState([]);
@@ -11,7 +12,12 @@ const ArticlesManager = () => {
 
   const fetchArticles = async () => {
     setLoading(true);
-    const res = await fetch(API_PATH);
+    const token = localStorage.getItem('token');
+    const res = await fetch(API_PATH, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
     const data = await res.json();
     setArticles(data.articles || []);
     setLoading(false);
@@ -19,12 +25,18 @@ const ArticlesManager = () => {
 
   useEffect(() => {
     fetchArticles();
-    wsRef.current = new WebSocket(WS_NAMESPACE);
-    wsRef.current.onmessage = () => {
+    const socket = io('ws://localhost:5000/articles', {
+      transports: ['websocket'],
+      path: '/socket.io',
+    });
+    socket.on('connect', () => {
+      console.log('articles ws connected');
+    });
+    socket.on('message', () => {
       fetchArticles();
-    };
+    });
     return () => {
-      wsRef.current && wsRef.current.close();
+      socket.disconnect();
     };
   }, []);
 

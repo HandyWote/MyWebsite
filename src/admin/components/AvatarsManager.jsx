@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Box, Button, Avatar, Grid, Paper, IconButton } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
+import { io } from 'socket.io-client';
 
 const WS_NAMESPACE = 'ws://localhost:5000/ws/avatars';
-const API_PATH = '/api/admin/avatars';
+const API_PATH = 'http://localhost:5000/api/admin/avatars';
 
 const AvatarsManager = () => {
   const [avatars, setAvatars] = useState([]);
@@ -12,7 +13,12 @@ const AvatarsManager = () => {
 
   const fetchAvatars = async () => {
     setLoading(true);
-    const res = await fetch(API_PATH);
+    const token = localStorage.getItem('token');
+    const res = await fetch(API_PATH, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
     const data = await res.json();
     setAvatars(data.avatars || []);
     setLoading(false);
@@ -20,12 +26,18 @@ const AvatarsManager = () => {
 
   useEffect(() => {
     fetchAvatars();
-    wsRef.current = new WebSocket(WS_NAMESPACE);
-    wsRef.current.onmessage = () => {
+    const socket = io('ws://localhost:5000/avatars', {
+      transports: ['websocket'],
+      path: '/socket.io',
+    });
+    socket.on('connect', () => {
+      console.log('avatars ws connected');
+    });
+    socket.on('message', () => {
       fetchAvatars();
-    };
+    });
     return () => {
-      wsRef.current && wsRef.current.close();
+      socket.disconnect();
     };
   }, []);
 

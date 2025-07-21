@@ -5,6 +5,7 @@ from extensions import db, jwt, scheduler
 from routes import register_all_blueprints
 import os
 from services.recycle_bin import clear_expired_recycle_bin
+from flask_socketio import SocketIO, emit
 
 
 def create_app():
@@ -50,6 +51,37 @@ def create_app():
 
 
 app = create_app()
+socketio = SocketIO(app, cors_allowed_origins="*")
+
+# ========== WebSocket 路由 ==========
+@socketio.on('connect', namespace='/skills')
+def ws_skills_connect():
+    print('WebSocket /skills connected')
+    emit('message', {'msg': 'skills ws connected'})
+
+@socketio.on('connect', namespace='/contacts')
+def ws_contacts_connect():
+    print('WebSocket /contacts connected')
+    emit('message', {'msg': 'contacts ws connected'})
+
+@socketio.on('connect', namespace='/avatars')
+def ws_avatars_connect():
+    print('WebSocket /avatars connected')
+    emit('message', {'msg': 'avatars ws connected'})
+
+@socketio.on('connect', namespace='/articles')
+def ws_articles_connect():
+    print('WebSocket /articles connected')
+    emit('message', {'msg': 'articles ws connected'})
+
+@socketio.on('connect', namespace='/logs')
+def ws_logs_connect():
+    print('WebSocket /logs connected')
+    emit('message', {'msg': 'logs ws connected'})
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True) 
+    import eventlet
+    import eventlet.wsgi
+    import eventlet.green.select  # 关键：确保 select 被打补丁
+    eventlet.monkey_patch()       # 关键：确保所有标准库被打补丁
+    socketio.run(app, host='0.0.0.0', port=5000, debug=True) 
