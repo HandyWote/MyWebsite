@@ -161,8 +161,8 @@ const Articles = () => {
       if (categoriesResponse.ok && tagsResponse.ok) {
         const categoriesData = await categoriesResponse.json();
         const tagsData = await tagsResponse.json();
-        setCategories(categoriesData);
-        setTags(tagsData);
+        setCategories(Array.isArray(categoriesData.categories) ? categoriesData.categories : []);
+        setTags(tagsData.tags || {});
         setDemoMode(false);
       } else {
         throw new Error('API 请求失败');
@@ -393,7 +393,7 @@ const Articles = () => {
                   }}
                 >
                   <MenuItem value="">全部</MenuItem>
-                  {categories.map((category) => (
+                  {Array.isArray(categories) && categories.map((category) => (
                     <MenuItem key={category} value={category}>
                       {category}
                     </MenuItem>
