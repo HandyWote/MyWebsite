@@ -196,8 +196,6 @@ def start_server():
     """启动后端服务（支持 WebSocket）"""
     try:
         from app import app, socketio
-        import eventlet
-        eventlet.monkey_patch()
         print("🚀 启动后端服务...")
         print("📍 服务地址: http://localhost:5000")
         print("📚 API 文档: http://localhost:5000/api")

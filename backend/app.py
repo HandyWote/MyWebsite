@@ -1,11 +1,11 @@
 from flask import Flask
 from flask_cors import CORS
 from setup import Config
-from extensions import db, jwt, scheduler
-from routes import register_all_blueprints
+from extensions import db, jwt, scheduler, socketio
 import os
 from services.recycle_bin import clear_expired_recycle_bin
 from flask_socketio import SocketIO, emit
+from routes import register_all_blueprints
 
 
 def create_app():
@@ -32,6 +32,7 @@ def create_app():
     db.init_app(app)
     jwt.init_app(app)
     scheduler.init_app(app)
+    socketio.init_app(app, cors_allowed_origins="*")
 
     # 注册定时任务：每天凌晨2点清理回收站
     @scheduler.task('cron', id='clear_recycle_bin', hour=2)
@@ -51,7 +52,6 @@ def create_app():
 
 
 app = create_app()
-socketio = SocketIO(app, cors_allowed_origins="*")
 
 # ========== WebSocket 路由 ==========
 @socketio.on('connect', namespace='/skills')
@@ -81,8 +81,8 @@ def ws_logs_connect():
 
 if __name__ == '__main__':
     # -----------------------------
-    # 使用 eventlet 启动，支持 WebSocket
+    # 使用 gevent 启动，支持 WebSocket
     # -----------------------------
-    import eventlet
-    eventlet.monkey_patch()  # 必须：打补丁以支持协程和 WebSocket
+    from gevent import monkey
+    monkey.patch_all()  # 必须：打补丁以支持协程和 WebSocket
     socketio.run(app, host='0.0.0.0', port=5000, debug=True) 

@@ -37,28 +37,28 @@ const Home = () => {
   // 拉取首页介绍、技能、联系方式、头像
   const fetchSiteBlock = async () => {
     try {
-      const res = await fetch('http://localhost:5000/api/admin/site-blocks', { headers: { Authorization: '' } });
+      const res = await fetch('http://localhost:5000/api/site-blocks');
       const data = await res.json();
       setSiteBlock(data.data.find(b => b.name === 'home'));
     } catch {}
   };
   const fetchSkills = async () => {
     try {
-      const res = await fetch('http://localhost:5000/api/admin/skills', { headers: { Authorization: '' } });
+      const res = await fetch('http://localhost:5000/api/skills');
       const data = await res.json();
       setSkills(data.data || []);
     } catch {}
   };
   const fetchContacts = async () => {
     try {
-      const res = await fetch('http://localhost:5000/api/admin/contacts', { headers: { Authorization: '' } });
+      const res = await fetch('http://localhost:5000/api/contacts');
       const data = await res.json();
       setContacts(data.data || []);
     } catch {}
   };
   const fetchAvatar = async () => {
     try {
-      const res = await fetch('http://localhost:5000/api/admin/avatars', { headers: { Authorization: '' } });
+      const res = await fetch('http://localhost:5000/api/avatars');
       const data = await res.json();
       const current = (data.avatars || data.data || []).find(a => a.is_current);
       setAvatarUrl(current ? `/api/admin/avatars/file/${current.filename}` : './avatar.jpg');

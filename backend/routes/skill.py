@@ -12,7 +12,7 @@ skill_bp = Blueprint('skill', __name__)
 def get_skills():
     skills = Skill.query.filter_by(deleted_at=None).all()
     return jsonify({'code': 0, 'msg': 'success', 'data': [
-        {'id': s.id, 'name': s.name, 'description': s.description, 'level': s.level, 'created_at': s.created_at, 'updated_at': s.updated_at} for s in skills
+        {'id': s.id, 'name': s.name, 'description': s.description, 'level': s.level} for s in skills
     ]})
 
 @skill_bp.route('/skills', methods=['POST'])

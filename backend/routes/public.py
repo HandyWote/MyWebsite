@@ -2,6 +2,10 @@ from flask import Blueprint, request, jsonify
 from extensions import db
 from models.article import Article
 from datetime import datetime
+from models.skill import Skill
+from models.contact import Contact
+from models.avatar import Avatar
+from models.site_block import SiteBlock
 
 public_bp = Blueprint('public', __name__)
 
@@ -120,3 +124,31 @@ def get_tags():
         'msg': 'success',
         'tags': tag_count
     }) 
+
+@public_bp.route('/skills', methods=['GET'])
+def get_skills():
+    skills = Skill.query.filter_by(deleted_at=None).all()
+    return jsonify({'code': 0, 'msg': 'success', 'data': [
+        {'id': s.id, 'name': s.name, 'description': s.description, 'level': s.level} for s in skills
+    ]})
+
+@public_bp.route('/contacts', methods=['GET'])
+def get_contacts():
+    contacts = Contact.query.filter_by(deleted_at=None).all()
+    return jsonify({'code': 0, 'msg': 'success', 'data': [
+        {'id': c.id, 'type': c.type, 'value': c.value} for c in contacts
+    ]})
+
+@public_bp.route('/avatars', methods=['GET'])
+def get_avatars():
+    avatars = Avatar.query.filter_by(deleted_at=None).order_by(Avatar.uploaded_at.desc()).all()
+    return jsonify({'code': 0, 'msg': 'success', 'data': [
+        {'id': a.id, 'filename': a.filename, 'is_current': a.is_current} for a in avatars
+    ]})
+
+@public_bp.route('/site-blocks', methods=['GET'])
+def get_site_blocks():
+    blocks = SiteBlock.query.all()
+    return jsonify({'code': 0, 'msg': 'success', 'data': [
+        {'name': b.name, 'content': b.content, 'updated_at': b.updated_at} for b in blocks
+    ]}) 
