@@ -3,7 +3,7 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { AppBar, Toolbar, Typography, Box, Tabs, Tab, Button, useMediaQuery } from '@mui/material';
 
 const tabList = [
-  { label: '内容管理', path: '/admin/content' },
+  { label: '简介管理', path: '/admin/content' },
   { label: '技能管理', path: '/admin/skills' },
   { label: '联系方式', path: '/admin/contacts' },
   { label: '头像管理', path: '/admin/avatars' },

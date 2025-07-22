@@ -10,6 +10,7 @@ import ArticleEditor from './components/ArticleEditor';
 import LogsViewer from './components/LogsViewer';
 import RecycleBin from './components/RecycleBin';
 import DataImportExport from './components/DataImportExport';
+import AboutManager from './components/AboutManager';
 import React from 'react';
 
 // 登录守卫组件
@@ -31,8 +32,8 @@ export default function AdminRoutes() {
           <AdminLayout />
         </RequireAuth>
       }>
-        <Route index element={<SiteContentEditor />} />
-        <Route path="content" element={<SiteContentEditor />} />
+        <Route index element={<AboutManager />} />
+        <Route path="content" element={<AboutManager />} />
         <Route path="skills" element={<SkillsManager />} />
         <Route path="contacts" element={<ContactsManager />} />
         <Route path="avatars" element={<AvatarsManager />} />
