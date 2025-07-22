@@ -25,18 +25,29 @@ function SortableAvatarCard({ avatar, index, onDelete, ...props }) {
   };
   return (
     <div ref={setNodeRef} style={style} {...props}>
-      <Box {...attributes} {...listeners} sx={{ cursor: 'grab', mr: 2 }} title="拖拽排序">
-        <Avatar src={avatar.url} sx={{ width: 64, height: 64, border: index === 0 ? '3px solid #1AAD19' : 'none' }} />
-      </Box>
-      <Box sx={{ flex: 1 }}>
-        <Box sx={{ color: index === 0 ? '#1AAD19' : 'text.secondary', fontWeight: index === 0 ? 700 : 400 }}>
+      <Box
+        {...attributes}
+        {...listeners}
+        sx={{
+          cursor: 'grab',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          flex: 1
+        }}
+        title="拖拽排序"
+      >
+        <Avatar src={avatar.url || undefined} sx={{ width: 64, height: 64, border: index === 0 ? '3px solid #1AAD19' : 'none', mb: 1 }} />
+        <Box sx={{ color: index === 0 ? '#1AAD19' : 'text.secondary', fontWeight: index === 0 ? 700 : 400, mb: 0.5 }}>
           {index === 0 ? '当前头像' : `头像${index + 1}`}
         </Box>
-        <Box sx={{ fontSize: 12, color: 'text.disabled' }}>{avatar.uploaded_at ? new Date(avatar.uploaded_at).toLocaleString() : ''}</Box>
+        <Box sx={{ fontSize: 12, color: 'text.disabled', mb: 1 }}>
+          {avatar.uploaded_at ? new Date(avatar.uploaded_at).toLocaleString() : ''}
+        </Box>
+        <Tooltip title="删除">
+          <IconButton color="error" size="small" onClick={() => onDelete(index)}><DeleteIcon /></IconButton>
+        </Tooltip>
       </Box>
-      <Tooltip title="删除">
-        <IconButton color="error" size="small" onClick={() => onDelete(index)}><DeleteIcon /></IconButton>
-      </Tooltip>
     </div>
   );
 }
@@ -59,10 +70,10 @@ const AvatarsManager = () => {
     });
     const data = await res.json();
     // 兼容 data.data 和 data.avatars
-    const arr = (data.data || data.avatars || []).map(a => ({
-      ...a,
-      url: a.filename ? `/api/admin/avatars/file/${a.filename}` : ''
-    }));
+    const arr = (data.data || data.avatars || []).map(a => {
+      const url = a.filename ? `/api/admin/avatars/file/${a.filename}` : undefined;
+      return { ...a, url };
+    });
     setAvatars(arr);
     setLoading(false);
   };
@@ -152,13 +163,13 @@ const AvatarsManager = () => {
           <SortableContext items={avatars.map(a => a.id)} strategy={verticalListSortingStrategy}>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
               {avatars.map((avatar, index) => (
-                <SortableAvatarCard
-                  key={avatar.id}
-                  avatar={avatar}
-                  index={index}
-                  onDelete={handleDelete}
-                />
-              ))}
+                  <SortableAvatarCard
+                    key={avatar.id}
+                    avatar={avatar}
+                    index={index}
+                    onDelete={handleDelete}
+                  />
+                ))}
             </Box>
           </SortableContext>
         </DndContext>

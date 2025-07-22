@@ -41,6 +41,10 @@ def upload_avatar():
 
 @avatar_bp.route('/avatars/file/<filename>')
 def get_avatar_file(filename):
+    import os
+    print('图片实际路径:', os.path.join(current_app.config['UPLOAD_FOLDER'], filename))
+    print('UPLOAD_FOLDER:', current_app.config['UPLOAD_FOLDER'])
+    print('请求文件名:', filename)
     return send_from_directory(current_app.config['UPLOAD_FOLDER'], filename)
 
 @avatar_bp.route('/avatars/<int:avatar_id>/set_current', methods=['PUT'])

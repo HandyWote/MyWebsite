@@ -580,8 +580,8 @@ const ArticleDetail = () => {
           style={{
             padding: '2rem',
             borderRadius: '1rem',
-            maxWidth: '1200px', // 调大宽度
-            width: '100%',      // 宽度自适应
+            maxWidth: '800px',
+            width: '800px',
             margin: '0 auto',
             minHeight: '100vh'
           }}
@@ -669,19 +669,19 @@ const ArticleDetail = () => {
             <Grid item xs={12} md={8}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <VisibilityIcon color="action" />
+                  <VisibilityIcon sx={{ color: '#213547' }} />
                   <Typography variant="body2" color="text.secondary">
                     {article.views} 次阅读
                   </Typography>
                 </Box>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <CommentIcon color="action" />
+                  <CommentIcon sx={{ color: '#213547' }} />
                   <Typography variant="body2" color="text.secondary">
                     {article.comments.length} 条评论
                   </Typography>
                 </Box>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <CalendarIcon color="action" />
+                  <CalendarIcon sx={{ color: '#213547' }} />
                   <Typography variant="body2" color="text.secondary">
                     {formatDate(article.created_at)}
                   </Typography>
@@ -691,9 +691,9 @@ const ArticleDetail = () => {
             <Grid item xs={12} md={4}>
               <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
                 <IconButton
-                  color="primary"
+                  sx={{ color: '#213547' }}
                   onClick={handleShare}
-                  sx={{ mr: 1 }}
+                  style={{ marginRight: 8 }}
                 >
                   <ShareIcon />
                 </IconButton>
@@ -882,7 +882,7 @@ const ArticleDetail = () => {
               {article.comments.map((comment, index) => (
                 <Box key={comment.id} sx={{ mb: 3 }}>
                   <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
-                    <Avatar sx={{ bgcolor: 'primary.main' }}>
+                    <Avatar sx={{ bgcolor: '#213547' }}>
                       {comment.author.charAt(0).toUpperCase()}
                     </Avatar>
                     <Box sx={{ flexGrow: 1 }}>
