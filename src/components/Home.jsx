@@ -146,20 +146,22 @@ const Home = () => {
               animate={{ scale: 1 }}
               transition={{ delay: 0.3, duration: 0.5 }}
             >
-              <Box
-                component="img"
-                src={avatarUrl}
-                alt="HandyWote"
-                sx={{
-                  width: { xs: 140, sm: 180 },
-                  height: { xs: 140, sm: 180 },
-                  borderRadius: '50%',
-                  mb: 2,
-                  border: '4px solid rgba(255, 255, 255, 0.2)',
-                  mx: 'auto',
-                  display: 'block'
-                }}
-              />
+              {avatarUrl ? (
+                <Box
+                  component="img"
+                  src={avatarUrl}
+                  alt="HandyWote"
+                  sx={{
+                    width: { xs: 140, sm: 180 },
+                    height: { xs: 140, sm: 180 },
+                    borderRadius: '50%',
+                    mb: 2,
+                    border: '4px solid rgba(255, 255, 255, 0.2)',
+                    mx: 'auto',
+                    display: 'block'
+                  }}
+                />
+              ) : null}
             </motion.div>
             <Typography variant="h2" component="h1" sx={{ mb: 1, fontSize: { xs: '2rem', sm: '3rem' }, textAlign: 'center' }}>
               {siteBlock?.title || 'HandyWote'}

@@ -117,11 +117,6 @@ export default function AboutManager() {
             >
               {loading ? <CircularProgress size={20} /> : '手动刷新'}
             </Button>
-            {lastUpdated && (
-              <Typography variant="caption" sx={{ ml: 2, alignSelf: 'center' }}>
-                上次更新时间：{new Date(lastUpdated).toLocaleString()}
-              </Typography>
-            )}
           </Box>
         </Box>
         {/* 预览区 */}

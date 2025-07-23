@@ -71,7 +71,8 @@ const AvatarsManager = () => {
     const data = await res.json();
     // 兼容 data.data 和 data.avatars
     const arr = (data.data || data.avatars || []).map(a => {
-      const url = a.filename ? `/api/admin/avatars/file/${a.filename}` : undefined;
+      const API_BASE_URL = "http://localhost:5000";
+      const url = a.filename ? `${API_BASE_URL}/api/admin/avatars/file/${a.filename}` : undefined;
       return { ...a, url };
     });
     setAvatars(arr);
