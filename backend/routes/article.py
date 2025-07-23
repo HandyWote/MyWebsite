@@ -3,6 +3,13 @@ from flask_jwt_extended import jwt_required
 from extensions import db
 from models.article import Article
 from datetime import datetime
+import os
+from flask import send_from_directory
+from werkzeug.utils import secure_filename
+import uuid
+
+UPLOAD_FOLDER = 'uploads'  # 可根据实际情况调整
+ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp'}
 
 article_bp = Blueprint('article', __name__)
 
@@ -58,4 +65,81 @@ def delete_article(article_id):
     article = Article.query.get_or_404(article_id)
     article.deleted_at = datetime.utcnow()
     db.session.commit()
-    return jsonify({'code': 0, 'msg': '删除成功'}) 
+    return jsonify({'code': 0, 'msg': '删除成功'})
+
+@article_bp.route('/articles/<int:article_id>', methods=['GET'])
+@jwt_required()
+def get_article_detail(article_id):
+    article = Article.query.get_or_404(article_id)
+    return jsonify({
+        'id': article.id,
+        'title': article.title,
+        'category': article.category,
+        'tags': article.tags,
+        'cover': article.cover,
+        'summary': article.summary,
+        'content': article.content,
+        'created_at': article.created_at,
+        'updated_at': article.updated_at
+    })
+
+# 1. 文章封面图片上传接口
+@article_bp.route('/articles/cover', methods=['POST'])
+@jwt_required()
+def upload_article_cover():
+    file = request.files.get('file')
+    if not file:
+        return jsonify({'code': 1, 'msg': '未上传文件'}), 400
+    ext = file.filename.rsplit('.', 1)[-1].lower()
+    if ext not in ALLOWED_IMAGE_EXTENSIONS:
+        return jsonify({'code': 1, 'msg': '不支持的图片格式'}), 400
+    filename = f"{uuid.uuid4().hex}.{ext}"
+    save_path = os.path.join(UPLOAD_FOLDER, filename)
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+    file.save(save_path)
+    url = f"/api/admin/articles/cover/{filename}"
+    return jsonify({'code': 0, 'msg': '上传成功', 'url': url})
+
+# 2. 文章封面图片静态访问接口
+@article_bp.route('/articles/cover/<filename>')
+def get_article_cover(filename):
+    return send_from_directory(UPLOAD_FOLDER, filename)
+
+# 3. 批量导入Markdown接口（支持上传多个md文件）
+@article_bp.route('/articles/import-md', methods=['POST'])
+@jwt_required()
+def import_articles_md():
+    files = request.files.getlist('files')
+    if not files:
+        return jsonify({'code': 1, 'msg': '未上传文件'}), 400
+    imported = 0
+    for file in files:
+        text = file.read().decode('utf-8')
+        lines = text.split('\n')
+        title = ''
+        content = text
+        for l in lines:
+            if l.startswith('# '):
+                title = l.replace('# ', '').strip()
+                content = '\n'.join(lines[1:]).strip()
+                break
+        if not title or not content:
+            continue
+        article = Article(title=title, content=content)
+        db.session.add(article)
+        imported += 1
+    db.session.commit()
+    return jsonify({'code': 0, 'msg': f'成功导入{imported}篇文章'})
+
+# 4. 文章批量删除接口
+@article_bp.route('/articles/batch-delete', methods=['POST'])
+@jwt_required()
+def batch_delete_articles():
+    ids = request.json.get('ids', [])
+    if not ids:
+        return jsonify({'code': 1, 'msg': '未提供ids'}), 400
+    articles = Article.query.filter(Article.id.in_(ids)).all()
+    for article in articles:
+        article.deleted_at = datetime.utcnow()
+    db.session.commit()
+    return jsonify({'code': 0, 'msg': f'已批量删除{len(articles)}篇文章'}) 
