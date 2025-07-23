@@ -60,6 +60,7 @@ const Home = () => {
 
   // 远程数据状态
   const [siteBlock, setSiteBlock] = useState(null);
+  const [aboutBlock, setAboutBlock] = useState(null);
   const [skills, setSkills] = useState([]);
   const [contacts, setContacts] = useState([]);
   const [avatarUrl, setAvatarUrl] = useState('');
@@ -78,6 +79,7 @@ const Home = () => {
       const res = await fetch('http://localhost:5000/api/site-blocks');
       const data = await res.json();
       setSiteBlock(data.data.find(b => b.name === 'home'));
+      setAboutBlock(data.data.find(b => b.name === 'about'));
     } catch {}
   };
   const fetchSkills = async () => {
@@ -115,6 +117,10 @@ const Home = () => {
     socket.on('avatars_updated', fetchAvatar);
     return () => socket.disconnect();
   }, []);
+
+  useEffect(() => {
+    console.log('aboutBlock:', aboutBlock);
+  }, [aboutBlock]);
 
   return (
     <section className="section">
@@ -253,25 +259,37 @@ const Home = () => {
               <Typography variant="h5" gutterBottom sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
                 教育背景
               </Typography>
-              <Typography variant="body1" paragraph sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
-                {siteBlock?.education_background || '目前就读于汕头大学，作为一名充满热情的学生，我正在追求计算机科学的深度学习。'}
-              </Typography>
+              <Typography
+                variant="body1"
+                paragraph
+                component="div"
+                sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
+                dangerouslySetInnerHTML={{ __html: aboutBlock?.content?.education_background || '<span style="color:#aaa">暂无内容</span>' }}
+              />
             </Box>
             <Box sx={{ mb: 3 }}>
               <Typography variant="h5" gutterBottom sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
                 兴趣爱好
               </Typography>
-              <Typography variant="body1" paragraph sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
-                {siteBlock?.hobbies || '我对编程和技术充满热情，特别喜欢探索新的技术领域和解决具有挑战性的问题。在课余时间，我喜欢参与开源项目，不断提升自己的技术能力。'}
-              </Typography>
+              <Typography
+                variant="body1"
+                paragraph
+                component="div"
+                sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
+                dangerouslySetInnerHTML={{ __html: aboutBlock?.content?.hobbies || '<span style="color:#aaa">暂无内容</span>' }}
+              />
             </Box>
             <Box>
               <Typography variant="h5" gutterBottom sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
                 个人愿景
               </Typography>
-              <Typography variant="body1" paragraph sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
-                {siteBlock?.personal_vision || '我希望能够通过不断学习和实践，在软件开发领域做出自己的贡献。我相信技术可以改变世界，而我正在努力成为这个改变的一部分。'}
-              </Typography>
+              <Typography
+                variant="body1"
+                paragraph
+                component="div"
+                sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
+                dangerouslySetInnerHTML={{ __html: aboutBlock?.content?.personal_vision || '<span style="color:#aaa">暂无内容</span>' }}
+              />
             </Box>
           </div>
 

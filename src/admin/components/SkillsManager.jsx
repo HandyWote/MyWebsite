@@ -241,7 +241,7 @@ const SkillsManager = () => {
                 onDelete={handleDelete}
               />
             ))}
-          </Box>
+    </Box>
         </SortableContext>
       </DndContext>
       <Dialog open={deleteIndex !== null} onClose={cancelDelete}>

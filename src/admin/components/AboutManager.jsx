@@ -100,10 +100,21 @@ export default function AboutManager() {
             </Box>
           ))}
           <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
-            <Button variant="contained" color="primary" onClick={handleSave} disabled={saving}>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleSave}
+              disabled={saving}
+              disableElevation
+            >
               {saving ? <CircularProgress size={20} /> : '保存全部更改'}
             </Button>
-            <Button variant="outlined" onClick={fetchAbout} disabled={loading}>
+            <Button
+              variant="outlined"
+              onClick={fetchAbout}
+              disabled={loading}
+              disableElevation
+            >
               {loading ? <CircularProgress size={20} /> : '手动刷新'}
             </Button>
             {lastUpdated && (
