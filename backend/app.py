@@ -3,14 +3,36 @@ from flask_cors import CORS
 from setup import Config
 from extensions import db, jwt, scheduler, socketio
 import os
+# 加载环境变量
+from dotenv import load_dotenv
+load_dotenv()
+
+import logging
 from services.recycle_bin import clear_expired_recycle_bin
 from flask_socketio import SocketIO, emit
 from routes import register_all_blueprints
 
+# 添加gevent支持检测
+try:
+    from gevent import monkey
+    gevent_available = True
+except ImportError:
+    gevent_available = False
 
 def create_app():
     app = Flask(__name__)
     config = Config()
+    
+    # 记录环境变量加载情况（用于调试）
+    app.logger.info("Environment variables:")
+    app.logger.info(f"DB_HOST: {os.environ.get('DB_HOST', 'Not set')}")
+    app.logger.info(f"DB_PORT: {os.environ.get('DB_PORT', 'Not set')}")
+    app.logger.info(f"DB_USER: {os.environ.get('DB_USER', 'Not set')}")
+    app.logger.info(f"DB_PASSWORD: {'*' * len(os.environ.get('DB_PASSWORD', '')) if os.environ.get('DB_PASSWORD') else 'Not set'}")
+    app.logger.info(f"DB_NAME: {os.environ.get('DB_NAME', 'Not set')}")
+    app.logger.info(f"SECRET_KEY: {'*' * len(os.environ.get('SECRET_KEY', '')) if os.environ.get('SECRET_KEY') else 'Not set'}")
+    app.logger.info(f"SQLALCHEMY_DATABASE_URI: {config.SQLALCHEMY_DATABASE_URI}")
+    
     # 正确设置所有配置项
     app.config["SQLALCHEMY_DATABASE_URI"] = config.SQLALCHEMY_DATABASE_URI
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = config.SQLALCHEMY_TRACK_MODIFICATIONS
@@ -23,6 +45,13 @@ def create_app():
     app.config["OPENAI_MODEL"] = config.OPENAI_MODEL
     app.config["JWT_ACCESS_TOKEN_EXPIRES"] = config.JWT_ACCESS_TOKEN_EXPIRES
     app.config["JWT_REMEMBER_TOKEN_EXPIRES"] = config.JWT_REMEMBER_TOKEN_EXPIRES
+    # 添加数据库连接池配置
+    app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
+        "pool_size": 10,
+        "pool_recycle": 120,
+        "pool_pre_ping": True,
+        "max_overflow": 20,
+    }
     # 其它配置项如有需要可继续添加
 
     # 启用 CORS
@@ -32,7 +61,17 @@ def create_app():
     db.init_app(app)
     jwt.init_app(app)
     scheduler.init_app(app)
-    socketio.init_app(app, cors_allowed_origins="*")
+    
+    # 检测是否在Gunicorn环境中运行
+    is_gunicorn = "gunicorn" in os.environ.get("SERVER_SOFTWARE", "")
+    
+    # 根据运行环境配置SocketIO
+    if is_gunicorn:
+        # Gunicorn环境下禁用WebSocket支持以避免套接字错误
+        socketio.init_app(app, cors_allowed_origins="*", async_mode='threading')
+    else:
+        # 开发环境下启用完整的WebSocket支持
+        socketio.init_app(app, cors_allowed_origins="*")
 
     # 注册定时任务：每天凌晨2点清理回收站
     @scheduler.task('cron', id='clear_recycle_bin', hour=2)
@@ -83,6 +122,6 @@ if __name__ == '__main__':
     # -----------------------------
     # 使用 gevent 启动，支持 WebSocket
     # -----------------------------
-    from gevent import monkey
-    monkey.patch_all()  # 必须：打补丁以支持协程和 WebSocket
-    socketio.run(app, host='0.0.0.0', port=5000, debug=True) 
+    if gevent_available:
+        monkey.patch_all()  # 必须：打补丁以支持协程和 WebSocket
+        socketio.run(app, host='0.0.0.0', port=5000, debug=True)

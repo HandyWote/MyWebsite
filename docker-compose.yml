@@ -1,0 +1,53 @@
+
+services:
+  # 后端Flask应用服务
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    ports:
+      - "5000:5000"
+    env_file:
+      - .env
+    environment:
+      DB_HOST: ${DB_HOST:-host.docker.internal}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_NAME: ${DB_NAME:-mywebsite}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-password}
+      SECRET_KEY: ${SECRET_KEY:-dev-secret-key-change-in-production}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-dev-jwt-secret-change-in-production}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-sk-xxxx}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-3.5-turbo}
+      TZ: Asia/Shanghai
+    volumes:
+      - ./backend/uploads:/app/uploads
+    networks:
+      - handywote_network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+  # 前端React应用服务
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "3131:80"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - TZ=Asia/Shanghai
+    depends_on:
+      - backend
+    networks:
+      - handywote_network
+    restart: unless-stopped
+
+networks:
+  handywote_network:
+    driver: bridge

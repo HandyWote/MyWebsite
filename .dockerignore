@@ -1,0 +1,86 @@
+# Node.js相关
+node_modules
+npm-debug.log
+.npm
+.npmrc
+
+# Git相关
+.git
+.gitignore
+README.md
+
+# 编辑器相关
+.vscode
+.idea
+*.swp
+*.swo
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 日志文件
+*.log
+
+# 构建输出
+dist
+build
+
+# Python相关
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+.coverage
+.coverage.*
+.cache
+.pytest_cache
+.pytest_cache/
+eggs/
+.eggs/
+*.egg-info/
+*.egg-info
+build/
+develop-eggs/
+dist/
+downloads/
+.sdist/
+.pydist/
+.installed.cfg
+*.egg
+pip-log.txt
+pip-delete-this-directory.txt
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pyre/
+.dmypy.json
+dmypy.json
+
+# 虚拟环境
+venv/
+env/
+ENV/
+.venv/
+.env/
+.ENV/
+
+# IDE相关
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# 其他
+uploads/
+.DS_Store
