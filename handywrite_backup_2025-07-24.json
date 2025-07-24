@@ -1,0 +1,111 @@
+{
+  "articles": [],
+  "avatars": [
+    {
+      "cropped_info": null,
+      "deleted_at": null,
+      "filename": "279fc33a33374cf487f812bb98a6b7d0.jpg",
+      "id": 3,
+      "is_current": true,
+      "uploaded_at": "Tue, 22 Jul 2025 07:41:27 GMT"
+    }
+  ],
+  "contacts": [
+    {
+      "created_at": "Mon, 21 Jul 2025 06:27:04 GMT",
+      "deleted_at": null,
+      "id": 1,
+      "type": "email",
+      "updated_at": "Thu, 24 Jul 2025 09:16:41 GMT",
+      "value": "handy@handywote.site"
+    },
+    {
+      "created_at": "Mon, 21 Jul 2025 06:27:04 GMT",
+      "deleted_at": null,
+      "id": 2,
+      "type": "wechat",
+      "updated_at": "Thu, 24 Jul 2025 09:16:41 GMT",
+      "value": "Handy_Wote"
+    },
+    {
+      "created_at": "Thu, 24 Jul 2025 09:16:41 GMT",
+      "deleted_at": null,
+      "id": 3,
+      "type": "qq",
+      "updated_at": "Thu, 24 Jul 2025 09:16:41 GMT",
+      "value": "2916439921"
+    }
+  ],
+  "logs": [],
+  "site_blocks": [
+    {
+      "content": {
+        "desc": "少年侠气交结五都雄！",
+        "title": "HandyWote"
+      },
+      "id": 1,
+      "name": "home",
+      "updated_at": "Mon, 21 Jul 2025 06:27:04 GMT"
+    },
+    {
+      "content": {},
+      "id": 3,
+      "name": "skills",
+      "updated_at": "Mon, 21 Jul 2025 06:27:04 GMT"
+    },
+    {
+      "content": {},
+      "id": 4,
+      "name": "contact",
+      "updated_at": "Mon, 21 Jul 2025 06:27:04 GMT"
+    },
+    {
+      "content": {
+        "education_background": "目前就读于汕头大学作为一名充满热情的学生，我正在追求计算机科学的深度学习。",
+        "hobbies": "我对编程和技术充满热情，特别喜欢探索新的技术领域和解决具有挑战性的问题。在课余时间，我喜欢参与开源项目，不断提升自己的技术能力。",
+        "personal_vision": "我希望能够通过不断学习和实践，在软件开发领域做出自己的贡献。我相信技术可以改变世界，而我正在努力成为这个改变的一部分。"
+      },
+      "id": 2,
+      "name": "about",
+      "updated_at": "Mon, 21 Jul 2025 06:27:04 GMT"
+    }
+  ],
+  "skills": [
+    {
+      "created_at": "Mon, 21 Jul 2025 06:27:04 GMT",
+      "deleted_at": null,
+      "description": "熟练掌握 Python 编程",
+      "id": 1,
+      "level": 90,
+      "name": "Python",
+      "updated_at": "Thu, 24 Jul 2025 09:15:52 GMT"
+    },
+    {
+      "created_at": "Mon, 21 Jul 2025 06:27:04 GMT",
+      "deleted_at": null,
+      "description": "熟悉 React 前端开发",
+      "id": 2,
+      "level": 85,
+      "name": "React",
+      "updated_at": "Thu, 24 Jul 2025 09:15:52 GMT"
+    },
+    {
+      "created_at": "Thu, 24 Jul 2025 09:15:52 GMT",
+      "deleted_at": null,
+      "description": "熟悉C/C++开发",
+      "id": 3,
+      "level": 60,
+      "name": "C/C++",
+      "updated_at": "Thu, 24 Jul 2025 09:15:52 GMT"
+    },
+    {
+      "created_at": "Thu, 24 Jul 2025 09:15:52 GMT",
+      "deleted_at": null,
+      "description": "熟悉Java语法",
+      "id": 4,
+      "level": 50,
+      "name": "Java",
+      "updated_at": "Thu, 24 Jul 2025 09:15:52 GMT"
+    }
+  ]
+}
