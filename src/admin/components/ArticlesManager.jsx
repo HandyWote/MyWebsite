@@ -39,7 +39,7 @@ const defaultArticle = {
   cover: '',
 };
 
-const DEFAULT_COVER = '/public/default-cover.png'; // 你可以放一张默认图片到public目录
+const DEFAULT_COVER = '/default-cover.svg'; 
 
 const ArticlesManager = () => {
   const [articles, setArticles] = useState([]);
