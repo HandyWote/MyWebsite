@@ -26,17 +26,20 @@
 
 ### 前端
 - **React 19** - 现代化的前端框架
-- **Vite** - 快速的构建工具
-- **Material-UI** - 美观的 UI 组件库
-- **Framer Motion** - 流畅的动画效果
-- **React Router** - 单页应用路由
-- **React Markdown** - Markdown 渲染
+- **Vite 6** - 快速的构建工具
+- **Material-UI 6** - 美观的 UI 组件库
+- **Framer Motion 12** - 流畅的动画效果
+- **React Router 6** - 单页应用路由
+- **React Markdown 8** - Markdown 渲染
 
 ### 后端
-- **Python Flask** - 轻量级 Web 框架
+- **Python Flask 2.3.3** - 轻量级 Web 框架
 - **PostgreSQL** - 关系型数据库
-- **SQLAlchemy** - ORM 数据库操作
-- **Flask-CORS** - 跨域资源共享
+- **SQLAlchemy 3.0.5** - ORM 数据库操作
+- **Flask-CORS 4.0.0** - 跨域资源共享
+- **Flask-JWT-Extended 4.5.3** - JWT 认证
+- **Flask-APScheduler 1.13.0** - 定时任务
+- **Flask-SocketIO 5.3.6** - WebSocket 支持
 
 ## 快速开始
 
@@ -105,33 +108,61 @@ sudo systemctl enable postgresql
 sudo -u postgres psql
 
 # 创建数据库和用户
-CREATE DATABASE handywote_articles;
-CREATE USER your_username WITH PASSWORD 'your_password';
-GRANT ALL PRIVILEGES ON DATABASE handywote_articles TO your_username;
+CREATE DATABASE mywebsite;
+CREATE USER n8n WITH PASSWORD '1234';
+GRANT ALL PRIVILEGES ON DATABASE mywebsite TO n8n;
 \q
 ```
 
 #### 配置数据库连接
 
-编辑 `backend/app.py` 文件，修改数据库连接字符串：
+在项目根目录创建 `.env` 文件，配置数据库连接信息：
 
-```python
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://your_username:your_password@localhost/handywote_articles'
+```env
+# 数据库配置
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=n8n
+DB_PASSWORD=1234
+DB_NAME=mywebsite
+
+# 安全配置
+SECRET_KEY=dev-secret-key-change-in-production
+JWT_SECRET_KEY=dev-jwt-secret-change-in-production
+
+# 管理员账号
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=admin123
+
+# 上传配置
+UPLOAD_FOLDER=uploads
+MAX_CONTENT_LENGTH=5242880
+ALLOWED_IMAGE_EXTENSIONS=jpg,jpeg,png,webp
+
+# OpenAI 配置（可选）
+OPENAI_API_KEY=sk-xxxx
+OPENAI_MODEL=gpt-3.5-turbo
+
+# JWT 有效期
+JWT_ACCESS_TOKEN_EXPIRES=86400
+JWT_REMEMBER_TOKEN_EXPIRES=604800
 ```
 
-#### 初始化数据库
+### 5. 初始化数据库
 
 ```bash
 cd backend
-python init_db.py
+python setup.py
 ```
 
-### 5. 启动服务
+按照提示选择是否启动服务。
+
+### 6. 启动服务
 
 ```bash
 # 启动后端服务
 cd backend
-python app.py
+python setup.py
 
 # 启动前端服务（新终端）
 npm run dev
@@ -139,79 +170,62 @@ npm run dev
 
 现在可以访问 `http://localhost:5173` 查看网站。
 
+## Docker 部署
+
+项目支持 Docker 部署，详情请查看 [DOCKER_DEPLOYMENT.md](DOCKER_DEPLOYMENT.md) 文件。
+
 ## 项目结构
 
 ```
 handywote/
-├── src/
-│   ├── components/
-│   │   ├── Home.jsx          # 首页组件
-│   │   ├── About.jsx         # 关于我组件
-│   │   ├── Skills.jsx        # 技能组件
-│   │   ├── Projects.jsx      # 项目组件
-│   │   ├── Articles.jsx      # 文章列表组件
-│   │   ├── ArticleDetail.jsx # 文章详情组件
-│   │   ├── Contact.jsx       # 联系组件
-│   │   └── Navbar.jsx        # 导航栏组件
-│   ├── App.jsx               # 主应用组件
-│   └── main.jsx              # 应用入口
-├── backend/
-│   ├── app.py                # Flask 应用
-│   ├── init_db.py            # 数据库初始化脚本
-│   ├── requirements.txt      # Python 依赖
-│   └── uploads/              # 上传文件目录
-├── public/                   # 静态资源
-├── package.json              # 前端依赖配置
-└── README.md                 # 项目说明
+├── src/                  # 前端源代码
+│   ├── components/       # 前端公共组件
+│   ├── admin/            # 管理后台组件
+│   ├── App.jsx           # 主应用组件
+│   └── main.jsx          # 应用入口
+├── backend/              # 后端代码
+│   ├── models/           # 数据模型
+│   ├── routes/           # API 路由
+│   ├── services/         # 业务逻辑
+│   ├── utils/            # 工具函数
+│   ├── app.py            # Flask 应用
+│   ├── setup.py          # 初始化和启动脚本
+│   ├── extensions.py     # 扩展组件
+│   ├── requirements.txt  # Python 依赖
+│   └── uploads/          # 上传文件目录
+├── public/               # 静态资源
+├── package.json          # 前端依赖配置
+└── README.md             # 项目说明
 ```
 
 ## 文章系统使用
 
 ### 添加文章
 
-1. **通过 API 添加**：
+1. **通过管理后台添加**：
+   访问 `http://localhost:5173/admin`，使用管理员账号登录后添加文章。
+
+2. **通过 API 添加**：
 ```bash
-curl -X POST http://localhost:5000/api/articles \
+curl -X POST http://localhost:5000/api/admin/articles \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -d '{
     "title": "文章标题",
     "summary": "文章摘要",
     "content": "# Markdown 内容\n\n文章正文...",
     "category": "技术",
-    "tags": ["标签1", "标签2"]
+    "tags": "标签1,标签2"
   }'
-```
-
-2. **通过数据库直接添加**：
-```python
-from app import app, db, Article
-
-with app.app_context():
-    article = Article(
-        title="文章标题",
-        summary="文章摘要",
-        content="# Markdown 内容",
-        category="技术",
-        tags=["标签1", "标签2"]
-    )
-    db.session.add(article)
-    db.session.commit()
 ```
 
 ### 上传图片
 
 ```bash
-curl -X POST http://localhost:5000/api/upload \
+curl -X POST http://localhost:5000/api/admin/articles/upload \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -F "file=@/path/to/image.jpg"
 ```
-
-### 文章功能
-
-- **搜索**：在文章列表页面使用搜索框
-- **分类筛选**：使用分类下拉菜单
-- **标签筛选**：点击标签进行筛选
-- **评论**：在文章详情页面底部发表评论
-- **分享**：点击分享按钮分享文章
 
 ## 部署
 
@@ -226,13 +240,12 @@ npm run build
 ```bash
 # 设置环境变量
 export FLASK_ENV=production
-export DATABASE_URL=postgresql://username:password@localhost/handywote_articles
 ```
 
 3. **使用 Gunicorn 部署**：
 ```bash
 pip install gunicorn
-gunicorn -w 4 -b 0.0.0.0:5000 app:app
+gunicorn -w 4 -b 0.0.0.0:5000 --worker-class gevent --worker-connections 1000 app:app
 ```
 
 4. **配置 Nginx**：
@@ -250,10 +263,11 @@ server {
         proxy_pass http://localhost:5000;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     }
 
     location /uploads {
-        proxy_pass http://localhost:5000;
+        alias /path/to/handywote/backend/uploads;
     }
 }
 ```
@@ -262,13 +276,10 @@ server {
 
 ### 修改个人信息
 
-编辑各个组件文件来修改个人信息：
-
-- `src/components/Home.jsx` - 首页信息
-- `src/components/About.jsx` - 关于我信息
-- `src/components/Skills.jsx` - 技能信息
-- `src/components/Projects.jsx` - 项目信息
-- `src/components/Contact.jsx` - 联系信息
+通过管理后台修改个人信息：
+1. 访问 `http://localhost:5173/admin`
+2. 使用管理员账号登录
+3. 在相应模块修改个人信息
 
 ### 修改样式
 
@@ -296,6 +307,21 @@ function App() {
   );
 }
 ```
+
+## 常见问题
+
+### 数据库连接问题
+如果遇到数据库连接问题，请检查：
+1. PostgreSQL 服务是否正在运行
+2. `.env` 文件中的数据库配置是否正确
+3. 数据库用户和密码是否正确
+4. 防火墙是否阻止了数据库连接
+
+### Docker 部署问题
+如果使用 Docker 部署遇到问题，请检查：
+1. `.env` 文件是否正确配置
+2. 数据库是否在宿主机上运行并接受连接
+3. 端口是否被正确映射
 
 ## 贡献
 
