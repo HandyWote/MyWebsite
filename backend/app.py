@@ -71,7 +71,7 @@ def create_app():
         socketio.init_app(app, cors_allowed_origins="*", async_mode='threading')
     else:
         # 开发环境下启用完整的WebSocket支持
-        socketio.init_app(app, cors_allowed_origins="*")
+        socketio.init_app(app, cors_allowed_origins="*", path='/socket.io/')
 
     # 注册定时任务：每天凌晨2点清理回收站
     @scheduler.task('cron', id='clear_recycle_bin', hour=2)

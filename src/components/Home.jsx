@@ -110,7 +110,13 @@ const Home = () => {
     fetchSkills();
     fetchContacts();
     fetchAvatar();
-    const socket = io('ws://localhost:5000', { path: '/socket.io' });
+    const socket = io('http://localhost:5000', { 
+      path: '/socket.io/',
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000
+    });
     socket.on('site_block_updated', fetchSiteBlock);
     socket.on('skills_updated', fetchSkills);
     socket.on('contacts_updated', fetchContacts);
