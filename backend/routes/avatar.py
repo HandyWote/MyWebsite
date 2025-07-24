@@ -6,7 +6,7 @@ from models.avatar import Avatar
 from datetime import datetime
 import os
 import uuid
-from app import socketio
+from extensions import socketio
 
 avatar_bp = Blueprint('avatar', __name__)
 

@@ -3,7 +3,7 @@ from flask_jwt_extended import jwt_required
 from extensions import db
 from models.skill import Skill
 from datetime import datetime
-from app import socketio
+from extensions import socketio
 
 skill_bp = Blueprint('skill', __name__)
 

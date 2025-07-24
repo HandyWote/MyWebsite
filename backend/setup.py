@@ -8,9 +8,10 @@ import sys
 import psycopg2
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 from dotenv import load_dotenv
-
-# 加载环境变量
-load_dotenv()
+import os
+# 加载根目录下的.env
+root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+load_dotenv(os.path.join(root_dir, '.env'))
 
 class Config:
     """应用配置类"""
@@ -131,8 +132,6 @@ def init_database():
         from models.contact import Contact
         from models.article import Article
         from models.avatar import Avatar
-        from models.log import Log
-        from models.recycle_bin import RecycleBin
         from datetime import datetime
         
         with app.app_context():

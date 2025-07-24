@@ -5,5 +5,3 @@ from .skill import Skill
 from .contact import Contact
 from .article import Article
 from .avatar import Avatar
-from .log import Log
-from .recycle_bin import RecycleBin 

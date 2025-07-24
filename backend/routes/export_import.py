@@ -6,8 +6,6 @@ from models.skill import Skill
 from models.contact import Contact
 from models.article import Article
 from models.avatar import Avatar
-from models.log import Log
-from models.recycle_bin import RecycleBin
 import json
 
 export_import_bp = Blueprint('export_import', __name__)
@@ -21,7 +19,6 @@ def export_data():
         'contacts': [c.__dict__ for c in Contact.query.filter_by(deleted_at=None).all()],
         'articles': [a.__dict__ for a in Article.query.filter_by(deleted_at=None).all()],
         'avatars': [a.__dict__ for a in Avatar.query.filter_by(deleted_at=None).all()],
-        'logs': [l.__dict__ for l in Log.query.all()],
         # 回收站数据不导出
     }
     # 过滤掉 _sa_instance_state
@@ -34,6 +31,61 @@ def export_data():
 @jwt_required()
 def import_data():
     data = request.json
-    # TODO: 导入时如有同名/同ID数据，直接覆盖
-    # 这里只做骨架，具体实现需根据实际业务完善
-    return jsonify({'code': 0, 'msg': '导入成功（待实现）'}) 
+    try:
+        # 导入站点内容
+        if 'site_blocks' in data:
+            for item in data['site_blocks']:
+                existing = SiteBlock.query.get(item['id'])
+                if existing:
+                    db.session.merge(SiteBlock(**item))
+                else:
+                    db.session.add(SiteBlock(**item))
+
+        # 导入技能
+        if 'skills' in data:
+            for item in data['skills']:
+                existing = Skill.query.get(item['id'])
+                if existing:
+                    db.session.merge(Skill(**item))
+                else:
+                    db.session.add(Skill(**item))
+
+        # 导入联系人
+        if 'contacts' in data:
+            for item in data['contacts']:
+                existing = Contact.query.get(item['id'])
+                if existing:
+                    db.session.merge(Contact(**item))
+                else:
+                    db.session.add(Contact(**item))
+
+        # 导入文章
+        if 'articles' in data:
+            for item in data['articles']:
+                existing = Article.query.get(item['id'])
+                if existing:
+                    db.session.merge(Article(**item))
+                else:
+                    db.session.add(Article(**item))
+
+        # 导入头像
+        if 'avatars' in data:
+            for item in data['avatars']:
+                existing = Avatar.query.get(item['id'])
+                if existing:
+                    db.session.merge(Avatar(**item))
+                else:
+                    db.session.add(Avatar(**item))
+
+        db.session.commit()
+        return jsonify({'code': 0, 'msg': '导入成功'})
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f'导入失败: {str(e)}')
+        current_app.logger.error(f'导入数据: {json.dumps(data, indent=2)}')
+        return jsonify({
+            'code': 1, 
+            'msg': f'导入失败: {str(e)}',
+            'error_details': str(e),
+            'failed_data': data
+        })

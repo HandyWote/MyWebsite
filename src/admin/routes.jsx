@@ -7,8 +7,6 @@ import ContactsManager from './components/ContactsManager';
 import AvatarsManager from './components/AvatarsManager';
 import ArticlesManager from './components/ArticlesManager';
 import ArticleEditor from './components/ArticleEditor';
-import LogsViewer from './components/LogsViewer';
-import RecycleBin from './components/RecycleBin';
 import DataImportExport from './components/DataImportExport';
 import AboutManager from './components/AboutManager';
 import React from 'react';
@@ -40,11 +38,9 @@ export default function AdminRoutes() {
         <Route path="articles" element={<ArticlesManager />} />
         <Route path="articles/new" element={<ArticleEditor />} />
         <Route path="articles/:id/edit" element={<ArticleEditor />} />
-        <Route path="logs" element={<LogsViewer />} />
-        <Route path="recycle-bin" element={<RecycleBin />} />
         <Route path="data" element={<DataImportExport />} />
       </Route>
       <Route path="*" element={<Navigate to="/admin" />} />
     </Routes>
   );
-} 
+}

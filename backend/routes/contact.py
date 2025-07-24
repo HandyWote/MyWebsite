@@ -3,7 +3,7 @@ from flask_jwt_extended import jwt_required
 from extensions import db
 from models.contact import Contact
 from datetime import datetime
-from app import socketio
+from extensions import socketio
 
 contact_bp = Blueprint('contact', __name__)
 

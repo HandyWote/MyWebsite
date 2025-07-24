@@ -8,8 +8,6 @@ const tabList = [
   { label: '联系方式', path: '/admin/contacts' },
   { label: '头像管理', path: '/admin/avatars' },
   { label: '文章管理', path: '/admin/articles' },
-  { label: '操作日志', path: '/admin/logs' },
-  { label: '回收站', path: '/admin/recycle-bin' },
   { label: '导入导出', path: '/admin/data' },
 ];
 

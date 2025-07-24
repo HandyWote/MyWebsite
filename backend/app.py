@@ -5,10 +5,11 @@ from extensions import db, jwt, scheduler, socketio
 import os
 # 加载环境变量
 from dotenv import load_dotenv
-load_dotenv()
+import os
+root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+load_dotenv(os.path.join(root_dir, '.env'))
 
 import logging
-from services.recycle_bin import clear_expired_recycle_bin
 from flask_socketio import SocketIO, emit
 from routes import register_all_blueprints
 
@@ -72,14 +73,6 @@ def create_app():
     else:
         # 开发环境下启用完整的WebSocket支持
         socketio.init_app(app, cors_allowed_origins="*", path='/socket.io/')
-
-    # 注册定时任务：每天凌晨2点清理回收站
-    @scheduler.task('cron', id='clear_recycle_bin', hour=2)
-    def scheduled_clear_recycle_bin():
-        with app.app_context():
-            clear_expired_recycle_bin(days=15)
-
-    scheduler.start()
 
     # 注册所有蓝图
     register_all_blueprints(app)
