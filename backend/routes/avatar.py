@@ -62,16 +62,12 @@ def set_current_avatar(avatar_id):
 @avatar_bp.route('/avatars/<int:avatar_id>', methods=['DELETE'])
 @jwt_required()
 def delete_avatar(avatar_id):
-    print(f"DELETE request received for avatar_id: {avatar_id}")
     try:
         avatar = Avatar.query.get_or_404(avatar_id)
-        print(f"Found avatar: {avatar.id}, filename: {avatar.filename}")
         avatar.deleted_at = datetime.utcnow()
         db.session.commit()
-        print(f"Avatar {avatar_id} marked as deleted")
         socketio.emit('avatars_updated')
         return jsonify({'code': 0, 'msg': '删除成功'})
     except Exception as e:
-        print(f"Error deleting avatar {avatar_id}: {str(e)}")
         db.session.rollback()
         return jsonify({'code': 1, 'msg': f'删除失败: {str(e)}'}), 500

@@ -73,7 +73,7 @@ export default function AboutManager() {
 
   return (
     <Box sx={{ maxWidth: 1200, margin: '0 auto', p: 3 }}>
-      <Typography variant="h4" align="center" gutterBottom>关于我管理</Typography>
+      <Typography variant="h4" align="center" gutterBottom>简介管理</Typography>
       <Box sx={{ display: 'flex', gap: 4, flexWrap: { xs: 'wrap', md: 'nowrap' } }}>
         {/* 编辑区 */}
         <Box sx={{ flex: 1, minWidth: 320 }}>

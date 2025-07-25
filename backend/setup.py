@@ -9,9 +9,26 @@ import psycopg2
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 from dotenv import load_dotenv
 import os
-# 加载根目录下的.env
-root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-load_dotenv(os.path.join(root_dir, '.env'))
+
+# 确保环境变量从正确位置加载
+def load_environment_variables():
+    """加载环境变量，优先从项目根目录的.env文件"""
+    # 获取当前文件所在目录（backend目录）
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    # 获取项目根目录（backend的上级目录）
+    root_dir = os.path.abspath(os.path.join(current_dir, '..'))
+    env_file_path = os.path.join(root_dir, '.env')
+
+    # 尝试加载.env文件
+    if os.path.exists(env_file_path):
+        load_result = load_dotenv(env_file_path, override=True)  # override=True 确保覆盖已有的环境变量
+        return True
+    else:
+        # 在生产环境中，可能不需要.env文件
+        return False
+
+# 立即加载环境变量
+load_environment_variables()
 
 class Config:
     """应用配置类"""
@@ -78,7 +95,6 @@ ALLOWED_IMAGE_EXTENSIONS=jpg,jpeg,png,webp
 # OpenAI 配置（可选）
 OPENAI_API_KEY=sk-xxxx
 OPENAI_MODEL=gpt-3.5-turbo
-OPENAI_API_URL=https://api.openai.com/v1
 OPENAI_API_URL=https://api.openai.com/v1
 
 # JWT 有效期

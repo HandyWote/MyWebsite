@@ -1,13 +1,8 @@
 from flask import Flask
 from flask_cors import CORS
-from setup import Config
+from setup import Config  # Config类已经处理了环境变量加载
 from extensions import db, jwt, scheduler, socketio
 import os
-# 加载环境变量
-from dotenv import load_dotenv
-import os
-root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-load_dotenv(os.path.join(root_dir, '.env'))
 
 import logging
 from flask_socketio import SocketIO, emit

@@ -87,17 +87,22 @@ def analyze_article_content(title, content, summary=""):
     try:
         # 构建API URL，确保正确处理末尾斜杠
         api_base_url = config.OPENAI_API_URL.rstrip('/')
-        api_url = f"{api_base_url}"
+        api_url = f"{api_base_url}/chat/completions"
+
+
 
         response = requests.post(
             api_url,
             headers=headers,
             json=data,
-            timeout=30
+            timeout=30,
+            verify=False  # 对于本地开发环境，跳过SSL验证
         )
+
         response.raise_for_status()
 
         result = response.json()
+
         ai_response = result['choices'][0]['message']['content'].strip()
 
         # 尝试解析JSON响应
@@ -130,12 +135,16 @@ def analyze_article_content(title, content, summary=""):
             'error': 'AI服务请求超时，请稍后重试'
         }
     except requests.exceptions.RequestException as e:
+        # 记录错误但不打印到控制台
+        error_msg = str(e)
+        if hasattr(e, 'response') and e.response is not None:
+            error_msg += f" (HTTP {e.response.status_code})"
         return {
             'success': False,
             'category': '',
             'tags': [],
             'suggested_summary': '',
-            'error': f'AI服务请求失败：{str(e)}'
+            'error': f'AI服务请求失败：{error_msg}'
         }
     except Exception as e:
         return {

@@ -10,6 +10,13 @@ const API_PATH = 'http://localhost:5000/api/admin/avatars';
 
 function SortableAvatarCard({ avatar, index, onDelete, ...props }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: avatar.id });
+
+  const handleDeleteClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onDelete(avatar.id);
+  };
+
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -23,8 +30,29 @@ function SortableAvatarCard({ avatar, index, onDelete, ...props }) {
     padding: 16,
     gap: 16
   };
+
   return (
     <div ref={setNodeRef} style={style} {...props}>
+      {/* 删除按钮区域 - 在左边 */}
+      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <Tooltip title="删除头像">
+          <IconButton
+            color="error"
+            size="small"
+            onClick={handleDeleteClick}
+            sx={{
+              '&:hover': {
+                backgroundColor: 'error.light',
+                color: 'white'
+              }
+            }}
+          >
+            <DeleteIcon />
+          </IconButton>
+        </Tooltip>
+      </Box>
+
+      {/* 拖拽区域 */}
       <Box
         {...attributes}
         {...listeners}
@@ -33,7 +61,10 @@ function SortableAvatarCard({ avatar, index, onDelete, ...props }) {
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          flex: 1
+          flex: 1,
+          '&:active': {
+            cursor: 'grabbing'
+          }
         }}
         title="拖拽排序"
       >
@@ -44,18 +75,6 @@ function SortableAvatarCard({ avatar, index, onDelete, ...props }) {
         <Box sx={{ fontSize: 12, color: 'text.disabled', mb: 1 }}>
           {avatar.uploaded_at ? new Date(avatar.uploaded_at).toLocaleString() : ''}
         </Box>
-        <Tooltip title="删除">
-          <IconButton
-            color="error"
-            size="small"
-            onClick={(e) => {
-              e.stopPropagation(); // 防止触发拖拽事件
-              onDelete(avatar.id);
-            }}
-          >
-            <DeleteIcon />
-          </IconButton>
-        </Tooltip>
       </Box>
     </div>
   );
@@ -134,25 +153,20 @@ const AvatarsManager = () => {
 
   // 删除头像确认
   const confirmDelete = (avatarId) => {
-    console.log('confirmDelete called with avatarId:', avatarId);
     setAvatarToDelete(avatarId);
     setDeleteDialogOpen(true);
   };
 
   // 删除头像
   const handleDelete = async () => {
-    console.log('handleDelete called, avatarToDelete:', avatarToDelete);
     setDeleteDialogOpen(false);
 
     if (!avatarToDelete) {
-      console.error('No avatar to delete');
       return;
     }
 
     try {
       const token = localStorage.getItem('token');
-      console.log('Sending DELETE request to:', `${API_PATH}/${avatarToDelete}`);
-
       const res = await fetch(`${API_PATH}/${avatarToDelete}`, {
         method: 'DELETE',
         headers: {
@@ -161,21 +175,15 @@ const AvatarsManager = () => {
         }
       });
 
-      console.log('DELETE response status:', res.status);
-
       if (res.ok) {
         const data = await res.json();
-        console.log('DELETE response data:', data);
         setSnackbarMsg(data.msg || '已删除头像');
         setSnackbarOpen(true);
         fetchAvatars(); // 刷新列表
       } else {
-        const errorText = await res.text();
-        console.error('DELETE failed:', res.status, res.statusText, errorText);
         throw new Error(`删除失败: ${res.status} ${res.statusText}`);
       }
     } catch (error) {
-      console.error('Delete error:', error);
       setSnackbarMsg('删除失败: ' + error.message);
       setSnackbarOpen(true);
     } finally {
@@ -234,28 +242,57 @@ const AvatarsManager = () => {
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={avatars.map(a => a.id)} strategy={verticalListSortingStrategy}>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-              {avatars.map((avatar, index) => (
+              {avatars.length === 0 ? (
+                <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
+                  暂无头像，请上传新头像
+                </Typography>
+              ) : (
+                avatars.map((avatar, index) => (
                   <SortableAvatarCard
                     key={avatar.id}
                     avatar={avatar}
                     index={index}
                     onDelete={confirmDelete}
                   />
-                ))}
+                ))
+              )}
             </Box>
           </SortableContext>
         </DndContext>
       </Paper>
       
       {/* 删除确认对话框 */}
-      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
-        <DialogTitle>确认删除</DialogTitle>
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={() => {
+          setDeleteDialogOpen(false);
+          setAvatarToDelete(null);
+        }}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>确认删除头像</DialogTitle>
         <DialogContent>
-          <Typography>确定要删除这个头像吗？此操作不可撤销。</Typography>
+          <Typography>
+            确定要删除这个头像吗？此操作不可撤销。
+          </Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDeleteDialogOpen(false)}>取消</Button>
-          <Button onClick={handleDelete} color="error" variant="contained">删除</Button>
+          <Button
+            onClick={() => {
+              setDeleteDialogOpen(false);
+              setAvatarToDelete(null);
+            }}
+          >
+            取消
+          </Button>
+          <Button
+            onClick={handleDelete}
+            color="error"
+            variant="contained"
+          >
+            确认删除
+          </Button>
         </DialogActions>
       </Dialog>
       

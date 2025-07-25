@@ -131,6 +131,8 @@ const ArticlesManager = () => {
     setAiAnalyzing(true);
     try {
       const token = localStorage.getItem('token');
+      console.log('开始AI分析请求...');
+
       const response = await fetch('http://localhost:5000/api/admin/articles/ai-analyze', {
         method: 'POST',
         headers: {
@@ -144,7 +146,16 @@ const ArticlesManager = () => {
         })
       });
 
+      console.log('AI分析响应状态:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('AI分析响应错误:', errorText);
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+
       const result = await response.json();
+      console.log('AI分析结果:', result);
 
       if (result.code === 0) {
         setAiSuggestions(result.data);
@@ -154,7 +165,17 @@ const ArticlesManager = () => {
       }
     } catch (error) {
       console.error('AI分析错误:', error);
-      setSnackbar({ open: true, message: '网络错误，请稍后重试', severity: 'error' });
+      let errorMessage = '网络错误，请稍后重试';
+
+      if (error.message.includes('CORS')) {
+        errorMessage = 'CORS错误：请检查后端服务配置';
+      } else if (error.message.includes('500')) {
+        errorMessage = '服务器内部错误：请检查AI服务配置';
+      } else if (error.message.includes('Failed to fetch')) {
+        errorMessage = '无法连接到服务器：请检查后端服务是否运行';
+      }
+
+      setSnackbar({ open: true, message: errorMessage, severity: 'error' });
     } finally {
       setAiAnalyzing(false);
     }
@@ -346,72 +367,150 @@ const ArticlesManager = () => {
         <DialogTitle>{editId ? '编辑文章' : '新增文章'}</DialogTitle>
         <DialogContent dividers>
           <Stack spacing={2}>
-            <TextField label="标题" value={editArticle.title} onChange={e => setEditArticle(a => ({ ...a, title: e.target.value }))} fullWidth required />
-            <TextField label="分类" value={editArticle.category} onChange={e => setEditArticle(a => ({ ...a, category: e.target.value }))} fullWidth />
-            <TextField label="标签（逗号分隔）" value={editArticle.tags} onChange={e => setEditArticle(a => ({ ...a, tags: e.target.value }))} fullWidth error={!!editArticle.tags && !validateTags(editArticle.tags)} helperText={!!editArticle.tags && !validateTags(editArticle.tags) ? '标签格式不合法' : ''} />
-            <TextField label="摘要" value={editArticle.summary} onChange={e => setEditArticle(a => ({ ...a, summary: e.target.value }))} fullWidth multiline minRows={2} />
-            <TextField label="正文（Markdown）" value={editArticle.content} onChange={e => setEditArticle(a => ({ ...a, content: e.target.value }))} fullWidth multiline minRows={10} required />
+            <TextField label="标题" value={editArticle.title || ''} onChange={e => setEditArticle(a => ({ ...a, title: e.target.value }))} fullWidth required />
+            <TextField label="分类" value={editArticle.category || ''} onChange={e => setEditArticle(a => ({ ...a, category: e.target.value }))} fullWidth />
+            <TextField label="标签（逗号分隔）" value={editArticle.tags || ''} onChange={e => setEditArticle(a => ({ ...a, tags: e.target.value }))} fullWidth error={!!editArticle.tags && !validateTags(editArticle.tags)} helperText={!!editArticle.tags && !validateTags(editArticle.tags) ? '标签格式不合法' : ''} />
+            <TextField label="摘要" value={editArticle.summary || ''} onChange={e => setEditArticle(a => ({ ...a, summary: e.target.value }))} fullWidth multiline minRows={2} />
 
-            {/* AI智能识别区域 */}
-            <Divider sx={{ my: 2 }} />
-            <Box sx={{ p: 2, bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
-              <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 2 }}>
-                <SmartToyIcon color="primary" />
-                <Typography variant="h6" color="primary">AI智能识别</Typography>
-                <Tooltip title="基于文章标题和内容，AI将自动识别合适的分类和标签">
+            {/* AI智能识别区域 - 紧跟摘要字段 */}
+            <Box sx={{
+              p: 2,
+              bgcolor: 'primary.50',
+              border: '1px solid',
+              borderColor: 'primary.200',
+              borderRadius: 2,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 2
+            }}>
+              {/* 左侧：功能描述 */}
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flex: 1 }}>
+                <SmartToyIcon color="primary" sx={{ fontSize: 24 }} />
+                <Box>
+                  <Typography variant="subtitle1" color="primary" fontWeight="600">
+                    AI智能识别
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>
+                    基于标题和内容自动识别分类、标签和摘要
+                  </Typography>
+                </Box>
+              </Box>
+
+              {/* 右侧：操作按钮 */}
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Tooltip title="需要填写标题和内容才能进行AI分析">
+                  <span>
+                    <Button
+                      variant="contained"
+                      startIcon={aiAnalyzing ? <CircularProgress size={16} color="inherit" /> : <AutoAwesomeIcon />}
+                      onClick={handleAiAnalyze}
+                      disabled={aiAnalyzing || !editArticle.title.trim() || !editArticle.content.trim()}
+                      size="medium"
+                      sx={{
+                        minWidth: 120,
+                        fontWeight: 600
+                      }}
+                    >
+                      {aiAnalyzing ? '分析中...' : '开始分析'}
+                    </Button>
+                  </span>
+                </Tooltip>
+              </Box>
+            </Box>
+
+            {/* AI分析结果显示 */}
+            {aiSuggestions && (
+              <Alert
+                severity="success"
+                sx={{
+                  bgcolor: 'success.50',
+                  border: '1px solid',
+                  borderColor: 'success.200'
+                }}
+              >
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%' }}>
+                  <Box sx={{ flex: 1 }}>
+                    <Typography variant="subtitle2" gutterBottom color="success.dark" fontWeight="600">
+                      ✨ AI分析完成
+                    </Typography>
+                    <Stack spacing={1.5}>
+                      {aiSuggestions.category && (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Typography variant="body2" fontWeight="500" sx={{ minWidth: 80 }}>
+                            建议分类：
+                          </Typography>
+                          <Chip
+                            label={aiSuggestions.category}
+                            size="small"
+                            color="primary"
+                            variant="filled"
+                            sx={{ fontWeight: 500 }}
+                          />
+                        </Box>
+                      )}
+                      {aiSuggestions.tags && aiSuggestions.tags.length > 0 && (
+                        <Box>
+                          <Typography variant="body2" fontWeight="500" sx={{ mb: 0.5 }}>
+                            建议标签：
+                          </Typography>
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                            {aiSuggestions.tags.map((tag, index) => (
+                              <Chip
+                                key={index}
+                                label={tag}
+                                size="small"
+                                variant="outlined"
+                                color="primary"
+                                sx={{ fontWeight: 500 }}
+                              />
+                            ))}
+                          </Box>
+                        </Box>
+                      )}
+                      {aiSuggestions.suggested_summary && (
+                        <Box>
+                          <Typography variant="body2" fontWeight="500" sx={{ mb: 0.5 }}>
+                            建议摘要：
+                          </Typography>
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              p: 1.5,
+                              bgcolor: 'grey.50',
+                              borderRadius: 1,
+                              border: '1px solid',
+                              borderColor: 'grey.200',
+                              fontStyle: 'italic'
+                            }}
+                          >
+                            {aiSuggestions.suggested_summary}
+                          </Typography>
+                        </Box>
+                      )}
+                    </Stack>
+                  </Box>
                   <Button
                     variant="contained"
-                    startIcon={aiAnalyzing ? <CircularProgress size={16} color="inherit" /> : <AutoAwesomeIcon />}
-                    onClick={handleAiAnalyze}
-                    disabled={aiAnalyzing || !editArticle.title.trim() || !editArticle.content.trim()}
-                    size="small"
-                  >
-                    {aiAnalyzing ? '分析中...' : '开始AI分析'}
-                  </Button>
-                </Tooltip>
-              </Stack>
-
-              {aiSuggestions && (
-                <Alert severity="info" sx={{ mb: 2 }}>
-                  <Typography variant="subtitle2" gutterBottom>AI分析结果：</Typography>
-                  <Stack spacing={1}>
-                    {aiSuggestions.category && (
-                      <Box>
-                        <Typography variant="body2" component="span" fontWeight="bold">建议分类：</Typography>
-                        <Chip label={aiSuggestions.category} size="small" color="primary" sx={{ ml: 1 }} />
-                      </Box>
-                    )}
-                    {aiSuggestions.tags && aiSuggestions.tags.length > 0 && (
-                      <Box>
-                        <Typography variant="body2" component="span" fontWeight="bold">建议标签：</Typography>
-                        <Box sx={{ mt: 0.5 }}>
-                          {aiSuggestions.tags.map((tag, index) => (
-                            <Chip key={index} label={tag} size="small" variant="outlined" sx={{ mr: 0.5, mb: 0.5 }} />
-                          ))}
-                        </Box>
-                      </Box>
-                    )}
-                    {aiSuggestions.suggested_summary && (
-                      <Box>
-                        <Typography variant="body2" component="span" fontWeight="bold">建议摘要：</Typography>
-                        <Typography variant="body2" sx={{ mt: 0.5, p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
-                          {aiSuggestions.suggested_summary}
-                        </Typography>
-                      </Box>
-                    )}
-                  </Stack>
-                  <Button
-                    variant="outlined"
                     size="small"
                     onClick={applyAiSuggestions}
-                    sx={{ mt: 2 }}
                     startIcon={<AutoAwesomeIcon />}
+                    sx={{
+                      ml: 2,
+                      fontWeight: 600,
+                      bgcolor: 'success.main',
+                      '&:hover': {
+                        bgcolor: 'success.dark'
+                      }
+                    }}
                   >
-                    应用所有建议
+                    应用建议
                   </Button>
-                </Alert>
-              )}
-            </Box>
+                </Box>
+              </Alert>
+            )}
+
+            <TextField label="正文（Markdown）" value={editArticle.content || ''} onChange={e => setEditArticle(a => ({ ...a, content: e.target.value }))} fullWidth multiline minRows={10} required />
             <Stack direction="row" spacing={2} alignItems="center">
               <Button variant="outlined" component="label" startIcon={<UploadFileIcon />} disabled={fileUploading}>上传封面
                 <input type="file" accept="image/*" hidden onChange={handleUploadCover} />
