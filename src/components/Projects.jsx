@@ -1,7 +1,8 @@
 // 导入必要的组件和hooks
 import { motion } from 'framer-motion';  // 用于实现动画效果
-import { Box, Typography, Container, Card, CardContent, CardActions, Button } from '@mui/material';  // Material-UI组件
+import { Box, Typography, Container, Card, CardContent, CardActions, Button, IconButton, Tooltip, Alert } from '@mui/material';  // Material-UI组件
 import GitHubIcon from '@mui/icons-material/GitHub';  // GitHub图标
+import RefreshIcon from '@mui/icons-material/Refresh'; // 刷新图标
 import { useState, useEffect } from 'react';  // React hooks
 
 // 定义项目卡片的动画变体
@@ -27,67 +28,176 @@ const projectVariants = {
  *    - 项目卡片依次显示的动画
  * 4. 响应式设计：布局适配不同屏幕尺寸
  * 5. 错误处理：包含加载状态和错误处理机制
+ * 6. 缓存机制：缓存GitHub数据到localStorage，每日首次访问更新
  */
 const Projects = () => {
   // 状态管理
   const [projects, setProjects] = useState([]);  // 存储项目数据
   const [loading, setLoading] = useState(true);  // 控制加载状态
+  const [lastUpdated, setLastUpdated] = useState(null); // 上次更新时间
+  const [isCacheData, setIsCacheData] = useState(false); // 是否使用缓存数据
+  const [error, setError] = useState(null); // 错误信息
+
+  // 检查缓存是否有效（是否为当天）
+  const isCacheValid = (timestamp) => {
+    if (!timestamp) return false;
+    const lastUpdateDate = new Date(timestamp).toDateString();
+    const today = new Date().toDateString();
+    return lastUpdateDate === today;
+  };
+
+  // 从localStorage获取缓存数据
+  const getCachedProjects = () => {
+    try {
+      const cachedData = localStorage.getItem('githubProjects');
+      if (cachedData) {
+        const { timestamp, data } = JSON.parse(cachedData);
+        if (isCacheValid(timestamp)) {
+          setLastUpdated(timestamp);
+          setIsCacheData(true);
+          return data;
+        }
+      }
+    } catch (error) {
+      console.error('Error reading cached data:', error);
+    }
+    return null;
+  };
+
+  // 将数据保存到localStorage
+  const cacheProjects = (data) => {
+    try {
+      const timestamp = new Date().toISOString();
+      localStorage.setItem('githubProjects', JSON.stringify({
+        timestamp,
+        data
+      }));
+      setLastUpdated(timestamp);
+      setIsCacheData(false);
+    } catch (error) {
+      console.error('Error caching data:', error);
+    }
+  };
+
+  // 获取GitHub项目数据
+  const fetchProjectsFromGitHub = async () => {
+    try {
+      // 获取用户所有仓库
+      const response = await fetch('https://api.github.com/users/HandyWote/repos');
+      
+      // 检查响应状态
+      if (!response.ok) {
+        throw new Error(`GitHub API error: ${response.status} ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+
+      // 项目智能排序逻辑
+      const sortedProjects = data
+        .filter(repo => !repo.fork)  // 过滤掉fork的仓库
+        .sort((a, b) => {
+          // 优先考虑有描述的仓库
+          if (!!a.description !== !!b.description) return !!b.description - !!a.description;
+          // 其次按星标数排序
+          if (b.stargazers_count !== a.stargazers_count) return b.stargazers_count - a.stargazers_count;
+          // 最后按更新时间排序
+          return new Date(b.updated_at) - new Date(a.updated_at);
+        })
+        // 格式化项目数据
+        .map(repo => ({
+          title: repo.name,
+          description: repo.description || '暂无描述',
+          link: repo.html_url,
+          stars: repo.stargazers_count
+        }));
+
+      // 清除错误信息
+      setError(null);
+      
+      // 缓存数据
+      cacheProjects(sortedProjects);
+      return sortedProjects;
+    } catch (error) {
+      console.error('Error fetching GitHub repos:', error);
+      throw error;
+    }
+  };
+
+  // 获取项目数据（优先使用缓存）
+  const fetchProjects = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      // 首先检查是否有有效的缓存数据
+      const cachedProjects = getCachedProjects();
+      if (cachedProjects) {
+        setProjects(cachedProjects);
+        setLoading(false);
+        return;
+      }
+
+      // 如果没有有效缓存，则从GitHub获取数据
+      const githubProjects = await fetchProjectsFromGitHub();
+      setProjects(githubProjects);
+    } catch (error) {
+      console.error('Error fetching projects:', error);
+      setError(error.message);
+      
+      // 如果API请求失败，使用默认项目数据
+      const defaultProjects = [
+        {
+          title: 'WechatAutoRobort',
+          description: '智能微信自动回复机器人，支持自定义回复规则和智能对话功能。',
+          link: 'https://github.com/HandyWote/WechatAutoRobort'
+        },
+        {
+          title: 'ToDoList',
+          description: '一个简洁高效的待办事项管理应用，帮助用户更好地组织和管理日常任务。',
+          link: 'https://github.com/HandyWote/ToDoList'
+        },
+        {
+          title: 'Calculate-Game',
+          description: '一个趣味性的计算游戏应用，帮助用户通过游戏方式提升数学计算能力。',
+          link: 'https://github.com/HandyWote/Calculate-Game'
+        },
+      ];
+      setProjects(defaultProjects);
+      // 即使使用默认数据，也缓存以防网络问题
+      cacheProjects(defaultProjects);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 手动刷新数据
+  const handleRefresh = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const githubProjects = await fetchProjectsFromGitHub();
+      setProjects(githubProjects);
+    } catch (error) {
+      // 即使刷新失败，也保持现有数据
+      console.error('Error refreshing projects:', error);
+      setError(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // 在组件挂载时获取GitHub项目数据
   useEffect(() => {
-    const fetchProjects = async () => {
-      try {
-        // 获取用户所有仓库
-        const response = await fetch('https://api.github.com/users/HandyWote/repos');
-        const data = await response.json();
-
-        // 项目智能排序逻辑
-        const sortedProjects = data
-          .filter(repo => !repo.fork)  // 过滤掉fork的仓库
-          .sort((a, b) => {
-            // 优先考虑有描述的仓库
-            if (!!a.description !== !!b.description) return !!b.description - !!a.description;
-            // 其次按星标数排序
-            if (b.stargazers_count !== a.stargazers_count) return b.stargazers_count - a.stargazers_count;
-            // 最后按更新时间排序
-            return new Date(b.updated_at) - new Date(a.updated_at);
-          })
-          // 格式化项目数据
-          .map(repo => ({
-            title: repo.name,
-            description: repo.description || '暂无描述',
-            link: repo.html_url,
-            stars: repo.stargazers_count
-          }));
-
-        setProjects(sortedProjects);  // 更新项目列表
-      } catch (error) {
-        console.error('Error fetching GitHub repos:', error);
-        // 如果API请求失败，使用默认项目数据
-        setProjects([
-          {
-            title: 'WechatAutoRobort',
-            description: '智能微信自动回复机器人，支持自定义回复规则和智能对话功能。',
-            link: 'https://github.com/HandyWote/WechatAutoRobort'
-          },
-          {
-            title: 'ToDoList',
-            description: '一个简洁高效的待办事项管理应用，帮助用户更好地组织和管理日常任务。',
-            link: 'https://github.com/HandyWote/ToDoList'
-          },
-          {
-            title: 'Calculate-Game',
-            description: '一个趣味性的计算游戏应用，帮助用户通过游戏方式提升数学计算能力。',
-            link: 'https://github.com/HandyWote/Calculate-Game'
-          },
-        ]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchProjects();
   }, []);
+
+  // 格式化更新时间显示
+  const formatLastUpdated = (timestamp) => {
+    if (!timestamp) return '';
+    const date = new Date(timestamp);
+    return `${date.toLocaleDateString('zh-CN')} ${date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}`;
+  };
 
   return (
     <section id="projects" className="section">
@@ -104,14 +214,33 @@ const Projects = () => {
             margin: '0 auto'
           }}
         >
-          <Typography
-            variant="h3"
-            component="h2"
-            gutterBottom
-            sx={{ textAlign: 'center', mb: 4, fontSize: { xs: '2rem', sm: '3rem' } }}
-          >
-            项目作品
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 4 }}>
+            <Typography
+              variant="h3"
+              component="h2"
+              gutterBottom
+              sx={{ textAlign: 'center', fontSize: { xs: '2rem', sm: '3rem' } }}
+            >
+              项目作品
+            </Typography>
+            <Tooltip title="刷新项目数据">
+              <IconButton onClick={handleRefresh} size="small" sx={{ ml: 2 }}>
+                <RefreshIcon />
+              </IconButton>
+            </Tooltip>
+          </Box>
+          
+          {error && (
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              获取GitHub项目数据时遇到问题: {error}. 正在显示缓存或默认数据。
+            </Alert>
+          )}
+          
+          {lastUpdated && (
+            <Typography variant="body2" align="center" sx={{ mb: 2, color: 'text.secondary' }}>
+              {isCacheData ? '使用缓存数据' : '数据已更新'} - 最后更新: {formatLastUpdated(lastUpdated)}
+            </Typography>
+          )}
 
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 3, sm: 2 } }}>
             {loading ? (

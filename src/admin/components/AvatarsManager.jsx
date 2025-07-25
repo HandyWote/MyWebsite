@@ -127,6 +127,7 @@ const AvatarsManager = () => {
       const newIndex = avatars.findIndex(a => a.id === over.id);
       const newAvatars = arrayMove(avatars, oldIndex, newIndex);
       setAvatars(newAvatars);
+      
       // 设第一个为当前头像
       const token = localStorage.getItem('token');
       if (newAvatars.length > 0) {
@@ -145,9 +146,9 @@ const AvatarsManager = () => {
         } catch (error) {
           setSnackbarMsg('设置当前头像失败: ' + error.message);
           setSnackbarOpen(true);
+          fetchAvatars(); // 恢复原始状态
         }
       }
-      fetchAvatars();
     }
   };
 
