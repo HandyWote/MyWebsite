@@ -1,13 +1,16 @@
 import React, { useEffect, useState, useRef } from 'react';
 import {
   Box, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, TablePagination,
-  TextField, Dialog, DialogTitle, DialogContent, DialogActions, Stack, Checkbox, IconButton, Typography, Chip
+  TextField, Dialog, DialogTitle, DialogContent, DialogActions, Stack, Checkbox, IconButton, Typography, Chip,
+  Alert, CircularProgress, Tooltip, Divider
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import AddIcon from '@mui/icons-material/Add';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import SmartToyIcon from '@mui/icons-material/SmartToy';
 import { marked } from 'marked';
 import xss from 'xss';
 import Snackbar from '@mui/material/Snackbar';
@@ -54,6 +57,10 @@ const ArticlesManager = () => {
   const [total, setTotal] = useState(0);
   const [fileUploading, setFileUploading] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+
+  // AI分析相关状态
+  const [aiAnalyzing, setAiAnalyzing] = useState(false);
+  const [aiSuggestions, setAiSuggestions] = useState(null);
   const [importProgress, setImportProgress] = useState({ total: 0, success: 0, fail: 0, failFiles: [] });
 
   // 拉取文章
@@ -99,10 +106,68 @@ const ArticlesManager = () => {
     setEditId(id);
     setOpenDialog(true);
   };
-  const closeEdit = () => { setOpenDialog(false); setEditArticle(defaultArticle); setEditId(null); };
+  const closeEdit = () => {
+    setOpenDialog(false);
+    setEditArticle(defaultArticle);
+    setEditId(null);
+    setAiSuggestions(null); // 清除AI建议
+  };
 
   // 标签格式校验
   const validateTags = tags => /^[\u4e00-\u9fa5a-zA-Z0-9_,\-\s]+$/.test(tags);
+
+  // AI智能分析文章内容
+  const handleAiAnalyze = async () => {
+    if (!editArticle.title.trim() || !editArticle.content.trim()) {
+      setSnackbar({ open: true, message: '请先填写标题和内容', severity: 'warning' });
+      return;
+    }
+
+    setAiAnalyzing(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:5000/api/admin/articles/ai-analyze', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          title: editArticle.title,
+          content: editArticle.content,
+          summary: editArticle.summary
+        })
+      });
+
+      const result = await response.json();
+
+      if (result.code === 0) {
+        setAiSuggestions(result.data);
+        setSnackbar({ open: true, message: 'AI分析完成！请查看建议', severity: 'success' });
+      } else {
+        setSnackbar({ open: true, message: result.msg || 'AI分析失败', severity: 'error' });
+      }
+    } catch (error) {
+      console.error('AI分析错误:', error);
+      setSnackbar({ open: true, message: '网络错误，请稍后重试', severity: 'error' });
+    } finally {
+      setAiAnalyzing(false);
+    }
+  };
+
+  // 应用AI建议
+  const applyAiSuggestions = () => {
+    if (!aiSuggestions) return;
+
+    setEditArticle(prev => ({
+      ...prev,
+      category: aiSuggestions.category || prev.category,
+      tags: aiSuggestions.tags ? aiSuggestions.tags.join(',') : prev.tags,
+      summary: aiSuggestions.suggested_summary || prev.summary
+    }));
+
+    setSnackbar({ open: true, message: 'AI建议已应用', severity: 'success' });
+  };
 
   // 保存
   const handleSave = async () => {
@@ -281,6 +346,67 @@ const ArticlesManager = () => {
             <TextField label="标签（逗号分隔）" value={editArticle.tags} onChange={e => setEditArticle(a => ({ ...a, tags: e.target.value }))} fullWidth error={!!editArticle.tags && !validateTags(editArticle.tags)} helperText={!!editArticle.tags && !validateTags(editArticle.tags) ? '标签格式不合法' : ''} />
             <TextField label="摘要" value={editArticle.summary} onChange={e => setEditArticle(a => ({ ...a, summary: e.target.value }))} fullWidth multiline minRows={2} />
             <TextField label="正文（Markdown）" value={editArticle.content} onChange={e => setEditArticle(a => ({ ...a, content: e.target.value }))} fullWidth multiline minRows={10} required />
+
+            {/* AI智能识别区域 */}
+            <Divider sx={{ my: 2 }} />
+            <Box sx={{ p: 2, bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
+              <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 2 }}>
+                <SmartToyIcon color="primary" />
+                <Typography variant="h6" color="primary">AI智能识别</Typography>
+                <Tooltip title="基于文章标题和内容，AI将自动识别合适的分类和标签">
+                  <Button
+                    variant="contained"
+                    startIcon={aiAnalyzing ? <CircularProgress size={16} color="inherit" /> : <AutoAwesomeIcon />}
+                    onClick={handleAiAnalyze}
+                    disabled={aiAnalyzing || !editArticle.title.trim() || !editArticle.content.trim()}
+                    size="small"
+                  >
+                    {aiAnalyzing ? '分析中...' : '开始AI分析'}
+                  </Button>
+                </Tooltip>
+              </Stack>
+
+              {aiSuggestions && (
+                <Alert severity="info" sx={{ mb: 2 }}>
+                  <Typography variant="subtitle2" gutterBottom>AI分析结果：</Typography>
+                  <Stack spacing={1}>
+                    {aiSuggestions.category && (
+                      <Box>
+                        <Typography variant="body2" component="span" fontWeight="bold">建议分类：</Typography>
+                        <Chip label={aiSuggestions.category} size="small" color="primary" sx={{ ml: 1 }} />
+                      </Box>
+                    )}
+                    {aiSuggestions.tags && aiSuggestions.tags.length > 0 && (
+                      <Box>
+                        <Typography variant="body2" component="span" fontWeight="bold">建议标签：</Typography>
+                        <Box sx={{ mt: 0.5 }}>
+                          {aiSuggestions.tags.map((tag, index) => (
+                            <Chip key={index} label={tag} size="small" variant="outlined" sx={{ mr: 0.5, mb: 0.5 }} />
+                          ))}
+                        </Box>
+                      </Box>
+                    )}
+                    {aiSuggestions.suggested_summary && (
+                      <Box>
+                        <Typography variant="body2" component="span" fontWeight="bold">建议摘要：</Typography>
+                        <Typography variant="body2" sx={{ mt: 0.5, p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
+                          {aiSuggestions.suggested_summary}
+                        </Typography>
+                      </Box>
+                    )}
+                  </Stack>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={applyAiSuggestions}
+                    sx={{ mt: 2 }}
+                    startIcon={<AutoAwesomeIcon />}
+                  >
+                    应用所有建议
+                  </Button>
+                </Alert>
+              )}
+            </Box>
             <Stack direction="row" spacing={2} alignItems="center">
               <Button variant="outlined" component="label" startIcon={<UploadFileIcon />} disabled={fileUploading}>上传封面
                 <input type="file" accept="image/*" hidden onChange={handleUploadCover} />

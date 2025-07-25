@@ -44,6 +44,7 @@ class Config:
     # OpenAI 配置
     OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', 'sk-xxxx')
     OPENAI_MODEL = os.environ.get('OPENAI_MODEL', 'gpt-3.5-turbo')
+    OPENAI_API_URL = os.environ.get('OPENAI_API_URL', 'https://api.openai.com/v1')
 
     # JWT 有效期
     JWT_ACCESS_TOKEN_EXPIRES = int(os.environ.get('JWT_ACCESS_TOKEN_EXPIRES', 86400))  # 1天
@@ -77,6 +78,8 @@ ALLOWED_IMAGE_EXTENSIONS=jpg,jpeg,png,webp
 # OpenAI 配置（可选）
 OPENAI_API_KEY=sk-xxxx
 OPENAI_MODEL=gpt-3.5-turbo
+OPENAI_API_URL=https://api.openai.com/v1
+OPENAI_API_URL=https://api.openai.com/v1
 
 # JWT 有效期
 JWT_ACCESS_TOKEN_EXPIRES=86400

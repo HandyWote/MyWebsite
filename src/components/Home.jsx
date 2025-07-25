@@ -194,7 +194,7 @@ const Home = () => {
                 variant="outlined"
                 size="large"
                 startIcon={<GitHubIcon />}
-                href={siteBlock?.github_url || 'https://github.com/HandyWote'}
+                href={siteBlock?.content?.github_url || 'https://github.com/HandyWote'}
                 target="_blank"
                 rel="noopener noreferrer"
                 sx={{

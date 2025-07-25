@@ -204,7 +204,14 @@ const Articles = () => {
   // 处理分页
   const handlePageChange = (event, value) => {
     setCurrentPage(value);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    // 滚动到文章部分而不是页面顶部
+    const articlesSection = document.getElementById('articles');
+    if (articlesSection) {
+      articlesSection.scrollIntoView({ behavior: 'smooth' });
+    } else {
+      // 如果找不到文章部分，则滚动到顶部
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   };
 
   // 分享文章
