@@ -101,7 +101,7 @@ const Home = () => {
       const res = await fetch('http://localhost:5000/api/avatars');
       const data = await res.json();
       const current = (data.avatars || data.data || []).find(a => a.is_current);
-      setAvatarUrl(current ? `/api/admin/avatars/file/${current.filename}` : './avatar.jpg');
+      setAvatarUrl(current ? `http://localhost:5000/api/admin/avatars/file/${current.filename}` : './avatar.jpg');
     } catch { setAvatarUrl('./avatar.jpg'); }
   };
 
@@ -157,6 +157,9 @@ const Home = () => {
                   component="img"
                   src={avatarUrl}
                   alt="HandyWote"
+                  onError={(e) => {
+                    e.target.src = './avatar.jpg';
+                  }}
                   sx={{
                     width: { xs: 140, sm: 180 },
                     height: { xs: 140, sm: 180 },
