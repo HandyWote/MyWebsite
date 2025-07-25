@@ -105,8 +105,10 @@ const ArticlesManager = () => {
         ...article,
         ...data,
       });
+      setPreviewContent(data.content || '');
     } else {
       setEditArticle(article);
+      setPreviewContent(article.content || '');
     }
     setEditId(id);
     setOpenDialog(true);
@@ -116,6 +118,7 @@ const ArticlesManager = () => {
     setEditArticle(defaultArticle);
     setEditId(null);
     setAiSuggestions(null); // 清除AI建议
+    setPreviewContent('');
   };
 
   // 标签格式校验
@@ -289,6 +292,14 @@ const ArticlesManager = () => {
     fetchArticles({ page: 1 });
   };
 
+  // 更新预览内容
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setPreviewContent(editArticle.content || '');
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [editArticle.content]);
+
   // 封面图片显示适配
   const getCoverUrl = cover => {
     if (!cover) return DEFAULT_COVER;
@@ -365,12 +376,29 @@ const ArticlesManager = () => {
       {/* 新增/编辑弹窗 */}
       <Dialog open={openDialog} onClose={closeEdit} maxWidth="md" fullWidth>
         <DialogTitle>{editId ? '编辑文章' : '新增文章'}</DialogTitle>
-        <DialogContent dividers>
-          <Stack spacing={2}>
+        <DialogContent dividers sx={{ display: 'flex', flexDirection: 'column', height: '80vh' }}>
+          <Stack spacing={2} sx={{ flexGrow: 1, overflowY: 'auto' }}>
             <TextField label="标题" value={editArticle.title || ''} onChange={e => setEditArticle(a => ({ ...a, title: e.target.value }))} fullWidth required />
             <TextField label="分类" value={editArticle.category || ''} onChange={e => setEditArticle(a => ({ ...a, category: e.target.value }))} fullWidth />
             <TextField label="标签（逗号分隔）" value={editArticle.tags || ''} onChange={e => setEditArticle(a => ({ ...a, tags: e.target.value }))} fullWidth error={!!editArticle.tags && !validateTags(editArticle.tags)} helperText={!!editArticle.tags && !validateTags(editArticle.tags) ? '标签格式不合法' : ''} />
             <TextField label="摘要" value={editArticle.summary || ''} onChange={e => setEditArticle(a => ({ ...a, summary: e.target.value }))} fullWidth multiline minRows={2} />
+
+            {/* 上传封面区域 - 移到AI功能上方 */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Button variant="outlined" component="label" startIcon={<UploadFileIcon />} disabled={fileUploading}>
+                上传封面
+                <input type="file" accept="image/*" hidden onChange={handleUploadCover} />
+              </Button>
+              {editArticle.cover && (
+                <img 
+                  src={getCoverUrl(editArticle.cover)} 
+                  alt="封面" 
+                  style={{ width: 64, height: 40, objectFit: 'cover' }} 
+                  onError={e => { e.target.onerror = null; e.target.src = DEFAULT_COVER; }} 
+                />
+              )}
+              {fileUploading && <Typography color="text.secondary">上传中...</Typography>}
+            </Box>
 
             {/* AI智能识别区域 - 紧跟摘要字段 */}
             <Box sx={{
@@ -511,21 +539,16 @@ const ArticlesManager = () => {
             )}
 
             <TextField label="正文（Markdown）" value={editArticle.content || ''} onChange={e => setEditArticle(a => ({ ...a, content: e.target.value }))} fullWidth multiline minRows={10} required />
-            <Stack direction="row" spacing={2} alignItems="center">
-              <Button variant="outlined" component="label" startIcon={<UploadFileIcon />} disabled={fileUploading}>上传封面
-                <input type="file" accept="image/*" hidden onChange={handleUploadCover} />
-              </Button>
-              {editArticle.cover && <img src={getCoverUrl(editArticle.cover)} alt="封面" style={{ width: 64, height: 40, objectFit: 'cover' }} onError={e => { e.target.onerror = null; e.target.src = DEFAULT_COVER; }} />}
-              {fileUploading && <Typography color="text.secondary">上传中...</Typography>}
-            </Stack>
+
+            {/* Markdown渲染预览区域 */}
             <Box>
               <Typography variant="subtitle2" sx={{ mb: 1 }}>Markdown 渲染预览：</Typography>
-              <Paper variant="outlined" sx={{ p: 2, minHeight: 120, maxHeight: 300, overflow: 'auto' }}>
+              <Paper variant="outlined" sx={{ p: 2, minHeight: 120, maxHeight: 'none', flex: 1 }}>
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm, remarkMath]}
-                  rehypePlugins={[rehypeKatex, rehypeMermaid]}
+                  rehypePlugins={[rehypeKatex]}
                 >
-                  {editArticle.content || ''}
+                  {previewContent}
                 </ReactMarkdown>
               </Paper>
             </Box>
@@ -550,4 +573,4 @@ const ArticlesManager = () => {
   );
 };
 
-export default ArticlesManager; 
+export default ArticlesManager;
