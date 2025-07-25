@@ -62,6 +62,9 @@ const ArticlesManager = () => {
   const [aiAnalyzing, setAiAnalyzing] = useState(false);
   const [aiSuggestions, setAiSuggestions] = useState(null);
   const [importProgress, setImportProgress] = useState({ total: 0, success: 0, fail: 0, failFiles: [] });
+  // 批量AI处理状态
+  const [batchAiProcessing, setBatchAiProcessing] = useState(false);
+  const [batchAiProgress, setBatchAiProgress] = useState({ total: 0, processed: 0, success: 0, fail: 0 });
 
   // 拉取文章
   const fetchArticles = async (params = {}) => {
@@ -114,7 +117,7 @@ const ArticlesManager = () => {
   };
 
   // 标签格式校验
-  const validateTags = tags => /^[\u4e00-\u9fa5a-zA-Z0-9_,\-\s]+$/.test(tags);
+  const validateTags = tags => /^[\u4e00-\u9fa5a-zA-Z0-9_,\-\s()]+$/.test(tags);
 
   // AI智能分析文章内容
   const handleAiAnalyze = async () => {
@@ -217,6 +220,129 @@ const ArticlesManager = () => {
     setLoading(false);
   };
 
+  // 批量AI处理
+  const handleBatchAiProcess = async () => {
+    if (selected.length === 0) {
+      setSnackbar({ open: true, message: '请先选择要处理的文章', severity: 'warning' });
+      return;
+    }
+
+    if (!window.confirm(`确定要对选中的 ${selected.length} 篇文章进行AI智能分析并自动应用建议吗？`)) {
+      return;
+    }
+
+    setBatchAiProcessing(true);
+    setBatchAiProgress({
+      total: selected.length,
+      processed: 0,
+      success: 0,
+      fail: 0
+    });
+
+    const token = localStorage.getItem('token');
+    let successCount = 0;
+    let failCount = 0;
+
+    try {
+      // 获取选中的文章详细信息
+      const articlesToProcess = articles.filter(article => selected.includes(article.id));
+      
+      for (const article of articlesToProcess) {
+        try {
+          // 更新进度
+          setBatchAiProgress(prev => ({
+            ...prev,
+            processed: prev.processed + 1
+          }));
+
+          // 1. 获取文章完整信息
+          const detailRes = await fetch(`${API_PATH}/${article.id}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          
+          if (!detailRes.ok) throw new Error('获取文章详情失败');
+          
+          const detailData = await detailRes.json();
+          const fullArticle = detailData;
+
+          // 2. AI分析
+          const aiRes = await fetch('http://localhost:5000/api/admin/articles/ai-analyze', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              title: fullArticle.title,
+              content: fullArticle.content,
+              summary: fullArticle.summary || ''
+            })
+          });
+
+          if (!aiRes.ok) throw new Error('AI分析请求失败');
+          
+          const aiResult = await aiRes.json();
+          
+          if (aiResult.code !== 0) {
+            throw new Error(aiResult.msg || 'AI分析失败');
+          }
+
+          // 3. 应用AI建议并更新文章
+          const updatedArticle = {
+            ...fullArticle,
+            category: aiResult.data.category || fullArticle.category,
+            tags: aiResult.data.tags ? aiResult.data.tags.join(',') : fullArticle.tags,
+            summary: aiResult.data.suggested_summary || fullArticle.summary
+          };
+
+          // 4. 保存更新后的文章
+          const updateRes = await fetch(`${API_PATH}/${article.id}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(updatedArticle)
+          });
+
+          if (!updateRes.ok) throw new Error('文章更新失败');
+
+          successCount++;
+          setBatchAiProgress(prev => ({
+            ...prev,
+            success: prev.success + 1
+          }));
+        } catch (error) {
+          console.error(`处理文章 "${article.title}" 时出错:`, error);
+          failCount++;
+          setBatchAiProgress(prev => ({
+            ...prev,
+            fail: prev.fail + 1
+          }));
+        }
+      }
+
+      // 完成后刷新文章列表
+      fetchArticles({ page: page + 1 });
+      setSelected([]); // 清除选择
+
+      setSnackbar({ 
+        open: true, 
+        message: `批量AI处理完成！成功: ${successCount}, 失败: ${failCount}`, 
+        severity: successCount > 0 ? 'success' : 'error' 
+      });
+    } catch (error) {
+      console.error('批量AI处理出错:', error);
+      setSnackbar({ 
+        open: true, 
+        message: '批量AI处理过程中发生错误', 
+        severity: 'error' 
+      });
+    } finally {
+      setBatchAiProcessing(false);
+    }
+  };
+
   // 上传封面
   const handleUploadCover = async e => {
     const file = e.target.files[0];
@@ -275,12 +401,29 @@ const ArticlesManager = () => {
       <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
         <Button variant="contained" startIcon={<AddIcon />} onClick={() => openEdit()}>新增文章</Button>
         <Button variant="outlined" color="error" startIcon={<DeleteIcon />} disabled={!selected.length} onClick={() => handleDelete(selected)}>批量删除</Button>
+        <Button 
+          variant="outlined" 
+          startIcon={<AutoAwesomeIcon />} 
+          disabled={!selected.length || batchAiProcessing} 
+          onClick={handleBatchAiProcess}
+        >
+          {batchAiProcessing ? `AI处理中 (${batchAiProgress.processed}/${batchAiProgress.total})` : '批量AI处理'}
+        </Button>
         <Button variant="outlined" component="label" startIcon={<CloudUploadIcon />}>批量导入MD
           <input type="file" accept=".md" multiple hidden onChange={handleBatchImport} />
         </Button>
         <TextField size="small" placeholder="搜索标题" value={search} onChange={e => setSearch(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSearch()} sx={{ width: 200 }} />
         <Button variant="outlined" onClick={handleSearch}>搜索</Button>
       </Stack>
+      
+      {/* 批量AI处理进度条 */}
+      {batchAiProcessing && (
+        <Box sx={{ width: '100%', mb: 2 }}>
+          <Typography variant="body2" sx={{ mb: 1 }}>
+            正在处理: {batchAiProgress.processed}/{batchAiProgress.total} (成功: {batchAiProgress.success}, 失败: {batchAiProgress.fail})
+          </Typography>
+        </Box>
+      )}
       <TableContainer component={Paper}>
         <Table size="small">
           <TableHead>
@@ -341,12 +484,40 @@ const ArticlesManager = () => {
         <DialogTitle>{editId ? '编辑文章' : '新增文章'}</DialogTitle>
         <DialogContent dividers>
           <Stack spacing={2}>
-            <TextField label="标题" value={editArticle.title} onChange={e => setEditArticle(a => ({ ...a, title: e.target.value }))} fullWidth required />
-            <TextField label="分类" value={editArticle.category} onChange={e => setEditArticle(a => ({ ...a, category: e.target.value }))} fullWidth />
-            <TextField label="标签（逗号分隔）" value={editArticle.tags} onChange={e => setEditArticle(a => ({ ...a, tags: e.target.value }))} fullWidth error={!!editArticle.tags && !validateTags(editArticle.tags)} helperText={!!editArticle.tags && !validateTags(editArticle.tags) ? '标签格式不合法' : ''} />
-            <TextField label="摘要" value={editArticle.summary} onChange={e => setEditArticle(a => ({ ...a, summary: e.target.value }))} fullWidth multiline minRows={2} />
-            <TextField label="正文（Markdown）" value={editArticle.content} onChange={e => setEditArticle(a => ({ ...a, content: e.target.value }))} fullWidth multiline minRows={10} required />
-
+            <TextField 
+              label="标题" 
+              value={editArticle.title || ''} 
+              onChange={e => setEditArticle(a => ({ ...a, title: e.target.value }))} 
+              fullWidth 
+              required 
+              InputLabelProps={{ shrink: true }}
+            />
+            <TextField 
+              label="分类" 
+              value={editArticle.category || ''} 
+              onChange={e => setEditArticle(a => ({ ...a, category: e.target.value }))} 
+              fullWidth 
+              InputLabelProps={{ shrink: true }}
+            />
+            <TextField 
+              label="标签（逗号分隔）" 
+              value={editArticle.tags || ''} 
+              onChange={e => setEditArticle(a => ({ ...a, tags: e.target.value }))} 
+              fullWidth 
+              error={!!editArticle.tags && !validateTags(editArticle.tags)} 
+              helperText={!!editArticle.tags && !validateTags(editArticle.tags) ? '标签格式不合法' : ''} 
+              InputLabelProps={{ shrink: true }}
+            />
+            <TextField 
+              label="摘要" 
+              value={editArticle.summary || ''} 
+              onChange={e => setEditArticle(a => ({ ...a, summary: e.target.value }))} 
+              fullWidth 
+              multiline 
+              minRows={2} 
+              InputLabelProps={{ shrink: true }}
+            />
+            
             {/* AI智能识别区域 */}
             <Divider sx={{ my: 2 }} />
             <Box sx={{ p: 2, bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
@@ -407,6 +578,17 @@ const ArticlesManager = () => {
                 </Alert>
               )}
             </Box>
+            
+            <TextField 
+              label="正文（Markdown）" 
+              value={editArticle.content || ''} 
+              onChange={e => setEditArticle(a => ({ ...a, content: e.target.value }))} 
+              fullWidth 
+              multiline 
+              minRows={10} 
+              required 
+              InputLabelProps={{ shrink: true }}
+            />
             <Stack direction="row" spacing={2} alignItems="center">
               <Button variant="outlined" component="label" startIcon={<UploadFileIcon />} disabled={fileUploading}>上传封面
                 <input type="file" accept="image/*" hidden onChange={handleUploadCover} />

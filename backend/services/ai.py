@@ -33,6 +33,16 @@ def analyze_article_content(title, content, summary=""):
             'error': 'OpenAI API密钥未配置或无效'
         }
 
+    # 检查API URL配置
+    if not config.OPENAI_API_URL or config.OPENAI_API_URL == 'https://api.openai.com/v1':
+        return {
+            'success': False,
+            'category': '',
+            'tags': [],
+            'suggested_summary': '',
+            'error': 'OpenAI API URL未配置'
+        }
+
     # 构建更详细的prompt
     prompt = f"""
 请分析以下文章内容，并提供智能分类和标签建议：
