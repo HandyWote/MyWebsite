@@ -33,16 +33,6 @@ def analyze_article_content(title, content, summary=""):
             'error': 'OpenAI API密钥未配置或无效'
         }
 
-    # 检查API URL配置
-    if not config.OPENAI_API_URL or config.OPENAI_API_URL == 'https://api.openai.com/v1':
-        return {
-            'success': False,
-            'category': '',
-            'tags': [],
-            'suggested_summary': '',
-            'error': 'OpenAI API URL未配置'
-        }
-
     # 构建更详细的prompt
     prompt = f"""
 请分析以下文章内容，并提供智能分类和标签建议：
@@ -91,32 +81,20 @@ def analyze_article_content(title, content, summary=""):
             }
         ],
         'temperature': 0.3,  # 降低随机性，提高一致性
-        'max_tokens': 5000
+        'max_tokens': 50000
     }
 
     try:
         # 构建API URL，确保正确处理末尾斜杠
         api_base_url = config.OPENAI_API_URL.rstrip('/')
-        api_url = f"{api_base_url}/chat/completions"
-        print(f"请求AI服务: {api_url}")  # 添加调试日志
+        api_url = f"{api_base_url}"
 
-        # 确保使用正确的协议 (HTTP/HTTPS)
-        if api_url.startswith('https://'):
-            response = requests.post(
-                api_url,
-                headers=headers,
-                json=data,
-                timeout=30,
-                verify=True
-            )
-        else:
-            # 对于HTTP连接，我们使用requests库的默认行为
-            response = requests.post(
-                api_url,
-                headers=headers,
-                json=data,
-                timeout=30
-            )
+        response = requests.post(
+            api_url,
+            headers=headers,
+            json=data,
+            timeout=30
+        )
         response.raise_for_status()
 
         result = response.json()
@@ -152,17 +130,12 @@ def analyze_article_content(title, content, summary=""):
             'error': 'AI服务请求超时，请稍后重试'
         }
     except requests.exceptions.RequestException as e:
-        # 记录详细的错误信息
-        error_msg = f'AI服务请求失败：{str(e)}'
-        if hasattr(e, 'response') and e.response is not None:
-            error_msg += f' 响应状态码: {e.response.status_code}, 响应内容: {e.response.text}'
-        
         return {
             'success': False,
             'category': '',
             'tags': [],
             'suggested_summary': '',
-            'error': error_msg
+            'error': f'AI服务请求失败：{str(e)}'
         }
     except Exception as e:
         return {

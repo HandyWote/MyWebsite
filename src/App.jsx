@@ -1,12 +1,14 @@
 // 导入所需的组件
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
+import { useState, lazy, Suspense } from 'react';
+import { Box, CircularProgress } from '@mui/material';
 import Navbar from './components/Navbar';
 import Home from './components/Home';
 import Projects from './components/Projects';
 import Articles from './components/Articles';
 import ArticleDetail from './components/ArticleDetail';
-import AdminRoutes from './admin/routes';
+import AdminLayout from './admin/components/AdminLayout'; // 懒加载的管理后台布局
 
 /**
  * App组件 - 应用程序的根组件
@@ -49,10 +51,37 @@ function AppContent() {
 }
 
 function App() {
+  const [darkMode, setDarkMode] = useState(false); // 添加暗模式状态
+
   return (
     <ThemeProvider theme={theme}>
       <Router>
-        <AppContent />
+        <Box sx={{ 
+          minHeight: '100vh',
+          backgroundColor: 'background.default',
+          color: 'text.primary'
+        }}>
+          <Routes>
+            {/* 前台页面 */}
+            <Route path="/" element={<Navbar darkMode={darkMode} setDarkMode={setDarkMode} />}>
+              <Route index element={<Home />} />
+              <Route path="articles" element={<Articles />} />
+              <Route path="articles/:id" element={<ArticleDetail />} />
+              <Route path="projects" element={<Projects />} />
+            </Route>
+            
+            {/* 后台管理 */}
+            <Route path="/admin/*" element={
+              <Suspense fallback={
+                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+                  <CircularProgress />
+                </Box>
+              }>
+                <AdminLayout />
+              </Suspense>
+            } />
+          </Routes>
+        </Box>
       </Router>
     </ThemeProvider>
   );

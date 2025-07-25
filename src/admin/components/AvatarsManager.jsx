@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Box, Button, Avatar, Paper, IconButton, Stack, Snackbar, Tooltip } from '@mui/material';
+import { Box, Button, Avatar, Paper, IconButton, Stack, Snackbar, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions, Typography } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
@@ -45,7 +45,7 @@ function SortableAvatarCard({ avatar, index, onDelete, ...props }) {
           {avatar.uploaded_at ? new Date(avatar.uploaded_at).toLocaleString() : ''}
         </Box>
         <Tooltip title="删除">
-          <IconButton color="error" size="small" onClick={() => onDelete(index)}><DeleteIcon /></IconButton>
+          <IconButton color="error" size="small" onClick={() => onDelete(avatar.id)}><DeleteIcon /></IconButton>
         </Tooltip>
       </Box>
     </div>
@@ -57,26 +57,34 @@ const AvatarsManager = () => {
   const [loading, setLoading] = useState(true);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMsg, setSnackbarMsg] = useState('');
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [avatarToDelete, setAvatarToDelete] = useState(null);
   const sensors = useSensors(useSensor(PointerSensor));
 
   // 拉取头像数据
   const fetchAvatars = async () => {
     setLoading(true);
     const token = localStorage.getItem('token');
-    const res = await fetch(API_PATH, {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
-    const data = await res.json();
-    // 兼容 data.data 和 data.avatars
-    const arr = (data.data || data.avatars || []).map(a => {
-      const API_BASE_URL = "http://localhost:5000";
-      const url = a.filename ? `${API_BASE_URL}/api/admin/avatars/file/${a.filename}` : undefined;
-      return { ...a, url };
-    });
-    setAvatars(arr);
-    setLoading(false);
+    try {
+      const res = await fetch(API_PATH, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const data = await res.json();
+      // 兼容 data.data 和 data.avatars
+      const arr = (data.data || data.avatars || []).map(a => {
+        const API_BASE_URL = "http://localhost:5000";
+        const url = a.filename ? `${API_BASE_URL}/api/admin/avatars/file/${a.filename}` : undefined;
+        return { ...a, url };
+      });
+      setAvatars(arr);
+    } catch (error) {
+      setSnackbarMsg('获取头像列表失败: ' + error.message);
+      setSnackbarOpen(true);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -94,28 +102,61 @@ const AvatarsManager = () => {
       // 设第一个为当前头像
       const token = localStorage.getItem('token');
       if (newAvatars.length > 0) {
-        await fetch(`${API_PATH}/${newAvatars[0].id}/set_current`, {
-          method: 'PUT',
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        setSnackbarMsg('已设为当前头像');
-        setSnackbarOpen(true);
+        try {
+          const res = await fetch(`${API_PATH}/${newAvatars[0].id}/set_current`, {
+            method: 'PUT',
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          
+          if (res.ok) {
+            setSnackbarMsg('已设为当前头像');
+            setSnackbarOpen(true);
+          } else {
+            throw new Error('设置当前头像失败');
+          }
+        } catch (error) {
+          setSnackbarMsg('设置当前头像失败: ' + error.message);
+          setSnackbarOpen(true);
+        }
       }
       fetchAvatars();
     }
   };
 
+  // 删除头像确认
+  const confirmDelete = (avatarId) => {
+    setAvatarToDelete(avatarId);
+    setDeleteDialogOpen(true);
+  };
+
   // 删除头像
-  const handleDelete = async (index) => {
-    const avatar = avatars[index];
-    const token = localStorage.getItem('token');
-    await fetch(`${API_PATH}/${avatar.id}`, {
-      method: 'DELETE',
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-    setSnackbarMsg('已删除头像');
-    setSnackbarOpen(true);
-    fetchAvatars();
+  const handleDelete = async () => {
+    setDeleteDialogOpen(false);
+    
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_PATH}/${avatarToDelete}`, {
+        method: 'DELETE',
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        setSnackbarMsg(data.msg || '已删除头像');
+        setSnackbarOpen(true);
+        fetchAvatars(); // 刷新列表
+      } else {
+        throw new Error(`删除失败: ${res.status} ${res.statusText}`);
+      }
+    } catch (error) {
+      setSnackbarMsg('删除失败: ' + error.message);
+      setSnackbarOpen(true);
+    } finally {
+      setAvatarToDelete(null);
+    }
   };
 
   // 上传头像
@@ -125,27 +166,33 @@ const AvatarsManager = () => {
     const token = localStorage.getItem('token');
     const formData = new FormData();
     formData.append('file', file);
-    const res = await fetch(API_PATH, {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${token}` },
-      body: formData
-    });
-    const data = await res.json();
-    if (data.code === 0) {
-      setSnackbarMsg('上传成功');
-      setSnackbarOpen(true);
-      // 立即将新头像插入到列表最前面，提升用户体验
-      const newAvatar = {
-        id: data.id,
-        filename: file.name,
-        url: data.url || '',
-        uploaded_at: new Date().toISOString(),
-        is_current: true
-      };
-      setAvatars(prev => [newAvatar, ...prev]);
-      fetchAvatars();
-    } else {
-      setSnackbarMsg(data.msg || '上传失败');
+    
+    try {
+      const res = await fetch(API_PATH, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData
+      });
+      
+      const data = await res.json();
+      if (data.code === 0) {
+        setSnackbarMsg('上传成功');
+        setSnackbarOpen(true);
+        // 立即将新头像插入到列表最前面，提升用户体验
+        const newAvatar = {
+          id: data.id,
+          filename: file.name,
+          url: data.url || '',
+          uploaded_at: new Date().toISOString(),
+          is_current: true
+        };
+        setAvatars(prev => [newAvatar, ...prev]);
+        fetchAvatars();
+      } else {
+        throw new Error(data.msg || '上传失败');
+      }
+    } catch (error) {
+      setSnackbarMsg('上传失败: ' + error.message);
       setSnackbarOpen(true);
     }
   };
@@ -168,13 +215,26 @@ const AvatarsManager = () => {
                     key={avatar.id}
                     avatar={avatar}
                     index={index}
-                    onDelete={handleDelete}
+                    onDelete={confirmDelete}
                   />
                 ))}
             </Box>
           </SortableContext>
         </DndContext>
       </Paper>
+      
+      {/* 删除确认对话框 */}
+      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
+        <DialogTitle>确认删除</DialogTitle>
+        <DialogContent>
+          <Typography>确定要删除这个头像吗？此操作不可撤销。</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialogOpen(false)}>取消</Button>
+          <Button onClick={handleDelete} color="error" variant="contained">删除</Button>
+        </DialogActions>
+      </Dialog>
+      
       <Snackbar
         open={snackbarOpen}
         autoHideDuration={1500}
@@ -186,4 +246,4 @@ const AvatarsManager = () => {
   );
 };
 
-export default AvatarsManager; 
+export default AvatarsManager;
