@@ -45,7 +45,16 @@ function SortableAvatarCard({ avatar, index, onDelete, ...props }) {
           {avatar.uploaded_at ? new Date(avatar.uploaded_at).toLocaleString() : ''}
         </Box>
         <Tooltip title="删除">
-          <IconButton color="error" size="small" onClick={() => onDelete(avatar.id)}><DeleteIcon /></IconButton>
+          <IconButton
+            color="error"
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation(); // 防止触发拖拽事件
+              onDelete(avatar.id);
+            }}
+          >
+            <DeleteIcon />
+          </IconButton>
         </Tooltip>
       </Box>
     </div>
@@ -125,33 +134,48 @@ const AvatarsManager = () => {
 
   // 删除头像确认
   const confirmDelete = (avatarId) => {
+    console.log('confirmDelete called with avatarId:', avatarId);
     setAvatarToDelete(avatarId);
     setDeleteDialogOpen(true);
   };
 
   // 删除头像
   const handleDelete = async () => {
+    console.log('handleDelete called, avatarToDelete:', avatarToDelete);
     setDeleteDialogOpen(false);
-    
+
+    if (!avatarToDelete) {
+      console.error('No avatar to delete');
+      return;
+    }
+
     try {
       const token = localStorage.getItem('token');
+      console.log('Sending DELETE request to:', `${API_PATH}/${avatarToDelete}`);
+
       const res = await fetch(`${API_PATH}/${avatarToDelete}`, {
         method: 'DELETE',
-        headers: { 
+        headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
-      
+
+      console.log('DELETE response status:', res.status);
+
       if (res.ok) {
         const data = await res.json();
+        console.log('DELETE response data:', data);
         setSnackbarMsg(data.msg || '已删除头像');
         setSnackbarOpen(true);
         fetchAvatars(); // 刷新列表
       } else {
+        const errorText = await res.text();
+        console.error('DELETE failed:', res.status, res.statusText, errorText);
         throw new Error(`删除失败: ${res.status} ${res.statusText}`);
       }
     } catch (error) {
+      console.error('Delete error:', error);
       setSnackbarMsg('删除失败: ' + error.message);
       setSnackbarOpen(true);
     } finally {

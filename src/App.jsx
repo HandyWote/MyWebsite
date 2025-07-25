@@ -1,5 +1,5 @@
 // 导入所需的组件
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { useState, lazy, Suspense } from 'react';
 import { Box, CircularProgress } from '@mui/material';
@@ -8,13 +8,7 @@ import Home from './components/Home';
 import Projects from './components/Projects';
 import Articles from './components/Articles';
 import ArticleDetail from './components/ArticleDetail';
-import AdminLayout from './admin/components/AdminLayout'; // 懒加载的管理后台布局
-
-/**
- * App组件 - 应用程序的根组件
- * 负责组织和渲染所有主要页面组件
- * 支持路由功能，包括文章详情页面
- */
+import AdminRoutes from './admin/routes';
 
 // 创建自定义主题
 const theme = createTheme({
@@ -28,19 +22,17 @@ const theme = createTheme({
 function AppContent() {
   const location = useLocation();
   const isAdmin = location.pathname.startsWith('/admin');
+  
   return (
     <>
       {!isAdmin && <Navbar />}
       <Routes>
         {/* 文章详情页面路由 */}
         <Route path="/articles/:id" element={<ArticleDetail />} />
-        {/* 管理后台路由 */}
-        <Route path="/admin/*" element={<AdminRoutes />} />
-        {/* 主页面路由，只保留首页合并内容 */}
+        {/* 主页面路由 */}
         <Route path="/" element={
           <>
             <Home />    {/* 首页介绍 */}
-            {/* 关于我、技能、联系内容已合并到 Home.jsx 内部或直接在此插入 */}
             <Projects />{/* 项目展示组件 */}
             <Articles />{/* 文章组件 */}
           </>
@@ -63,12 +55,7 @@ function App() {
         }}>
           <Routes>
             {/* 前台页面 */}
-            <Route path="/" element={<Navbar darkMode={darkMode} setDarkMode={setDarkMode} />}>
-              <Route index element={<Home />} />
-              <Route path="articles" element={<Articles />} />
-              <Route path="articles/:id" element={<ArticleDetail />} />
-              <Route path="projects" element={<Projects />} />
-            </Route>
+            <Route path="/*" element={<AppContent />} />
             
             {/* 后台管理 */}
             <Route path="/admin/*" element={
@@ -77,7 +64,7 @@ function App() {
                   <CircularProgress />
                 </Box>
               }>
-                <AdminLayout />
+                <AdminRoutes />
               </Suspense>
             } />
           </Routes>

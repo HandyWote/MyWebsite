@@ -13,7 +13,9 @@ avatar_bp = Blueprint('avatar', __name__)
 @avatar_bp.route('/avatars', methods=['GET'])
 @jwt_required()
 def get_avatars():
+    print("GET /avatars request received")
     avatars = Avatar.query.filter_by(deleted_at=None).order_by(Avatar.uploaded_at.desc()).all()
+    print(f"Found {len(avatars)} avatars")
     return jsonify({'code': 0, 'msg': 'success', 'data': [
         {'id': a.id, 'filename': a.filename, 'is_current': a.is_current, 'cropped_info': a.cropped_info, 'uploaded_at': a.uploaded_at} for a in avatars
     ]})
@@ -60,8 +62,16 @@ def set_current_avatar(avatar_id):
 @avatar_bp.route('/avatars/<int:avatar_id>', methods=['DELETE'])
 @jwt_required()
 def delete_avatar(avatar_id):
-    avatar = Avatar.query.get_or_404(avatar_id)
-    avatar.deleted_at = datetime.utcnow()
-    db.session.commit()
-    socketio.emit('avatars_updated')
-    return jsonify({'code': 0, 'msg': '删除成功'}) 
+    print(f"DELETE request received for avatar_id: {avatar_id}")
+    try:
+        avatar = Avatar.query.get_or_404(avatar_id)
+        print(f"Found avatar: {avatar.id}, filename: {avatar.filename}")
+        avatar.deleted_at = datetime.utcnow()
+        db.session.commit()
+        print(f"Avatar {avatar_id} marked as deleted")
+        socketio.emit('avatars_updated')
+        return jsonify({'code': 0, 'msg': '删除成功'})
+    except Exception as e:
+        print(f"Error deleting avatar {avatar_id}: {str(e)}")
+        db.session.rollback()
+        return jsonify({'code': 1, 'msg': f'删除失败: {str(e)}'}), 500
