@@ -50,8 +50,14 @@ def create_app():
     }
     # 其它配置项如有需要可继续添加
 
-    # 启用 CORS
-    CORS(app, resources={r"/api/*": {"origins": "*"}})
+    # 启用 CORS - 修改为更宽松的配置
+    CORS(app, resources={
+        r"/api/*": {
+            "origins": ["http://localhost:3131", "http://localhost:5173", "http://localhost:3000"],
+            "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+            "allow_headers": ["Content-Type", "Authorization"]
+        }
+    })
 
     # 初始化扩展
     db.init_app(app)

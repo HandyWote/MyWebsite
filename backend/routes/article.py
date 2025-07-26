@@ -102,7 +102,7 @@ def ai_analyze_article():
 
     title = data.get('title', '').strip()
     content = data.get('content', '').strip()
-    summary = data.get('summary', '').strip()
+    summary = (data.get('summary') or '').strip()  # 修复：处理 None 值
 
     # 调用AI分析服务
     result = analyze_article_content(title, content, summary)
