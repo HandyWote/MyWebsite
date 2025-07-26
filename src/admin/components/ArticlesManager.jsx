@@ -68,6 +68,11 @@ const ArticlesManager = () => {
   const [aiAnalyzing, setAiAnalyzing] = useState(false);
   const [aiSuggestions, setAiSuggestions] = useState(null);
   const [importProgress, setImportProgress] = useState({ total: 0, success: 0, fail: 0, failFiles: [] });
+  
+  // 批量AI分析相关状态
+  const [batchAiAnalyzing, setBatchAiAnalyzing] = useState(false);
+  const [batchAiProgress, setBatchAiProgress] = useState({ current: 0, total: 0, success: 0, fail: 0, failedArticles: [] });
+  const [batchAiCancelled, setBatchAiCancelled] = useState(false);
 
   // 拉取文章
   const fetchArticles = async (params = {}) => {
@@ -308,17 +313,183 @@ const ArticlesManager = () => {
     return `http://localhost:5000${cover}`;
   };
 
+  // 批量AI分析功能
+  const handleBatchAiAnalyze = async () => {
+    if (!selected.length) return;
+    
+    setBatchAiAnalyzing(true);
+    setBatchAiCancelled(false);
+    setBatchAiProgress({ current: 0, total: selected.length, success: 0, fail: 0, failedArticles: [] });
+    
+    const token = localStorage.getItem('token');
+    let successCount = 0;
+    let failCount = 0;
+    const failedArticles = [];
+    
+    try {
+      for (let i = 0; i < selected.length; i++) {
+        if (batchAiCancelled) break;
+        
+        const articleId = selected[i];
+        setBatchAiProgress(prev => ({ ...prev, current: i + 1 }));
+        
+        try {
+          // 获取文章详情
+          const articleRes = await fetch(`http://localhost:5000/api/admin/articles/${articleId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          const articleData = await articleRes.json();
+          
+          if (!articleData.title || !articleData.content) {
+            failCount++;
+            failedArticles.push({ id: articleId, title: articleData.title || '未知标题', error: '标题或内容为空' });
+            continue;
+          }
+          
+          // AI分析
+          const aiRes = await fetch('http://localhost:5000/api/admin/articles/ai-analyze', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              title: articleData.title,
+              content: articleData.content,
+              summary: articleData.summary
+            })
+          });
+          
+          if (!aiRes.ok) {
+            throw new Error(`HTTP ${aiRes.status}`);
+          }
+          
+          const aiResult = await aiRes.json();
+          
+          if (aiResult.code === 0) {
+            // 应用AI建议并更新文章
+            const updateData = {
+              ...articleData,
+              category: aiResult.data.category || articleData.category,
+              tags: aiResult.data.tags ? aiResult.data.tags.join(',') : articleData.tags,
+              summary: aiResult.data.suggested_summary || articleData.summary
+            };
+            
+            const updateRes = await fetch(`http://localhost:5000/api/admin/articles/${articleId}`, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify(updateData)
+            });
+            
+            if (updateRes.ok) {
+              successCount++;
+            } else {
+              throw new Error('更新文章失败');
+            }
+          } else {
+            throw new Error(aiResult.msg || 'AI分析失败');
+          }
+          
+        } catch (error) {
+          failCount++;
+          failedArticles.push({ 
+            id: articleId, 
+            title: `文章ID: ${articleId}`, 
+            error: error.message 
+          });
+        }
+        
+        setBatchAiProgress(prev => ({ 
+          ...prev, 
+          success: successCount, 
+          fail: failCount, 
+          failedArticles 
+        }));
+        
+        // 添加延迟避免请求过快
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+      
+      // 完成后刷新列表和清空选择
+      await fetchArticles({ page: page + 1 });
+      setSelected([]);
+      
+      const message = batchAiCancelled 
+        ? `批量分析已取消。成功: ${successCount}篇，失败: ${failCount}篇`
+        : `批量分析完成！成功: ${successCount}篇，失败: ${failCount}篇`;
+      
+      setSnackbar({ 
+        open: true, 
+        message, 
+        severity: failCount > 0 ? 'warning' : 'success' 
+      });
+      
+    } catch (error) {
+      setSnackbar({ 
+        open: true, 
+        message: `批量分析出错: ${error.message}`, 
+        severity: 'error' 
+      });
+    } finally {
+      setBatchAiAnalyzing(false);
+      setBatchAiCancelled(false);
+    }
+  };
+  
+  // 取消批量AI分析
+  const handleCancelBatchAi = () => {
+    setBatchAiCancelled(true);
+  };
+
   return (
     <Box sx={{ p: 3 }}>
       <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
         <Button variant="contained" startIcon={<AddIcon />} onClick={() => openEdit()}>新增文章</Button>
         <Button variant="outlined" color="error" startIcon={<DeleteIcon />} disabled={!selected.length} onClick={() => handleDelete(selected)}>批量删除</Button>
+        <Button 
+          variant="outlined" 
+          color="primary" 
+          startIcon={batchAiAnalyzing ? <CircularProgress size={16} /> : <AutoAwesomeIcon />} 
+          disabled={!selected.length || batchAiAnalyzing} 
+          onClick={handleBatchAiAnalyze}
+        >
+          {batchAiAnalyzing ? '分析中...' : '批量AI分析'}
+        </Button>
         <Button variant="outlined" component="label" startIcon={<CloudUploadIcon />}>批量导入MD
           <input type="file" accept=".md" multiple hidden onChange={handleBatchImport} />
         </Button>
         <TextField size="small" placeholder="搜索标题" value={search} onChange={e => setSearch(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSearch()} sx={{ width: 200 }} />
         <Button variant="outlined" onClick={handleSearch}>搜索</Button>
       </Stack>
+      {/* 批量AI分析进度显示 */}
+      {batchAiAnalyzing && (
+        <Alert 
+          severity="info" 
+          sx={{ mb: 2 }}
+          action={
+            <Button color="inherit" size="small" onClick={handleCancelBatchAi}>
+              取消
+            </Button>
+          }
+        >
+          <Box>
+            <Typography variant="body2" gutterBottom>
+              正在进行批量AI分析：{batchAiProgress.current}/{batchAiProgress.total} 篇文章
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              成功: {batchAiProgress.success}篇，失败: {batchAiProgress.fail}篇
+            </Typography>
+            {batchAiProgress.failedArticles.length > 0 && (
+              <Typography variant="body2" color="error" sx={{ mt: 1 }}>
+                失败文章: {batchAiProgress.failedArticles.map(item => item.title).join(', ')}
+              </Typography>
+            )}
+          </Box>
+        </Alert>
+      )}
       <TableContainer component={Paper}>
         <Table size="small">
           <TableHead>
