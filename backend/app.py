@@ -1,35 +1,22 @@
 from flask import Flask
 from flask_cors import CORS
-from setup import Config  # Config类已经处理了环境变量加载
+from setup import Config
 from extensions import db, jwt, scheduler, socketio
 import os
-
 import logging
-from flask_socketio import SocketIO, emit
-from routes import register_all_blueprints
 
-# 添加gevent支持检测
-try:
-    from gevent import monkey
-    gevent_available = True
-except ImportError:
-    gevent_available = False
+# 配置日志
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 def create_app():
+    """Flask应用工厂函数"""
     app = Flask(__name__)
+    
+    # 加载配置
     config = Config()
     
-    # 记录环境变量加载情况（用于调试）
-    app.logger.info("Environment variables:")
-    app.logger.info(f"DB_HOST: {os.environ.get('DB_HOST', 'Not set')}")
-    app.logger.info(f"DB_PORT: {os.environ.get('DB_PORT', 'Not set')}")
-    app.logger.info(f"DB_USER: {os.environ.get('DB_USER', 'Not set')}")
-    app.logger.info(f"DB_PASSWORD: {'*' * len(os.environ.get('DB_PASSWORD', '')) if os.environ.get('DB_PASSWORD') else 'Not set'}")
-    app.logger.info(f"DB_NAME: {os.environ.get('DB_NAME', 'Not set')}")
-    app.logger.info(f"SECRET_KEY: {'*' * len(os.environ.get('SECRET_KEY', '')) if os.environ.get('SECRET_KEY') else 'Not set'}")
-    app.logger.info(f"SQLALCHEMY_DATABASE_URI: {config.SQLALCHEMY_DATABASE_URI}")
-    
-    # 正确设置所有配置项
+    # 设置所有配置项
     app.config["SQLALCHEMY_DATABASE_URI"] = config.SQLALCHEMY_DATABASE_URI
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = config.SQLALCHEMY_TRACK_MODIFICATIONS
     app.config["SECRET_KEY"] = config.SECRET_KEY
@@ -41,16 +28,16 @@ def create_app():
     app.config["OPENAI_MODEL"] = config.OPENAI_MODEL
     app.config["JWT_ACCESS_TOKEN_EXPIRES"] = config.JWT_ACCESS_TOKEN_EXPIRES
     app.config["JWT_REMEMBER_TOKEN_EXPIRES"] = config.JWT_REMEMBER_TOKEN_EXPIRES
-    # 添加数据库连接池配置
+    
+    # 数据库连接池配置
     app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
         "pool_size": 10,
         "pool_recycle": 120,
         "pool_pre_ping": True,
         "max_overflow": 20,
     }
-    # 其它配置项如有需要可继续添加
 
-    # 启用 CORS - 修改为更宽松的配置
+    # 启用 CORS
     CORS(app, resources={
         r"/api/*": {
             "origins": ["http://localhost:3131", "http://localhost:5173", "http://localhost:3000"],
@@ -64,58 +51,83 @@ def create_app():
     jwt.init_app(app)
     scheduler.init_app(app)
     
-    # 检测是否在Gunicorn环境中运行
+    # 检测运行环境并配置SocketIO
     is_gunicorn = "gunicorn" in os.environ.get("SERVER_SOFTWARE", "")
     
-    # 根据运行环境配置SocketIO
     if is_gunicorn:
-        # Gunicorn环境下禁用WebSocket支持以避免套接字错误
+        # Gunicorn环境下使用threading模式
         socketio.init_app(app, cors_allowed_origins="*", async_mode='threading')
+        logger.info("SocketIO initialized with threading mode for Gunicorn")
     else:
-        # 开发环境下启用完整的WebSocket支持
+        # 开发环境下使用完整WebSocket支持
         socketio.init_app(app, cors_allowed_origins="*", path='/socket.io/')
+        logger.info("SocketIO initialized with full WebSocket support")
 
-    # 注册所有蓝图
+    # 注册路由
+    from routes import register_all_blueprints
     register_all_blueprints(app)
 
-    # 确保上传目录存在
-    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+    # 确保上传目录存在 - 使用绝对路径
+    upload_dir = os.path.abspath(app.config['UPLOAD_FOLDER'])
+    os.makedirs(upload_dir, exist_ok=True)
+    logger.info(f"Upload directory ensured: {upload_dir}")
+
+    # 添加健康检查路由
+    @app.route('/health')
+    def health_check():
+        return {'status': 'healthy', 'message': 'Flask app is running'}, 200
+
+    # 在应用上下文中初始化数据库
+    with app.app_context():
+        try:
+            # 测试数据库连接
+            db.engine.execute('SELECT 1')
+            logger.info("Database connection successful")
+            
+            # 创建表结构
+            db.create_all()
+            logger.info("Database tables created/verified")
+        except Exception as e:
+            logger.error(f"Database initialization failed: {e}")
+            # 在生产环境中不要因为数据库问题而停止应用启动
+            pass
 
     return app
 
-
+# 创建应用实例
 app = create_app()
 
-# ========== WebSocket 路由 ==========
+# WebSocket 路由
 @socketio.on('connect', namespace='/skills')
 def ws_skills_connect():
-    print('WebSocket /skills connected')
-    emit('message', {'msg': 'skills ws connected'})
+    logger.info('WebSocket /skills connected')
+    socketio.emit('message', {'msg': 'skills ws connected'}, namespace='/skills')
 
 @socketio.on('connect', namespace='/contacts')
 def ws_contacts_connect():
-    print('WebSocket /contacts connected')
-    emit('message', {'msg': 'contacts ws connected'})
+    logger.info('WebSocket /contacts connected')
+    socketio.emit('message', {'msg': 'contacts ws connected'}, namespace='/contacts')
 
 @socketio.on('connect', namespace='/avatars')
 def ws_avatars_connect():
-    print('WebSocket /avatars connected')
-    emit('message', {'msg': 'avatars ws connected'})
+    logger.info('WebSocket /avatars connected')
+    socketio.emit('message', {'msg': 'avatars ws connected'}, namespace='/avatars')
 
 @socketio.on('connect', namespace='/articles')
 def ws_articles_connect():
-    print('WebSocket /articles connected')
-    emit('message', {'msg': 'articles ws connected'})
+    logger.info('WebSocket /articles connected')
+    socketio.emit('message', {'msg': 'articles ws connected'}, namespace='/articles')
 
 @socketio.on('connect', namespace='/logs')
 def ws_logs_connect():
-    print('WebSocket /logs connected')
-    emit('message', {'msg': 'logs ws connected'})
+    logger.info('WebSocket /logs connected')
+    socketio.emit('message', {'msg': 'logs ws connected'}, namespace='/logs')
 
 if __name__ == '__main__':
-    # -----------------------------
-    # 使用 gevent 启动，支持 WebSocket
-    # -----------------------------
-    if gevent_available:
-        monkey.patch_all()  # 必须：打补丁以支持协程和 WebSocket
+    # 开发环境启动
+    try:
+        from gevent import monkey
+        monkey.patch_all()
         socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+    except ImportError:
+        app.run(host='0.0.0.0', port=5000, debug=True)

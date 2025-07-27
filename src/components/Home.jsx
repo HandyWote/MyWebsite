@@ -117,10 +117,12 @@ const Home = () => {
       reconnectionAttempts: 5,
       reconnectionDelay: 1000
     });
+    
     socket.on('site_block_updated', fetchSiteBlock);
     socket.on('skills_updated', fetchSkills);
     socket.on('contacts_updated', fetchContacts);
     socket.on('avatars_updated', fetchAvatar);
+    
     return () => socket.disconnect();
   }, []);
 

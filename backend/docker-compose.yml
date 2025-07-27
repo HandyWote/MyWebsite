@@ -1,10 +1,11 @@
+version: '3.8'
 
 services:
   # 后端Flask应用服务
   backend:
     build:
       context: .
-      dockerfile: Dockerfile.backend
+      dockerfile: Dockerfile
     ports:
       - "5000:5000"
     env_file:
@@ -23,31 +24,13 @@ services:
       OPENAI_MODEL: ${OPENAI_MODEL:-gpt-3.5-turbo}
       TZ: Asia/Shanghai
     volumes:
-      - ./backend/uploads:/app/uploads
+      - ./uploads:/app/uploads
     networks:
-      - handywote_network
+      - backend_network
     extra_hosts:
       - "host.docker.internal:host-gateway"
     restart: unless-stopped
 
-  # 前端React应用服务
-  frontend:
-    build:
-      context: .
-      dockerfile: Dockerfile.frontend
-    ports:
-      - "3131:80"
-    env_file:
-      - .env
-    environment:
-      - NODE_ENV=production
-      - TZ=Asia/Shanghai
-    depends_on:
-      - backend
-    networks:
-      - handywote_network
-    restart: unless-stopped
-
 networks:
-  handywote_network:
+  backend_network:
     driver: bridge

@@ -4,12 +4,28 @@
 
 ### 第一次运行（完整设置）：
 ```bash
+cd backend
 python setup.py
 ```
 
 ### 后续启动（仅启动服务）：
 ```bash
+cd backend
 python setup.py
+```
+
+## 🐳 Docker 部署
+
+### 使用 Docker Compose 启动：
+```bash
+cd backend
+docker-compose up -d
+```
+
+### 构建并启动：
+```bash
+cd backend
+docker-compose up --build
 ```
 
 ## 📋 功能说明
@@ -23,14 +39,14 @@ python setup.py
 
 ## 🔧 配置说明
 
-如需修改配置，编辑项目根目录的 `.env` 文件：
+如需修改配置，编辑 `backend/.env` 文件：
 
 ```env
 # 数据库配置
 DB_HOST=localhost
 DB_PORT=5432
-DB_USER=n8n
-DB_PASSWORD=1234
+DB_USER=postgres
+DB_PASSWORD=password
 DB_NAME=mywebsite
 
 # 安全配置
@@ -66,6 +82,7 @@ JWT_REMEMBER_TOKEN_EXPIRES=604800
 ## 🛠️ 依赖安装
 
 ```bash
+cd backend
 pip install -r requirements.txt
 ```
 
@@ -75,10 +92,6 @@ pip install -r requirements.txt
 2. 确保 PostgreSQL 用户和密码正确
 3. 首次运行会自动创建数据库表结构
 4. 在 Docker 环境中使用时，需要特殊配置以确保与 Flask-SocketIO 兼容
-
-## 🐳 Docker 部署
-
-在 Docker 环境中，后端使用 Gunicorn 启动以提高性能和稳定性。Flask-SocketIO 被配置为使用线程模式以避免套接字错误。
 
 ## 🔒 安全提醒
 

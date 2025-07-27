@@ -1,31 +1,3 @@
-# Node.js相关
-node_modules
-npm-debug.log
-.npm
-.npmrc
-
-# Git相关
-.git
-.gitignore
-README.md
-
-# 编辑器相关
-.vscode
-.idea
-*.swp
-*.swo
-
-# 系统文件
-.DS_Store
-Thumbs.db
-
-# 日志文件
-*.log
-
-# 构建输出
-dist
-build
-
 # Python相关
 __pycache__
 *.pyc
@@ -81,6 +53,16 @@ ENV/
 *.sublime-project
 *.sublime-workspace
 
+# Git相关
+.git
+.gitignore
+
+# 日志文件
+*.log
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
 # 其他
 uploads/
-.DS_Store
