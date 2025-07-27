@@ -56,6 +56,16 @@ const DEMO_ARTICLES = [
   },
   {
     id: 3,
+    title: 'Mermaid 图表使用指南',
+    summary: '学习如何使用 Mermaid 创建各种类型的图表，包括流程图、时序图、甘特图等，让文档更加生动直观。',
+    category: '工具使用',
+    tags: ['Mermaid', '图表', '文档', '可视化'],
+    views: 520,
+    comment_count: 2,
+    created_at: '2024-01-20T16:45:00Z'
+  },
+  {
+    id: 4,
     title: '现代 CSS 布局技术',
     summary: '介绍现代 CSS 布局技术，包括 Flexbox、Grid、CSS Container Queries 等，以及如何在实际项目中灵活运用这些技术。',
     category: '前端开发',
@@ -66,7 +76,7 @@ const DEMO_ARTICLES = [
   }
 ];
 
-const DEMO_CATEGORIES = ['前端开发', '后端开发', '移动开发', '数据库', '运维部署'];
+const DEMO_CATEGORIES = ['前端开发', '后端开发', '工具使用', '移动开发', '数据库', '运维部署'];
 const DEMO_TAGS = {
   'React': 2,
   'JavaScript': 1,
@@ -76,6 +86,10 @@ const DEMO_TAGS = {
   'Flask': 1,
   '后端': 1,
   'API': 1,
+  'Mermaid': 1,
+  '图表': 1,
+  '文档': 1,
+  '可视化': 1,
   'CSS': 1,
   '布局': 1,
   'Flexbox': 1,
