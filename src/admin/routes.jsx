@@ -1,23 +1,79 @@
-import { Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { Box, CircularProgress, Alert } from '@mui/material';
+import { verifyToken, clearAuth, saveRedirectPath } from './utils/auth';
+
 import Login from './components/Login';
 import AdminLayout from './components/AdminLayout';
-import SiteContentEditor from './components/SiteContentEditor';
+import AboutManager from './components/AboutManager';
 import SkillsManager from './components/SkillsManager';
 import ContactsManager from './components/ContactsManager';
 import AvatarsManager from './components/AvatarsManager';
 import ArticlesManager from './components/ArticlesManager';
 import ArticleEditor from './components/ArticleEditor';
 import DataImportExport from './components/DataImportExport';
-import AboutManager from './components/AboutManager';
-import React from 'react';
 
-// 登录守卫组件
+// 增强的登录守卫组件
 function RequireAuth({ children }) {
-  const token = localStorage.getItem('token');
+  const [authState, setAuthState] = useState({
+    loading: true,
+    authenticated: false,
+    error: null
+  });
   const location = useLocation();
-  if (!token) {
-    return <Navigate to="/admin/login" state={{ from: location }} replace />;
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const result = await verifyToken();
+      
+      if (result.valid) {
+        setAuthState({ loading: false, authenticated: true, error: null });
+      } else {
+        clearAuth();
+        saveRedirectPath(location.pathname);
+        setAuthState({ 
+          loading: false, 
+          authenticated: false, 
+          error: result.error || '登录已过期，请重新登录' 
+        });
+      }
+    };
+
+    checkAuth();
+  }, [location.pathname]);
+
+  // 显示加载状态
+  if (authState.loading) {
+    return (
+      <Box 
+        display="flex" 
+        justifyContent="center" 
+        alignItems="center" 
+        minHeight="100vh"
+        flexDirection="column"
+        gap={2}
+      >
+        <CircularProgress />
+        <Box>验证登录状态...</Box>
+      </Box>
+    );
   }
+
+  // 认证失败，重定向到登录页
+  if (!authState.authenticated) {
+    return (
+      <Navigate 
+        to="/admin/login" 
+        state={{ 
+          from: location,
+          message: authState.error 
+        }} 
+        replace 
+      />
+    );
+  }
+
+  // 认证成功，渲染子组件
   return children;
 }
 

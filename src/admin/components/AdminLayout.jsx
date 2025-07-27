@@ -1,14 +1,15 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { AppBar, Toolbar, Typography, Box, Tabs, Tab, Button, useMediaQuery } from '@mui/material';
+import { Box, AppBar, Toolbar, Typography, Tabs, Tab, Button, useMediaQuery } from '@mui/material';
+import { verifyToken, clearAuth, saveRedirectPath } from '../utils/auth';
 
 const tabList = [
-  { label: '简介管理', path: '/admin/content' },
+  { label: '内容管理', path: '/admin/content' },
   { label: '技能管理', path: '/admin/skills' },
   { label: '联系方式', path: '/admin/contacts' },
   { label: '头像管理', path: '/admin/avatars' },
   { label: '文章管理', path: '/admin/articles' },
-  { label: '导入导出', path: '/admin/data' },
+  { label: '数据管理', path: '/admin/data' }
 ];
 
 const AdminLayout = () => {
@@ -17,13 +18,36 @@ const AdminLayout = () => {
   const isMobile = useMediaQuery('(max-width:900px)');
   const currentTab = tabList.findIndex(tab => location.pathname.startsWith(tab.path));
 
+  // 定期验证token有效性
+  useEffect(() => {
+    const checkTokenPeriodically = async () => {
+      const result = await verifyToken();
+      if (!result.valid) {
+        clearAuth();
+        saveRedirectPath(location.pathname);
+        navigate('/admin/login', { 
+          state: { message: '登录已过期，请重新登录' },
+          replace: true 
+        });
+      }
+    };
+
+    // 立即检查一次
+    checkTokenPeriodically();
+
+    // 每5分钟检查一次token有效性
+    const interval = setInterval(checkTokenPeriodically, 5 * 60 * 1000);
+
+    return () => clearInterval(interval);
+  }, [navigate, location.pathname]);
+
   const handleTabChange = (e, idx) => {
     navigate(tabList[idx].path);
   };
 
   const handleLogout = () => {
-    // TODO: 清除token
-    navigate('/admin/login');
+    clearAuth();
+    navigate('/admin/login', { replace: true });
   };
 
   return (
@@ -45,14 +69,14 @@ const AdminLayout = () => {
             boxShadow: '2px 0 8px rgba(0,0,0,0.03)',
             minHeight: 'calc(100vh - 64px)'
           }}>
-            <Tabs
+          <Tabs 
               orientation="vertical"
-              value={currentTab === -1 ? 0 : currentTab}
-              onChange={handleTabChange}
+            value={currentTab === -1 ? 0 : currentTab} 
+            onChange={handleTabChange}
               variant="scrollable"
               sx={{ height: '100%' }}
               TabIndicatorProps={{ style: { background: '#1976d2', width: 4, left: 0 } }}
-            >
+          >
               {tabList.map(tab => (
                 <Tab key={tab.path} label={tab.label} sx={{
                   alignItems: 'flex-start',
@@ -67,8 +91,8 @@ const AdminLayout = () => {
                     borderRadius: 0, // 直角
                   }
                 }} />
-              ))}
-            </Tabs>
+            ))}
+          </Tabs>
           </Box>
         )}
         {/* 右侧内容区，铺满剩余空间 */}
@@ -79,7 +103,7 @@ const AdminLayout = () => {
           p: { xs: 2, sm: 4 },
           overflow: 'auto'
         }}>
-          <Outlet />
+        <Outlet />
         </Box>
       </Box>
     </Box>
