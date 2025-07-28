@@ -15,11 +15,8 @@ RUN apt-get update && apt-get install -y \
 # 设置时区
 ENV TZ=Asia/Shanghai
 
-# 复制环境变量文件
-COPY .env* ./
-
 # 复制requirements文件
-COPY backend/requirements.txt .
+COPY requirements.txt .
 
 # 安装Python依赖
 RUN pip install --no-cache-dir -r requirements.txt
@@ -27,21 +24,24 @@ RUN pip install --no-cache-dir -r requirements.txt
 # 安装生产环境需要的gunicorn和gevent
 RUN pip install gunicorn gevent
 
-# 复制应用代码
-COPY backend/ .
-
-# 创建非root用户
+# 创建非root用户和必要目录
 RUN adduser --disabled-password --gecos '' appuser && \
+    mkdir -p /app/uploads && \
     chown -R appuser:appuser /app
-USER appuser
 
+# 复制环境变量文件
+COPY .env* ./
+
+# 复制应用代码
+COPY . .
+
+# 确保appuser对所有文件有正确权限
+RUN chown -R appuser:appuser /app
+
+USER appuser
 
 # 暴露端口
 EXPOSE 5000
 
-# 使用gunicorn启动应用（适合生产环境）
-# 添加--worker-class gevent和--worker-connections参数以更好地支持WebSocket
-# 添加--max-requests和--max-requests-jitter参数以防止内存泄漏
-# 添加--keep-alive参数以保持连接
-# 添加--timeout参数以处理长时间运行的请求
+# 使用gunicorn启动应用
 CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:5000", "--worker-class", "gevent", "--worker-connections", "1000", "--max-requests", "1000", "--max-requests-jitter", "100", "--keep-alive", "5", "--timeout", "30", "app:app"]
