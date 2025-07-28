@@ -50,20 +50,41 @@ def create_app():
     }
     # 其它配置项如有需要可继续添加
 
-    # 启用 CORS - 修改为更宽松的配置
-    CORS(app, resources={
-        r"/api/*": {
-            "origins": [
-                "http://localhost:3131", 
-                "http://localhost:5173", 
-                "http://localhost:3000",
-                "https://www.handywote.site",
-                "https://handywote.site"
-            ],
-            "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-            "allow_headers": ["Content-Type", "Authorization"]
-        }
-    })
+    # 启用 CORS - 修复跨域问题
+    CORS(app, 
+         resources={
+             r"/api/*": {
+                 "origins": [
+                     "http://localhost:3131", 
+                     "http://localhost:5173", 
+                     "http://localhost:3000",
+                     "https://www.handywote.site",
+                     "https://handywote.site",
+                     "http://www.handywote.site",
+                     "http://handywote.site"
+                 ],
+                 "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+                 "allow_headers": ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
+                 "expose_headers": ["Content-Type", "Authorization"],
+                 "supports_credentials": True,
+                 "max_age": 86400
+             }
+         },
+         origins=[
+             "http://localhost:3131", 
+             "http://localhost:5173", 
+             "http://localhost:3000",
+             "https://www.handywote.site",
+             "https://handywote.site",
+             "http://www.handywote.site",
+             "http://handywote.site"
+         ],
+         methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+         allow_headers=["Content-Type", "Authorization", "X-Requested-With", "Accept"],
+         expose_headers=["Content-Type", "Authorization"],
+         supports_credentials=True,
+         max_age=86400
+    )
 
     # 初始化扩展
     db.init_app(app)
