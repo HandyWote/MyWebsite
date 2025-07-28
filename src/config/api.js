@@ -2,7 +2,7 @@
 
 // 根据环境变量或默认值设置API基础URL
 const getApiBaseUrl = () => {
-  // 优先使用环境变量
+  // 优先使用环境变量（开发和生产环境都优先使用）
   if (import.meta.env.VITE_API_BASE_URL) {
     return import.meta.env.VITE_API_BASE_URL;
   }
@@ -12,7 +12,13 @@ const getApiBaseUrl = () => {
     return 'http://localhost:5000';
   }
   
-  // 生产环境默认值（可以根据实际情况调整）
+  // 生产环境默认值 - 使用当前域名
+  if (import.meta.env.PROD) {
+    // 生产环境默认使用当前域名，假设API在同一域名下
+    return window.location.origin;
+  }
+  
+  // 其他情况默认值
   return window.location.origin;
 };
 
