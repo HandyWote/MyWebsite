@@ -38,7 +38,8 @@ const Login = () => {
       const res = await fetch(getApiUrl.adminLogin(), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password, remember })
+        body: JSON.stringify({ username, password, remember }),
+        credentials: 'include'
       });
       
       const data = await res.json();

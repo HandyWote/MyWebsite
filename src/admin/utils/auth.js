@@ -8,12 +8,13 @@ export const verifyToken = async () => {
   }
 
   try {
-    const response = await fetch(`${getApiUrl.adminLogin()}/verify`, {
+    const response = await fetch(getApiUrl.adminLogin().replace('/login', '/verify'), {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
-      }
+      },
+      credentials: 'include'
     });
 
     if (response.ok) {

@@ -61,7 +61,8 @@ def create_app():
                      "https://www.handywote.site",
                      "https://handywote.site",
                      "http://www.handywote.site",
-                     "http://handywote.site"
+                     "http://handywote.site",
+                     "https://webbackend.handywote.site"
                  ],
                  "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
                  "allow_headers": ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
@@ -77,7 +78,8 @@ def create_app():
              "https://www.handywote.site",
              "https://handywote.site",
              "http://www.handywote.site",
-             "http://handywote.site"
+             "http://handywote.site",
+             "https://webbackend.handywote.site"
          ],
          methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
          allow_headers=["Content-Type", "Authorization", "X-Requested-With", "Accept"],

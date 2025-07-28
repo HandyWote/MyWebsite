@@ -21,11 +21,19 @@ def login():
     token = create_access_token(identity=config.ADMIN_USERNAME, expires_delta=expires)
     return jsonify({'code': 0, 'msg': 'success', 'token': token})
 
-@auth_bp.route('/verify', methods=['GET'])
-@jwt_required()
+@auth_bp.route('/verify', methods=['GET', 'OPTIONS'])
 def verify_token():
     """验证token有效性"""
+    if request.method == 'OPTIONS':
+        # 处理预检请求
+        return '', 200
+    
+    # 只有GET请求才需要JWT认证
+    from functools import wraps
+    from flask_jwt_extended import verify_jwt_in_request
+    
     try:
+        verify_jwt_in_request()
         identity = get_jwt_identity()
         return jsonify({
             'code': 0,
