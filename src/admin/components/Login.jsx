@@ -5,6 +5,7 @@ import {
   Alert, CircularProgress, Checkbox, FormControlLabel, Paper 
 } from '@mui/material';
 import { getAndClearRedirectPath } from '../utils/auth';
+import { getApiUrl } from '../../config/api'; // 导入API配置
 
 const Login = () => {
   const [username, setUsername] = useState('');
@@ -34,7 +35,7 @@ const Login = () => {
     setError('');
     
     try {
-      const res = await fetch('http://localhost:5000/api/admin/login', {
+      const res = await fetch(getApiUrl.adminLogin(), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password, remember })

@@ -31,8 +31,7 @@ import rehypeKatex from 'rehype-katex';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import 'katex/dist/katex.min.css';
-
-const API_BASE_URL = 'http://localhost:5000/api';
+import { getApiUrl } from '../config/api'; // 导入API配置
 
 // Mermaid 组件 - 使用动态导入避免同步渲染问题
 const MermaidComponent = ({ code }) => {
@@ -237,7 +236,7 @@ flowchart TD
   const fetchArticle = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/articles/${id}`);
+      const response = await fetch(getApiUrl.articleDetail(id));
       
       if (response.ok) {
         const data = await response.json();

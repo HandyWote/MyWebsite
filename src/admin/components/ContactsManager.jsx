@@ -6,8 +6,7 @@ import { CSS } from '@dnd-kit/utilities';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
-
-const API_PATH = 'http://localhost:5000/api/admin/contacts';
+import { getApiUrl } from '../../config/api'; // 导入API配置
 const CONTACT_TYPES = [
   { value: 'email', label: '邮箱' },
   { value: 'wechat', label: '微信' },
@@ -90,7 +89,7 @@ const ContactsManager = () => {
   const fetchContacts = async () => {
     setLoading(true);
     const token = localStorage.getItem('token');
-    const res = await fetch(API_PATH, {
+    const res = await fetch(getApiUrl.adminContacts(), {
       headers: {
         'Authorization': `Bearer ${token}`
       }
@@ -152,7 +151,7 @@ const ContactsManager = () => {
       const contact = editedContacts[i];
       // 新增的卡片（id为new_xxx）
       if (typeof contact.id === 'string' && contact.id.startsWith('new_')) {
-        await fetch(API_PATH, {
+        await fetch(getApiUrl.adminContacts(), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -164,7 +163,7 @@ const ContactsManager = () => {
           })
         });
       } else {
-        await fetch(`${API_PATH}/${contact.id}`, {
+        await fetch(`${getApiUrl.adminContacts()}/${contact.id}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -180,7 +179,7 @@ const ContactsManager = () => {
     // 删除操作：找出原有但已被移除的联系方式
     const deleted = contacts.filter(s => !editedContacts.some(e => e.id === s.id));
     for (let d of deleted) {
-      await fetch(`${API_PATH}/${d.id}`, {
+      await fetch(`${getApiUrl.adminContacts()}/${d.id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`

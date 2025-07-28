@@ -1,0 +1,10 @@
+# API配置
+# 开发环境API地址
+VITE_API_BASE_URL=http://117.72.109.148:5000/
+
+# 生产环境API地址（部署时修改）
+# VITE_API_BASE_URL=http://117.72.109.148:5000/
+
+# 其他配置
+# VITE_APP_TITLE=HandyWote
+# VITE_APP_VERSION=1.0.0 

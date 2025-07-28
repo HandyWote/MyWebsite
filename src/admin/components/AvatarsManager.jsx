@@ -5,8 +5,7 @@ import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-
-const API_PATH = 'http://localhost:5000/api/admin/avatars';
+import { getApiUrl } from '../../config/api'; // 导入API配置
 
 function SortableAvatarCard({ avatar, index, onDelete, ...props }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: avatar.id });
@@ -94,7 +93,7 @@ const AvatarsManager = () => {
     setLoading(true);
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch(API_PATH, {
+      const res = await fetch(getApiUrl.adminAvatars(), {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -102,8 +101,7 @@ const AvatarsManager = () => {
       const data = await res.json();
       // 兼容 data.data 和 data.avatars
       const arr = (data.data || data.avatars || []).map(a => {
-        const API_BASE_URL = "http://localhost:5000";
-        const url = a.filename ? `${API_BASE_URL}/api/admin/avatars/file/${a.filename}` : undefined;
+        const url = a.filename ? getApiUrl.adminAvatarFile(a.filename) : undefined;
         return { ...a, url };
       });
       setAvatars(arr);
@@ -132,7 +130,7 @@ const AvatarsManager = () => {
       const token = localStorage.getItem('token');
       if (newAvatars.length > 0) {
         try {
-          const res = await fetch(`${API_PATH}/${newAvatars[0].id}/set_current`, {
+          const res = await fetch(`${getApiUrl.adminAvatars()}/${newAvatars[0].id}/set_current`, {
             method: 'PUT',
             headers: { 'Authorization': `Bearer ${token}` }
           });
@@ -168,7 +166,7 @@ const AvatarsManager = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`${API_PATH}/${avatarToDelete}`, {
+              const res = await fetch(`${getApiUrl.adminAvatars()}/${avatarToDelete}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -201,7 +199,7 @@ const AvatarsManager = () => {
     formData.append('file', file);
     
     try {
-      const res = await fetch(API_PATH, {
+      const res = await fetch(getApiUrl.adminAvatars(), {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
         body: formData

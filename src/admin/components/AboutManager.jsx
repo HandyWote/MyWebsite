@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Box, Button, Typography, TextField, Paper, Divider, CircularProgress } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import axios from 'axios';
+import { getApiUrl } from '../../config/api'; // 导入API配置
 
 const PreviewBox = styled(Paper)(({ theme }) => ({
   padding: '2rem',
@@ -35,7 +36,7 @@ export default function AboutManager() {
   const fetchAbout = async () => {
     setLoading(true);
     try {
-      const res = await axios.get('/api/admin/site-blocks', {
+      const res = await axios.get(getApiUrl.adminSiteBlocks(), {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
       });
       const about = res.data.data.find((b) => b.name === 'about');
@@ -61,7 +62,7 @@ export default function AboutManager() {
     setSaving(true);
     try {
       await axios.put(
-        '/api/admin/site-blocks',
+        getApiUrl.adminSiteBlocks(),
         { blocks: [ { name: 'about', content: fields } ] },
         { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
       );

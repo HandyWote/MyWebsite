@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://localhost:5000/api/admin';
+import { getApiUrl } from '../../config/api'; // 导入API配置
 
 export const verifyToken = async () => {
   const token = localStorage.getItem('token');
@@ -8,7 +8,7 @@ export const verifyToken = async () => {
   }
 
   try {
-    const response = await fetch(`${API_BASE_URL}/verify`, {
+    const response = await fetch(`${getApiUrl.adminLogin()}/verify`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,

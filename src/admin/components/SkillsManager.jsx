@@ -7,8 +7,7 @@ import { CSS } from '@dnd-kit/utilities';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
-
-const API_PATH = 'http://localhost:5000/api/admin/skills';
+import { getApiUrl } from '../../config/api'; // 导入API配置
 
 function SortableSkillCard({ skill, index, onEdit, onAdd, onDelete, ...props }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: skill.id });
@@ -118,7 +117,7 @@ const SkillsManager = () => {
   const fetchSkills = async () => {
     setLoading(true);
     const token = localStorage.getItem('token');
-    const res = await fetch(API_PATH, {
+    const res = await fetch(getApiUrl.adminSkills(), {
       headers: {
         'Authorization': `Bearer ${token}`
       }
@@ -180,7 +179,7 @@ const SkillsManager = () => {
       const skill = editedSkills[i];
       // 新增的卡片（id为new_xxx）
       if (typeof skill.id === 'string' && skill.id.startsWith('new_')) {
-        await fetch(API_PATH, {
+        await fetch(getApiUrl.adminSkills(), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -193,7 +192,7 @@ const SkillsManager = () => {
           })
         });
       } else {
-        await fetch(`${API_PATH}/${skill.id}`, {
+        await fetch(`${getApiUrl.adminSkills()}/${skill.id}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -210,7 +209,7 @@ const SkillsManager = () => {
     // 删除操作：找出原有但已被移除的技能
     const deleted = skills.filter(s => !editedSkills.some(e => e.id === s.id));
     for (let d of deleted) {
-      await fetch(`${API_PATH}/${d.id}`, {
+      await fetch(`${getApiUrl.adminSkills()}/${d.id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
