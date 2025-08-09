@@ -11,6 +11,7 @@ import PhoneIcon from '@mui/icons-material/Phone';
 import Tooltip from '@mui/material/Tooltip';
 import Snackbar from '@mui/material/Snackbar';
 import SvgIcon from '@mui/material/SvgIcon';
+import { getApiUrl } from '../config/api'; // 导入API配置
 
 function WechatIcon(props) {
   return (
@@ -76,7 +77,7 @@ const Home = () => {
   // 拉取首页介绍、技能、联系方式、头像
   const fetchSiteBlock = async () => {
     try {
-      const res = await fetch('http://localhost:5000/api/site-blocks');
+      const res = await fetch(getApiUrl.siteBlocks());
       const data = await res.json();
       setSiteBlock(data.data.find(b => b.name === 'home'));
       setAboutBlock(data.data.find(b => b.name === 'about'));
@@ -84,24 +85,24 @@ const Home = () => {
   };
   const fetchSkills = async () => {
     try {
-      const res = await fetch('http://localhost:5000/api/skills');
+      const res = await fetch(getApiUrl.skills());
       const data = await res.json();
       setSkills(data.data || []);
     } catch {}
   };
   const fetchContacts = async () => {
     try {
-      const res = await fetch('http://localhost:5000/api/contacts');
+      const res = await fetch(getApiUrl.contacts());
       const data = await res.json();
       setContacts(data.data || []);
     } catch {}
   };
   const fetchAvatar = async () => {
     try {
-      const res = await fetch('http://localhost:5000/api/avatars');
+      const res = await fetch(getApiUrl.avatars());
       const data = await res.json();
       const current = (data.avatars || data.data || []).find(a => a.is_current);
-      setAvatarUrl(current ? `http://localhost:5000/api/admin/avatars/file/${current.filename}` : './avatar.jpg');
+      setAvatarUrl(current ? getApiUrl.avatarFile(current.filename) : './avatar.jpg');
     } catch { setAvatarUrl('./avatar.jpg'); }
   };
 
@@ -110,7 +111,7 @@ const Home = () => {
     fetchSkills();
     fetchContacts();
     fetchAvatar();
-    const socket = io('http://localhost:5000', { 
+    const socket = io(getApiUrl.websocket(), { 
       path: '/socket.io/',
       transports: ['websocket', 'polling'],
       reconnection: true,

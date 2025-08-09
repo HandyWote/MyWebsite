@@ -19,9 +19,7 @@ import rehypeMermaid from 'rehype-mermaid';
 import xss from 'xss';
 import Snackbar from '@mui/material/Snackbar';
 import 'katex/dist/katex.min.css';
-
-const API_PATH = 'http://localhost:5000/api/admin/articles';
-const UPLOAD_API = 'http://localhost:5000/api/admin/articles/cover'; // 文章封面上传接口
+import { getApiUrl } from '../../config/api'; // 导入API配置
 
 function parseMarkdown(md) {
   // 简单提取标题和正文
@@ -78,7 +76,7 @@ const ArticlesManager = () => {
   const fetchArticles = async (params = {}) => {
     setLoading(true);
     const token = localStorage.getItem('token');
-    const res = await fetch(`${API_PATH}?page=${params.page ?? page + 1}&per_page=${params.perPage ?? rowsPerPage}&search=${params.search ?? search}`,
+    const res = await fetch(`${getApiUrl.adminArticles()}?page=${params.page ?? page + 1}&per_page=${params.perPage ?? rowsPerPage}&search=${params.search ?? search}`,
       { headers: { 'Authorization': `Bearer ${token}` } });
     const data = await res.json();
     setArticles(data.data || []);
@@ -103,7 +101,7 @@ const ArticlesManager = () => {
     if (id) {
       // 拉取详情
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/admin/articles/${id}`, {
+      const res = await fetch(getApiUrl.adminArticleDetail(id), {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
@@ -142,7 +140,7 @@ const ArticlesManager = () => {
       const token = localStorage.getItem('token');
       console.log('开始AI分析请求...');
 
-      const response = await fetch('http://localhost:5000/api/admin/articles/ai-analyze', {
+      const response = await fetch(getApiUrl.adminArticleAiAnalyze(), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -212,7 +210,7 @@ const ArticlesManager = () => {
     try {
       const token = localStorage.getItem('token');
       const method = editId ? 'PUT' : 'POST';
-      const url = editId ? `${API_PATH}/${editId}` : API_PATH;
+      const url = editId ? getApiUrl.adminArticleDetail(editId) : getApiUrl.adminArticles();
       await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -235,13 +233,13 @@ const ArticlesManager = () => {
       const token = localStorage.getItem('token');
       const idArr = Array.isArray(ids) ? ids : [ids];
       if (idArr.length > 1) {
-        await fetch('http://localhost:5000/api/admin/articles/batch-delete', {
+        await fetch(getApiUrl.adminArticleBatchDelete(), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
           body: JSON.stringify({ ids: idArr })
         });
       } else {
-        await fetch(`${API_PATH}/${idArr[0]}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+                  await fetch(`${getApiUrl.adminArticles()}/${idArr[0]}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
       }
       setSelected([]);
       fetchArticles({ page: page + 1 });
@@ -260,7 +258,7 @@ const ArticlesManager = () => {
     const token = localStorage.getItem('token');
     const formData = new FormData();
     formData.append('file', file);
-    const res = await fetch(UPLOAD_API, {
+          const res = await fetch(getApiUrl.adminArticleCover(), {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${token}` },
       body: formData
@@ -280,7 +278,7 @@ const ArticlesManager = () => {
     const formData = new FormData();
     files.forEach(f => formData.append('files', f));
     try {
-      const res = await fetch('http://localhost:5000/api/admin/articles/import-md', {
+      const res = await fetch(getApiUrl.adminArticleImportMd(), {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
         body: formData
@@ -310,7 +308,7 @@ const ArticlesManager = () => {
   const getCoverUrl = cover => {
     if (!cover) return DEFAULT_COVER;
     if (/^https?:\/\//.test(cover)) return cover;
-    return `http://localhost:5000${cover}`;
+            return `${getApiUrl.websocket()}${cover}`;
   };
 
   // 批量AI分析功能
@@ -335,7 +333,7 @@ const ArticlesManager = () => {
         
         try {
           // 获取文章详情
-          const articleRes = await fetch(`http://localhost:5000/api/admin/articles/${articleId}`, {
+          const articleRes = await fetch(getApiUrl.adminArticleDetail(articleId), {
             headers: { 'Authorization': `Bearer ${token}` }
           });
           const articleData = await articleRes.json();
@@ -347,7 +345,7 @@ const ArticlesManager = () => {
           }
           
           // AI分析
-          const aiRes = await fetch('http://localhost:5000/api/admin/articles/ai-analyze', {
+                      const aiRes = await fetch(getApiUrl.adminArticleAiAnalyze(), {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -375,7 +373,7 @@ const ArticlesManager = () => {
               summary: aiResult.data.suggested_summary || articleData.summary
             };
             
-            const updateRes = await fetch(`http://localhost:5000/api/admin/articles/${articleId}`, {
+            const updateRes = await fetch(getApiUrl.adminArticleDetail(articleId), {
               method: 'PUT',
               headers: {
                 'Content-Type': 'application/json',

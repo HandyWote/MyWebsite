@@ -6,6 +6,7 @@ export default defineConfig({
   plugins: [react()],
   base: './',
   server: {
+<<<<<<< HEAD
     proxy: {
       // API代理配置
       '/api': {
@@ -41,6 +42,8 @@ export default defineConfig({
         rewrite: (path) => path,
       }
     },
+=======
+>>>>>>> 5780f09fc04f08aa869402194960dba7424d3fc3
     port: 3131,
     host: '0.0.0.0'
   }

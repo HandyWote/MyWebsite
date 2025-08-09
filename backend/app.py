@@ -4,6 +4,17 @@ from setup import Config
 from extensions import db, jwt, scheduler, socketio
 import os
 import logging
+<<<<<<< HEAD
+=======
+from flask_socketio import SocketIO, emit
+from routes import register_all_blueprints
+from models.site_block import SiteBlock
+from models.skill import Skill
+from models.contact import Contact
+from models.article import Article
+from models.avatar import Avatar
+from datetime import datetime
+>>>>>>> 5780f09fc04f08aa869402194960dba7424d3fc3
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
@@ -37,6 +48,7 @@ def create_app():
         "max_overflow": 20,
     }
 
+<<<<<<< HEAD
     # 启用 CORS
     CORS(app, resources={
         r"/api/*": {
@@ -45,6 +57,45 @@ def create_app():
             "allow_headers": ["Content-Type", "Authorization"]
         }
     })
+=======
+    # 启用 CORS - 修复跨域问题
+    CORS(app, 
+         resources={
+             r"/api/*": {
+                 "origins": [
+                     "http://localhost:3131", 
+                     "http://localhost:5173", 
+                     "http://localhost:3000",
+                     "https://www.handywote.site",
+                     "https://handywote.site",
+                     "http://www.handywote.site",
+                     "http://handywote.site",
+                     "https://webbackend.handywote.site"
+                 ],
+                 "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+                 "allow_headers": ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
+                 "expose_headers": ["Content-Type", "Authorization"],
+                 "supports_credentials": True,
+                 "max_age": 86400
+             }
+         },
+         origins=[
+             "http://localhost:3131", 
+             "http://localhost:5173", 
+             "http://localhost:3000",
+             "https://www.handywote.site",
+             "https://handywote.site",
+             "http://www.handywote.site",
+             "http://handywote.site",
+             "https://webbackend.handywote.site"
+         ],
+         methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+         allow_headers=["Content-Type", "Authorization", "X-Requested-With", "Accept"],
+         expose_headers=["Content-Type", "Authorization"],
+         supports_credentials=True,
+         max_age=86400
+    )
+>>>>>>> 5780f09fc04f08aa869402194960dba7424d3fc3
 
     # 初始化扩展
     db.init_app(app)
@@ -92,9 +143,78 @@ def create_app():
             # 在生产环境中不要因为数据库问题而停止应用启动
             pass
 
+    # 初始化数据库
+    init_database(app)
+
     return app
 
+<<<<<<< HEAD
 # 创建应用实例
+=======
+
+def init_database(app):
+    """初始化数据库表结构和示例数据"""
+    try:
+        with app.app_context():
+            app.logger.info("开始初始化数据库...")
+            
+            # 创建表结构
+            db.create_all()
+            app.logger.info("✅ 数据库表创建成功")
+            
+            # 插入示例数据（仅在表为空时）
+            if not SiteBlock.query.first():
+                blocks = [
+                    SiteBlock(name='home', content={"title": "HandyWote", "desc": "少年侠气交结五都雄！"}),
+                    SiteBlock(name='about', content={"desc": "汕头大学 | 黄应辉"}),
+                    SiteBlock(name='skills', content={}),
+                    SiteBlock(name='contact', content={}),
+                ]
+                db.session.add_all(blocks)
+                db.session.commit()
+                app.logger.info("✅ 示例分块内容插入成功")
+            
+            if not Skill.query.first():
+                skills = [
+                    Skill(name='Python', description='熟练掌握 Python 编程', level=90),
+                    Skill(name='React', description='熟悉 React 前端开发', level=85),
+                ]
+                db.session.add_all(skills)
+                db.session.commit()
+                app.logger.info("✅ 示例技能插入成功")
+            
+            if not Contact.query.first():
+                contacts = [
+                    Contact(type='email', value='handywote@example.com'),
+                    Contact(type='wechat', value='handywote123'),
+                ]
+                db.session.add_all(contacts)
+                db.session.commit()
+                app.logger.info("✅ 示例联系方式插入成功")
+            
+            if not Article.query.first():
+                article = Article(
+                    title='Hello World',
+                    category='前端开发',
+                    tags='React,JavaScript',
+                    cover='',
+                    summary='这是一篇示例文章',
+                    content='# Hello World\n欢迎使用管理后台！'
+                )
+                db.session.add(article)
+                db.session.commit()
+                app.logger.info("✅ 示例文章插入成功")
+                
+            app.logger.info("🎉 数据库初始化完成！")
+                
+    except Exception as e:
+        app.logger.error(f"❌ 数据库初始化失败: {e}")
+        import traceback
+        app.logger.error(traceback.format_exc())
+        # 不抛出异常，让应用继续启动，但数据库可能未正确初始化
+
+
+>>>>>>> 5780f09fc04f08aa869402194960dba7424d3fc3
 app = create_app()
 
 # WebSocket 路由

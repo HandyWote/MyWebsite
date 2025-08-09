@@ -18,9 +18,7 @@ import { motion } from 'framer-motion';
 import CloudDownloadIcon from '@mui/icons-material/CloudDownload';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import RefreshIcon from '@mui/icons-material/Refresh';
-
-const EXPORT_API_PATH = 'http://localhost:5000/api/admin/export';
-const IMPORT_API_PATH = 'http://localhost:5000/api/admin/import';
+import { getApiUrl } from '../../config/api'; // 导入API配置
 
 const DataImportExport = () => {
   const [loading, setLoading] = useState(false);
@@ -39,7 +37,7 @@ const DataImportExport = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(EXPORT_API_PATH, {
+      const res = await fetch(getApiUrl.adminExport(), {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -84,7 +82,7 @@ const DataImportExport = () => {
       const jsonData = JSON.parse(text);
       
       const token = localStorage.getItem('token');
-      const res = await fetch(IMPORT_API_PATH, {
+      const res = await fetch(getApiUrl.adminImport(), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

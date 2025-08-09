@@ -29,8 +29,7 @@ import {
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 import { Link as RouterLink } from 'react-router-dom';
-
-const API_BASE_URL = 'http://localhost:5000/api';
+import { getApiUrl } from '../config/api'; // 导入API配置
 
 // 演示数据
 const DEMO_ARTICLES = [
@@ -122,7 +121,7 @@ const Articles = () => {
       if (selectedCategory) params.append('category', selectedCategory);
       if (selectedTag) params.append('tag', selectedTag);
 
-      const response = await fetch(`${API_BASE_URL}/articles?${params}`);
+      const response = await fetch(`${getApiUrl.articles()}?${params}`);
       
       if (response.ok) {
         const data = await response.json();
@@ -168,8 +167,8 @@ const Articles = () => {
   const fetchCategoriesAndTags = async () => {
     try {
       const [categoriesResponse, tagsResponse] = await Promise.all([
-        fetch(`${API_BASE_URL}/categories`),
-        fetch(`${API_BASE_URL}/tags`)
+        fetch(getApiUrl.categories()),
+        fetch(getApiUrl.tags())
       ]);
 
       if (categoriesResponse.ok && tagsResponse.ok) {
@@ -541,7 +540,7 @@ const Articles = () => {
                             objectFit: 'cover',
                             flexShrink: 0 // 防止图片被压缩
                           }}
-                          image={`${API_BASE_URL.replace('/api', '')}${article.cover_image}`}
+                          image={article.cover_image ? `${getApiUrl.websocket()}${article.cover_image}` : undefined}
                           alt={article.title}
                         />
                       )}
