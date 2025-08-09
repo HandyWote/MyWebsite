@@ -44,7 +44,7 @@ def get_articles():
             'cover_image': article.cover,
             'summary': article.summary,
             'views': 0,  # 暂时设为0，后续可以添加浏览量字段
-            'comment_count': 0,  # 暂时设为0，后续可以添加评论功能
+            'comment_count': 0,  # 前端会计算实际评论数
             'created_at': article.created_at.isoformat() if article.created_at else None
         })
     
@@ -70,9 +70,6 @@ def get_article_detail(article_id):
     if article.tags:
         tags = [tag.strip() for tag in article.tags.split(',') if tag.strip()]
     
-    # 处理评论（暂时返回空数组）
-    comments = []
-    
     return jsonify({
         'code': 0,
         'msg': 'success',
@@ -84,8 +81,7 @@ def get_article_detail(article_id):
         'summary': article.summary,
         'content': article.content,
         'views': 0,  # 暂时设为0
-        'comment_count': 0,  # 暂时设为0
-        'comments': comments,
+        'comment_count': 0,  # 前端会计算实际评论数
         'created_at': article.created_at.isoformat() if article.created_at else None
     })
 
@@ -151,4 +147,4 @@ def get_site_blocks():
     blocks = SiteBlock.query.all()
     return jsonify({'code': 0, 'msg': 'success', 'data': [
         {'name': b.name, 'content': b.content, 'updated_at': b.updated_at} for b in blocks
-    ]}) 
+    ]})

@@ -76,6 +76,8 @@ export const API_ENDPOINTS = {
     AVATARS: '/api/avatars',                   // 头像列表
     ARTICLES: '/api/articles',                 // 文章列表
     ARTICLE_DETAIL: (id) => `/api/articles/${id}`, // 文章详情
+    ARTICLE_COMMENTS: (id) => `/api/articles/${id}/comments`,  // 获取文章评论
+    CREATE_COMMENT: (id) => `/api/articles/${id}/comments`,    // 创建评论
     CATEGORIES: '/api/categories',             // 文章分类
     TAGS: '/api/tags',                         // 文章标签
     AVATAR_FILE: (filename) => `/api/admin/avatars/file/${filename}`, // 头像文件
@@ -96,6 +98,8 @@ export const API_ENDPOINTS = {
     ARTICLE_AI_ANALYZE: '/api/admin/articles/ai-analyze', // AI分析文章
     ARTICLE_BATCH_DELETE: '/api/admin/articles/batch-delete', // 批量删除文章
     ARTICLE_IMPORT_MD: '/api/admin/articles/import-md', // 导入Markdown
+    ADMIN_COMMENTS: '/api/admin/comments',                   // 获取所有评论
+    DELETE_COMMENT: (id) => `/api/admin/comments/${id}`,      // 删除评论
     EXPORT: '/api/admin/export',               // 导出数据
     IMPORT: '/api/admin/import',               // 导入数据
   },
@@ -149,6 +153,8 @@ export const getApiUrl = {
   avatars: () => buildApiUrl(API_ENDPOINTS.PUBLIC.AVATARS),                   // 头像列表
   articles: () => buildApiUrl(API_ENDPOINTS.PUBLIC.ARTICLES),                 // 文章列表
   articleDetail: (id) => buildApiUrl(API_ENDPOINTS.PUBLIC.ARTICLE_DETAIL(id)), // 文章详情
+  articleComments: (id) => buildApiUrl(API_ENDPOINTS.PUBLIC.ARTICLE_COMMENTS(id)),  // 获取文章评论
+  createComment: (id) => buildApiUrl(API_ENDPOINTS.PUBLIC.CREATE_COMMENT(id)),      // 创建评论
   categories: () => buildApiUrl(API_ENDPOINTS.PUBLIC.CATEGORIES),             // 文章分类
   tags: () => buildApiUrl(API_ENDPOINTS.PUBLIC.TAGS),                         // 文章标签
   avatarFile: (filename) => buildApiUrl(API_ENDPOINTS.PUBLIC.AVATAR_FILE(filename)), // 头像文件
@@ -167,6 +173,8 @@ export const getApiUrl = {
   adminArticleAiAnalyze: () => buildApiUrl(API_ENDPOINTS.ADMIN.ARTICLE_AI_ANALYZE),
   adminArticleBatchDelete: () => buildApiUrl(API_ENDPOINTS.ADMIN.ARTICLE_BATCH_DELETE),
   adminArticleImportMd: () => buildApiUrl(API_ENDPOINTS.ADMIN.ARTICLE_IMPORT_MD),
+  adminComments: () => buildApiUrl(API_ENDPOINTS.ADMIN.ADMIN_COMMENTS),              // 获取所有评论
+  deleteComment: (id) => buildApiUrl(API_ENDPOINTS.ADMIN.DELETE_COMMENT(id)),         // 删除评论
   adminExport: () => buildApiUrl(API_ENDPOINTS.ADMIN.EXPORT),
   adminImport: () => buildApiUrl(API_ENDPOINTS.ADMIN.IMPORT),
   
@@ -180,4 +188,4 @@ export default {
   API_ENDPOINTS,
   getApiUrl,
   buildApiUrl,
-}; 
+};

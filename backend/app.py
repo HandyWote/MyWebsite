@@ -2,10 +2,6 @@ from flask import Flask
 from flask_cors import CORS
 from setup import Config
 from extensions import db, jwt, scheduler, socketio
-import os
-import logging
-<<<<<<< HEAD
-=======
 from flask_socketio import SocketIO, emit
 from routes import register_all_blueprints
 from models.site_block import SiteBlock
@@ -13,8 +9,10 @@ from models.skill import Skill
 from models.contact import Contact
 from models.article import Article
 from models.avatar import Avatar
+from models.comment import Comment
 from datetime import datetime
->>>>>>> 5780f09fc04f08aa869402194960dba7424d3fc3
+import os
+import logging
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
@@ -48,16 +46,6 @@ def create_app():
         "max_overflow": 20,
     }
 
-<<<<<<< HEAD
-    # 启用 CORS
-    CORS(app, resources={
-        r"/api/*": {
-            "origins": ["http://localhost:3131", "http://localhost:5173", "http://localhost:3000"],
-            "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-            "allow_headers": ["Content-Type", "Authorization"]
-        }
-    })
-=======
     # 启用 CORS - 修复跨域问题
     CORS(app, 
          resources={
@@ -95,7 +83,6 @@ def create_app():
          supports_credentials=True,
          max_age=86400
     )
->>>>>>> 5780f09fc04f08aa869402194960dba7424d3fc3
 
     # 初始化扩展
     db.init_app(app)
@@ -147,10 +134,6 @@ def create_app():
     init_database(app)
 
     return app
-
-<<<<<<< HEAD
-# 创建应用实例
-=======
 
 def init_database(app):
     """初始化数据库表结构和示例数据"""
@@ -213,8 +196,6 @@ def init_database(app):
         app.logger.error(traceback.format_exc())
         # 不抛出异常，让应用继续启动，但数据库可能未正确初始化
 
-
->>>>>>> 5780f09fc04f08aa869402194960dba7424d3fc3
 app = create_app()
 
 # WebSocket 路由

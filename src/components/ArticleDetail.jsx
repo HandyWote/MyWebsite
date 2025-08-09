@@ -170,6 +170,9 @@ const ArticleDetail = () => {
   const [demoMode, setDemoMode] = useState(false);
   const [newComment, setNewComment] = useState('');
   const [commentAuthor, setCommentAuthor] = useState('');
+  const [comments, setComments] = useState([]);
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [submittingComment, setSubmittingComment] = useState(false);
 
   // 演示文章详情数据
   const DEMO_ARTICLES_DETAIL = [
@@ -262,9 +265,74 @@ flowchart TD
     }
   };
 
+  // 获取文章评论
+  const fetchComments = async () => {
+    if (!article || demoMode) return;
+    
+    try {
+      setCommentsLoading(true);
+      const response = await fetch(getApiUrl.articleComments(article.id));
+      
+      if (response.ok) {
+        const data = await response.json();
+        setComments(data.comments || []);
+      }
+    } catch (error) {
+      console.error('获取评论失败:', error);
+    } finally {
+      setCommentsLoading(false);
+    }
+  };
+
+  // 提交评论
+  const handleSubmitComment = async () => {
+    if (!newComment.trim() || !commentAuthor.trim() || demoMode) return;
+    
+    try {
+      setSubmittingComment(true);
+      const response = await fetch(getApiUrl.createComment(article.id), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          author: commentAuthor.trim(),
+          email: '',  // 可选邮箱字段
+          content: newComment.trim(),
+        }),
+      });
+      
+      if (response.ok) {
+        // 清空输入框
+        setNewComment('');
+        setCommentAuthor('');
+        
+        // 重新获取评论列表
+        await fetchComments();
+        
+        // 显示成功消息
+        alert('评论发布成功！');
+      } else {
+        throw new Error('评论发布失败');
+      }
+    } catch (error) {
+      console.error('提交评论失败:', error);
+      alert('评论发布失败，请稍后重试');
+    } finally {
+      setSubmittingComment(false);
+    }
+  };
+
   useEffect(() => {
     fetchArticle();
   }, [id]);
+
+  // 在文章加载完成后获取评论
+  useEffect(() => {
+    if (article && !demoMode) {
+      fetchComments();
+    }
+  }, [article, demoMode]);
 
   // 分享文章
   const handleShare = () => {
@@ -527,7 +595,7 @@ flowchart TD
           }}
         >
           <Typography variant="h5" gutterBottom>
-            评论 ({article.comments?.length || 0})
+            评论 ({comments.length})
           </Typography>
 
           {/* 发表评论 */}
@@ -565,18 +633,23 @@ flowchart TD
             <Button
               variant="contained"
               startIcon={<SendIcon />}
-              disabled={demoMode || !newComment.trim() || !commentAuthor.trim()}
+              disabled={demoMode || !newComment.trim() || !commentAuthor.trim() || submittingComment}
+              onClick={handleSubmitComment}
             >
-              发表评论
+              {submittingComment ? '提交中...' : '发表评论'}
             </Button>
           </Box>
 
           <Divider sx={{ mb: 3 }} />
 
           {/* 评论列表 */}
-          {article.comments && article.comments.length > 0 ? (
+          {commentsLoading ? (
+            <Box textAlign="center" sx={{ py: 2 }}>
+              <Typography color="text.secondary">加载评论中...</Typography>
+            </Box>
+          ) : comments.length > 0 ? (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-              {article.comments.map((comment) => (
+              {comments.map((comment) => (
                 <Box key={comment.id} sx={{ display: 'flex', gap: 2 }}>
                   <Avatar sx={{ width: 40, height: 40 }}>
                     {comment.author.charAt(0)}
@@ -609,4 +682,4 @@ flowchart TD
   );
 };
 
-export default ArticleDetail; 
+export default ArticleDetail;
