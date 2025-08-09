@@ -65,6 +65,7 @@ lerna-debug.log*
 
 # Build output
 dist/
+dist.zip
 dist-ssr/
 build/
 *.local

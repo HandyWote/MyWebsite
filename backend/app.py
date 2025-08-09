@@ -141,9 +141,9 @@ def init_database(app):
         with app.app_context():
             app.logger.info("开始初始化数据库...")
             
-            # 创建表结构
-            db.create_all()
-            app.logger.info("✅ 数据库表创建成功")
+            # 创建表结构（使用checkfirst避免重复创建）
+            db.create_all(checkfirst=True)
+            app.logger.info("✅ 数据库表创建/检查完成")
             
             # 插入示例数据（仅在表为空时）
             if not SiteBlock.query.first():

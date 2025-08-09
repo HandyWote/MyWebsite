@@ -5,3 +5,4 @@ from .skill import Skill
 from .contact import Contact
 from .article import Article
 from .avatar import Avatar
+from .comment import Comment

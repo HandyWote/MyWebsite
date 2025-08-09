@@ -2,8 +2,8 @@ from flask import Blueprint, request, jsonify
 from extensions import db
 from models.comment import Comment
 from models.article import Article
-from utils.response import success_response, error_response
-from utils.decorators import require_auth
+from utils.response import success, error
+from flask_jwt_extended import jwt_required
 from datetime import datetime
 
 comment_bp = Blueprint('comment', __name__)
@@ -18,7 +18,7 @@ def get_article_comments(article_id):
         # 验证文章存在
         article = Article.query.filter_by(id=article_id, deleted_at=None).first()
         if not article:
-            return error_response('文章不存在', 404)
+            return error('文章不存在', 404)
         
         # 获取评论分页
         pagination = Comment.query.filter_by(article_id=article_id)\
@@ -27,14 +27,14 @@ def get_article_comments(article_id):
         
         comments = [comment.to_dict() for comment in pagination.items]
         
-        return success_response({
+        return success({
             'comments': comments,
             'total': pagination.total,
             'pages': pagination.pages,
             'current_page': page
         })
     except Exception as e:
-        return error_response(f'获取评论失败: {str(e)}', 500)
+        return error(f'获取评论失败: {str(e)}', 500)
 
 @comment_bp.route('/articles/<int:article_id>/comments', methods=['POST'])
 def create_comment(article_id):
@@ -44,12 +44,12 @@ def create_comment(article_id):
         
         # 验证必填字段
         if not data.get('author') or not data.get('content'):
-            return error_response('作者和内容不能为空', 400)
+            return error('作者和内容不能为空', 400)
         
         # 验证文章存在
         article = Article.query.filter_by(id=article_id, deleted_at=None).first()
         if not article:
-            return error_response('文章不存在', 404)
+            return error('文章不存在', 404)
         
         # 创建评论
         comment = Comment(
@@ -64,13 +64,13 @@ def create_comment(article_id):
         db.session.add(comment)
         db.session.commit()
         
-        return success_response({
+        return success({
             'comment': comment.to_dict(),
             'message': '评论发布成功'
         }, 201)
     except Exception as e:
         db.session.rollback()
-        return error_response(f'评论发布失败: {str(e)}', 500)
+        return error(f'评论发布失败: {str(e)}', 500)
 
 @comment_bp.route('/comments/<int:comment_id>', methods=['DELETE'])
 def delete_comment(comment_id):
@@ -80,15 +80,15 @@ def delete_comment(comment_id):
         db.session.delete(comment)
         db.session.commit()
         
-        return success_response({'message': '评论删除成功'})
+        return success({'message': '评论删除成功'})
     except Exception as e:
         db.session.rollback()
-        return error_response(f'评论删除失败: {str(e)}', 500)
+        return error(f'评论删除失败: {str(e)}', 500)
 
 # ========== 管理后台评论功能 ==========
 
 @comment_bp.route('/admin/comments', methods=['GET'])
-@require_auth
+@jwt_required
 def get_all_comments():
     """获取所有评论（管理后台）"""
     try:
@@ -109,17 +109,17 @@ def get_all_comments():
         
         comments = [comment.to_dict() for comment in pagination.items]
         
-        return success_response({
+        return success({
             'comments': comments,
             'total': pagination.total,
             'pages': pagination.pages,
             'current_page': page
         })
     except Exception as e:
-        return error_response(f'获取评论失败: {str(e)}', 500)
+        return error(f'获取评论失败: {str(e)}', 500)
 
 @comment_bp.route('/admin/comments/<int:comment_id>', methods=['DELETE'])
-@require_auth
+@jwt_required
 def admin_delete_comment(comment_id):
     """管理员删除评论"""
     try:
@@ -127,7 +127,7 @@ def admin_delete_comment(comment_id):
         db.session.delete(comment)
         db.session.commit()
         
-        return success_response({'message': '评论删除成功'})
+        return success({'message': '评论删除成功'})
     except Exception as e:
         db.session.rollback()
-        return error_response(f'评论删除失败: {str(e)}', 500)
+        return error(f'评论删除失败: {str(e)}', 500)
