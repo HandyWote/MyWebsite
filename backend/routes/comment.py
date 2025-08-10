@@ -88,7 +88,7 @@ def delete_comment(comment_id):
 # ========== 管理后台评论功能 ==========
 
 @comment_bp.route('/admin/comments', methods=['GET'])
-@jwt_required
+@jwt_required()
 def get_all_comments():
     """获取所有评论（管理后台）"""
     try:
@@ -119,7 +119,7 @@ def get_all_comments():
         return error(f'获取评论失败: {str(e)}', 500)
 
 @comment_bp.route('/admin/comments/<int:comment_id>', methods=['DELETE'])
-@jwt_required
+@jwt_required()
 def admin_delete_comment(comment_id):
     """管理员删除评论"""
     try:
