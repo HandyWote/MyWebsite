@@ -5,6 +5,25 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   base: './',
+  build: {
+    rollupOptions: {
+      output: {
+        chunkFileNames: 'assets/[name]-[hash].js',
+        entryFileNames: 'assets/[name]-[hash].js',
+        assetFileNames: 'assets/[name]-[hash].[ext]',
+        manualChunks: {
+          react: ['react', 'react-dom'],
+          mui: ['@mui/material', '@mui/icons-material'],
+          router: ['react-router-dom'],
+          utils: ['axios', 'moment', 'xss', 'socket.io-client'],
+          animation: ['framer-motion'],
+          markdown: ['marked', 'react-markdown', 'remark-gfm', 'rehype-katex']
+        }
+      }
+    },
+    chunkSizeWarningLimit: 1500,  // 适当提高警告阈值
+    cssCodeSplit: true
+  },
   server: {
     proxy: {
       // API代理配置
@@ -43,5 +62,8 @@ export default defineConfig({
     },
     port: 3131,
     host: '0.0.0.0'
+  },
+  optimizeDeps: {
+    include: ['react', 'react-dom', 'react-router-dom']
   }
 })

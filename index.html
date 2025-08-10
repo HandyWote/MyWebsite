@@ -7,9 +7,54 @@
     <meta name="description" content="HandyWote的个人网站 - 汕头大学" />
     <meta name="keywords" content="HandyWote, 黄应辉, 个人网站, 汕头大学" />
     <title>HandyWote - 个人网站</title>
+    
+    <!-- 预连接到外部API源 -->
+    <link rel="preconnect" href="https://api.github.com" />
+    <link rel="preconnect" href="https://ghchart.rshah.org" />
+    
+
+    <link rel="dns-prefetch" href="//fonts.gstatic.com" />
+    
+    <!-- 预加载关键资源 -->
+    <link rel="preload" href="./src/main.jsx" as="script" crossorigin="anonymous" />
+    <link rel="preload" href="./src/App.css" as="style" />
+    <link rel="preload" href="./src/index.css" as="style" />
+    <link rel="preload" href="./public/avatar.jpg" as="image" />
+    <link rel="preload" href="./public/default-cover.svg" as="image" />
+    
+    <!-- 性能优化meta标签 -->
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="theme-color" content="#1976d2" />
+    
+    <!-- 防止favicon请求 -->
+    <link rel="shortcut icon" href="#" />
+    
+    <!-- PWA支持 -->
+    <link rel="manifest" href="./manifest.json" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="HandyWote" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="msapplication-TileColor" content="#1976d2" />
+    <meta name="msapplication-tap-highlight" content="no" />
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="./src/main.jsx"></script>
+    
+    <!-- Service Worker注册脚本 -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('./sw.js')
+            .then(registration => {
+              console.log('ServiceWorker registration successful with scope: ', registration.scope);
+            })
+            .catch(error => {
+              console.log('ServiceWorker registration failed: ', error);
+            });
+        });
+      }
+    </script>
   </body>
 </html>

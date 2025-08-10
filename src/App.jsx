@@ -31,11 +31,11 @@ function AppContent() {
         <Route path="/articles/:id" element={<ArticleDetail />} />
         {/* 主页面路由 */}
         <Route path="/" element={
-          <>
-            <Home />    {/* 首页介绍 */}
-            <Projects />{/* 项目展示组件 */}
-            <Articles />{/* 文章组件 */}
-          </>
+            <>
+              <Home />    {/* 首页介绍 */}
+              <Projects />{/* 项目展示组件 */}
+              <Articles />{/* 文章组件 */}
+            </>
         } />
       </Routes>
     </>
@@ -67,6 +67,9 @@ function App() {
                 <AdminRoutes />
               </Suspense>
             } />
+            
+            {/* 后台管理 */}
+            <Route path="/admin/*" element={<AdminRoutes />} />
           </Routes>
         </Box>
       </Router>

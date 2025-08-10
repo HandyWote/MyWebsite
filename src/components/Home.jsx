@@ -5,13 +5,119 @@ import GitHubIcon from '@mui/icons-material/GitHub';  // GitHub图标
 import EmailIcon from '@mui/icons-material/Email'; // 邮箱图标
 import { LinearProgress } from '@mui/material'; // 进度条组件
 import { io } from 'socket.io-client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import PhoneIcon from '@mui/icons-material/Phone';
 import Tooltip from '@mui/material/Tooltip';
 import Snackbar from '@mui/material/Snackbar';
 import SvgIcon from '@mui/material/SvgIcon';
 import { getApiUrl } from '../config/api'; // 导入API配置
+
+// 懒加载图片组件
+const LazyImage = ({ src, alt, ...props }) => {
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [hasError, setHasError] = useState(false);
+  const imgRef = useRef();
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsLoaded(true);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (imgRef.current) {
+      observer.observe(imgRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <Box
+      ref={imgRef}
+      component="img"
+      src={isLoaded ? src : undefined}
+      alt={alt}
+      onLoad={() => setIsLoaded(true)}
+      onError={() => setHasError(true)}
+      sx={{
+        opacity: isLoaded ? 1 : 0,
+        transition: 'opacity 0.3s ease-in-out',
+        ...props.sx
+      }}
+      {...props}
+    />
+  );
+};
+
+// 懒加载GitHub日历组件
+const LazyGitHubCalendar = ({ src, alt, ...props }) => {
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [hasError, setHasError] = useState(false);
+  const calendarRef = useRef();
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          // 延迟加载，确保用户真的需要看到
+          const timer = setTimeout(() => {
+            setIsLoaded(true);
+            observer.disconnect();
+          }, 1000);
+          return () => clearTimeout(timer);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (calendarRef.current) {
+      observer.observe(calendarRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <Box ref={calendarRef}>
+      {!isLoaded && (
+        <Box sx={{ 
+          height: '200px', 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center',
+          backgroundColor: 'rgba(0,0,0,0.05)',
+          borderRadius: 1
+        }}>
+          <Typography variant="body2" color="text.secondary">
+            正在加载GitHub贡献日历...
+          </Typography>
+        </Box>
+      )}
+      {isLoaded && (
+        <LazyImage
+          src={src}
+          alt={alt}
+          onError={() => setHasError(true)}
+          sx={{
+            filter: 'opacity(0.9)',
+            transition: 'filter 0.3s ease',
+            '&:hover': {
+              filter: 'opacity(1)'
+            },
+            ...props.sx
+          }}
+          {...props}
+        />
+      )}
+    </Box>
+  );
+};
 
 function WechatIcon(props) {
   return (
@@ -156,13 +262,10 @@ const Home = () => {
               transition={{ delay: 0.3, duration: 0.5 }}
             >
               {avatarUrl ? (
-                <Box
-                  component="img"
+                <LazyImage
                   src={avatarUrl}
                   alt="HandyWote"
-                  onError={(e) => {
-                    e.target.src = './avatar.jpg';
-                  }}
+                  fallbackSrc="./avatar.jpg"
                   sx={{
                     width: { xs: 140, sm: 180 },
                     height: { xs: 140, sm: 180 },
@@ -243,17 +346,9 @@ const Home = () => {
                 >
                   GitHub 贡献日历
                 </Typography>
-                <Box
-                  component="img"
+                <LazyGitHubCalendar
                   src={siteBlock?.github_calendar_url || "https://ghchart.rshah.org/HandyWote"}
                   alt="GitHub Contributions"
-                  sx={{
-                    filter: 'opacity(0.9)',
-                    transition: 'filter 0.3s ease',
-                    '&:hover': {
-                      filter: 'opacity(1)'
-                    }
-                  }}
                 />
               </Box>
             </motion.div>

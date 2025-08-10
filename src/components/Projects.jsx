@@ -82,8 +82,20 @@ const Projects = () => {
   // 获取GitHub项目数据
   const fetchProjectsFromGitHub = async () => {
     try {
+      // 添加AbortController以支持请求超时
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10秒超时
+
       // 获取用户所有仓库
-      const response = await fetch('https://api.github.com/users/HandyWote/repos');
+      const response = await fetch('https://api.github.com/users/HandyWote/repos', {
+        signal: controller.signal,
+        headers: {
+          'Accept': 'application/vnd.github.v3+json',
+          'User-Agent': 'HandyWote-Portfolio'
+        }
+      });
+      
+      clearTimeout(timeoutId);
       
       // 检查响应状态
       if (!response.ok) {
