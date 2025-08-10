@@ -275,7 +275,10 @@ flowchart TD
       
       if (response.ok) {
         const data = await response.json();
-        setComments(data.comments || []);
+        console.log('获取到的评论数据:', data); // 添加调试日志
+        setComments(data.data.comments || []); // 修复：应该是 data.data.comments
+      } else {
+        console.error('获取评论失败，状态码:', response.status);
       }
     } catch (error) {
       console.error('获取评论失败:', error);
