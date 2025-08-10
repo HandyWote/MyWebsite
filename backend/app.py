@@ -1,7 +1,7 @@
 from flask import Flask
 from flask_cors import CORS
 from setup import Config
-from extensions import db, jwt, scheduler, socketio
+from extensions import db, jwt, scheduler, socketio, cors
 from flask_socketio import SocketIO, emit
 from routes import register_all_blueprints
 from models.site_block import SiteBlock
@@ -47,7 +47,7 @@ def create_app():
     }
 
     # 启用 CORS - 修复跨域问题
-    CORS(app, 
+    cors.init_app(app, 
          resources={
              r"/api/*": {
                  "origins": [
@@ -115,14 +115,36 @@ def create_app():
     def health_check():
         return {'status': 'healthy', 'message': 'Flask app is running'}, 200
 
+    # 添加路由映射查看路由（调试用）
+    @app.route('/api/debug/routes')
+    def debug_routes():
+        """查看所有注册的路由"""
+        routes = []
+        for rule in app.url_map.iter_rules():
+            routes.append({
+                'endpoint': rule.endpoint,
+                'methods': list(rule.methods),
+                'rule': rule.rule,
+                'arguments': list(rule.arguments)
+            })
+        
+        # 按照规则排序
+        routes.sort(key=lambda x: x['rule'])
+        
+        return {
+            'total_routes': len(routes),
+            'routes': routes
+        }
+
     # 在应用上下文中初始化数据库
     with app.app_context():
         try:
-            # 测试数据库连接
-            db.engine.execute('SELECT 1')
+            # 测试数据库连接 - 修复SQLAlchemy兼容性问题
+            from sqlalchemy import text
+            db.session.execute(text('SELECT 1'))
             logger.info("Database connection successful")
             
-            # 创建表结构
+            # 创建表结构 - 修复SQLAlchemy兼容性问题
             db.create_all()
             logger.info("Database tables created/verified")
         except Exception as e:
@@ -141,8 +163,8 @@ def init_database(app):
         with app.app_context():
             app.logger.info("开始初始化数据库...")
             
-            # 创建表结构（使用checkfirst避免重复创建）
-            db.create_all(checkfirst=True)
+            # 创建表结构 - 修复SQLAlchemy兼容性问题
+            db.create_all()
             app.logger.info("✅ 数据库表创建/检查完成")
             
             # 插入示例数据（仅在表为空时）
