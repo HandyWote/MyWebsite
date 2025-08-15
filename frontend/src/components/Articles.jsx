@@ -1,35 +1,18 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Container,
   Grid,
-  Card,
-  CardContent,
-  CardMedia,
-  Typography,
   Box,
-  TextField,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Chip,
-  Button,
-  Pagination,
-  Skeleton,
   Alert,
-  IconButton,
-  InputAdornment
+  Typography,
 } from '@mui/material';
-import {
-  Search as SearchIcon,
-  Visibility as VisibilityIcon,
-  Comment as CommentIcon,
-  Share as ShareIcon,
-  CalendarToday as CalendarIcon
-} from '@mui/icons-material';
 import { motion } from 'framer-motion';
-import { Link as RouterLink } from 'react-router-dom';
 import { getApiUrl } from '../config/api'; // 导入API配置
+
+// 导入子组件
+import ArticleCard from './ArticleCard';
+import ArticleFilters from './ArticleFilters';
+import ArticlePagination from './ArticlePagination';
 
 // 演示数据
 const DEMO_ARTICLES = [
@@ -95,6 +78,15 @@ const DEMO_TAGS = {
   'Grid': 1
 };
 
+/**
+ * Articles组件 - 文章列表页面
+ * 包含以下功能：
+ * 1. 文章列表展示
+ * 2. 搜索和筛选功能
+ * 3. 分页功能
+ * 4. 响应式设计
+ * 5. 演示模式（当后端不可用时）
+ */
 const Articles = () => {
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -197,31 +189,39 @@ const Articles = () => {
   }, [currentPage, searchTerm, selectedCategory, selectedTag]);
 
   // 处理搜索
-  const handleSearch = (event) => {
+  const handleSearch = useCallback((event) => {
     setSearchTerm(event.target.value);
     setCurrentPage(1);
-  };
+  }, []);
 
   // 处理分类筛选
-  const handleCategoryChange = (event) => {
+  const handleCategoryChange = useCallback((event) => {
     setSelectedCategory(event.target.value);
     setCurrentPage(1);
-  };
+  }, []);
 
   // 处理标签筛选
-  const handleTagClick = (tag) => {
+  const handleTagClick = useCallback((tag) => {
     setSelectedTag(selectedTag === tag ? '' : tag);
     setCurrentPage(1);
-  };
+  }, [selectedTag]);
 
   // 处理分页
-  const handlePageChange = (event, value) => {
+  const handlePageChange = useCallback((event, value) => {
     setCurrentPage(value);
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+  }, []);
+
+  // 清除所有筛选
+  const handleClearFilters = useCallback(() => {
+    setSearchTerm('');
+    setSelectedCategory('');
+    setSelectedTag('');
+    setCurrentPage(1);
+  }, []);
 
   // 分享文章
-  const handleShare = (article) => {
+  const handleShare = useCallback((article) => {
     const url = `${window.location.origin}/articles/${article.id}`;
     const text = `${article.title} - ${article.summary}`;
     
@@ -236,23 +236,7 @@ const Articles = () => {
         alert('链接已复制到剪贴板');
       });
     }
-  };
-
-  // 格式化日期
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('zh-CN', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  };
-
-  // 卡片动画变体
-  const cardVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0 }
-  };
+  }, []);
 
   if (error) {
     return (
@@ -300,403 +284,99 @@ const Articles = () => {
             我的文章
           </Typography>
 
-        {/* 搜索和筛选区域 */}
-        <Box sx={{ 
-          mb: 6,
-          '& .MuiTextField-root': {
-            '@media (prefers-color-scheme: dark)': {
-              '& .MuiOutlinedInput-root': {
-                backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                '& fieldset': {
-                  borderColor: 'rgba(255, 255, 255, 0.2)'
-                }
-              }
-            }
-          },
-          '& .MuiFormControl-root': {
-            '@media (prefers-color-scheme: dark)': {
-              '& .MuiOutlinedInput-root': {
-                backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                '& fieldset': {
-                  borderColor: 'rgba(255, 255, 255, 0.2)'
-                }
-              }
-            }
-          }
-        }}>
-          <Grid container spacing={3} alignItems="stretch">
-            {/* 搜索框 */}
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                placeholder="搜索文章..."
-                value={searchTerm}
-                onChange={handleSearch}
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    height: '50px !important', // 强制统一高度
-                    display: 'flex',
-                    alignItems: 'center',
-                    boxSizing: 'border-box',
-                    '& fieldset': {
-                      borderColor: 'rgba(0, 0, 0, 0.23)'
-                    },
-                    '&:hover fieldset': {
-                      borderColor: 'rgba(0, 0, 0, 0.87)'
-                    },
-                    '&.Mui-focused fieldset': {
-                      borderColor: 'primary.main'
-                    }
-                  },
-                  '& .MuiInputBase-input': {
-                    height: '50px !important',
-                    display: 'flex',
-                    alignItems: 'center',
-                    fontSize: '1rem',
-                    padding: '16px 14px',
-                    boxSizing: 'border-box'
-                  }
-                }}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SearchIcon />
-                    </InputAdornment>
-                  )
-                }}
-              />
-            </Grid>
+          {/* 搜索和筛选区域 */}
+          <ArticleFilters
+            searchTerm={searchTerm}
+            onSearchChange={handleSearch}
+            selectedCategory={selectedCategory}
+            onCategoryChange={handleCategoryChange}
+            selectedTag={selectedTag}
+            onTagClick={handleTagClick}
+            categories={categories}
+            tags={tags}
+            onClearFilters={handleClearFilters}
+          />
 
-            {/* 分类筛选 */}
-            <Grid item xs={12} md={3}>
-              <FormControl fullWidth>
-                <InputLabel sx={{ fontSize: '1rem' }}>分类</InputLabel>
-                <Select
-                  value={selectedCategory}
-                  label="分类"
-                  onChange={handleCategoryChange}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      height: '50px !important', // 强制统一高度
-                      display: 'flex',
-                      alignItems: 'center',
-                      boxSizing: 'border-box'
-                    },
-                    '& .MuiOutlinedInput-input': {
-                      height: '50px !important', // 强制统一高度
-                      display: 'flex',
-                      alignItems: 'center',
-                      fontSize: '1rem',
-                      padding: '16px 14px',
-                      boxSizing: 'border-box'
-                    },
-                    '& .MuiSelect-select': {
-                      height: '50px !important', // 强制统一高度
-                      display: 'flex',
-                      alignItems: 'center',
-                      fontSize: '1rem',
-                      padding: '16px 14px',
-                      boxSizing: 'border-box',
-                      lineHeight: '50px'
-                    },
-                    '& .MuiInputBase-input': {
-                      height: '50px !important',
-                      boxSizing: 'border-box'
-                    }
-                  }}
-                >
-                  <MenuItem value="">全部</MenuItem>
-                  {Array.isArray(categories) && categories.map((category) => (
-                    <MenuItem key={category} value={category}>
-                      {category}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-
-            {/* 清除筛选 */}
-            <Grid item xs={12} md={3}>
-              <Button
-                variant="outlined"
-                onClick={() => {
-                  setSearchTerm('');
-                  setSelectedCategory('');
-                  setSelectedTag('');
-                  setCurrentPage(1);
-                }}
-                fullWidth
-                sx={{
-                  height: '50px !important', // 强制统一高度
-                  fontSize: '1rem',
-                  fontWeight: 500,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: '16px 14px',
-                  textTransform: 'none',
-                  boxSizing: 'border-box'
-                }}
-              >
-                清除筛选
-              </Button>
-            </Grid>
-          </Grid>
-
-          {/* 标签筛选 */}
-          {Object.keys(tags).length > 0 && (
-            <Box sx={{ mt: 3 }}>
-              <Typography variant="h6" gutterBottom>
-                标签筛选:
-              </Typography>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                {Object.entries(tags).map(([tag, count]) => (
-                  <Chip
-                    key={tag}
-                    label={`${tag} (${count})`}
-                    clickable
-                    color={selectedTag === tag ? 'primary' : 'default'}
-                    onClick={() => handleTagClick(tag)}
-                    variant={selectedTag === tag ? 'filled' : 'outlined'}
-                  />
-                ))}
-              </Box>
-            </Box>
-          )}
-        </Box>
-
-        {/* 文章列表 */}
-        {loading ? (
-          <Grid container spacing={3}>
-            {[...Array(6)].map((_, index) => (
-              <Grid item xs={12} key={index}>
-                <Card sx={{ height: '200px', display: 'flex', flexDirection: 'row' }}>
-                  <Skeleton variant="rectangular" sx={{ width: '200px', height: '200px', flexShrink: 0 }} />
-                  <CardContent sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                    <Box>
-                      <Skeleton variant="rectangular" width={80} height={24} sx={{ mb: 1 }} />
-                      <Skeleton variant="text" height={32} sx={{ mb: 1 }} />
-                      <Skeleton variant="text" height={20} sx={{ mb: 1 }} />
-                      <Skeleton variant="text" height={20} sx={{ mb: 2 }} />
-                      <Box sx={{ display: 'flex', gap: 0.5, mb: 2 }}>
-                        <Skeleton variant="rectangular" width={60} height={24} />
-                        <Skeleton variant="rectangular" width={60} height={24} />
-                        <Skeleton variant="rectangular" width={60} height={24} />
-                      </Box>
-                      <Skeleton variant="rectangular" width="100%" height={32} />
-                    </Box>
-                  </CardContent>
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
-        ) : articles.length === 0 ? (
-          <Box textAlign="center" py={8}>
-            <Typography variant="h6" color="text.secondary">
-              暂无文章
-            </Typography>
-          </Box>
-        ) : (
-          <>
+          {/* 文章列表 */}
+          {loading ? (
             <Grid container spacing={3}>
-              {articles.map((article, index) => (
-                <Grid item xs={12} key={article.id}>
-                  <motion.div
-                    variants={cardVariants}
-                    initial="hidden"
-                    animate="visible"
-                    transition={{ delay: index * 0.1 }}
-                  >
-                    <Card
-                      sx={{
-                        height: 'auto',
-                        display: 'flex',
-                        flexDirection: 'row', // 水平布局
-                        transition: 'transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out',
-                        backgroundColor: 'rgba(255, 255, 255, 0.8)',
-                        backdropFilter: 'blur(10px)',
-                        border: '1px solid rgba(255, 255, 255, 0.2)',
-                        '@media (prefers-color-scheme: dark)': {
-                          backgroundColor: 'rgba(30, 30, 30, 0.8)',
-                          border: '1px solid rgba(255, 255, 255, 0.1)',
-                          color: '#e5e5e5'
-                        },
-                        '&:hover': {
-                          transform: 'translateY(-4px)',
-                          boxShadow: '0 8px 25px rgba(0,0,0,0.15)',
-                          '@media (prefers-color-scheme: dark)': {
-                            boxShadow: '0 8px 25px rgba(255,255,255,0.1)'
-                          }
-                        }
-                      }}
-                    >
-                      {/* 封面图片 */}
-                      {article.cover_image && (
-                        <CardMedia
-                          component="img"
-                          sx={{ 
-                            width: { xs: '150px', sm: '180px', md: '200px' },
-                            height: 'auto',
-                            objectFit: 'cover',
-                            flexShrink: 0 // 防止图片被压缩
-                          }}
-                          image={article.cover_image ? `${getApiUrl.websocket()}${article.cover_image}` : undefined}
-                          alt={article.title}
-                        />
-                      )}
-
-                      <CardContent sx={{ 
-                        flexGrow: 1, 
-                        display: 'flex', 
-                        flexDirection: 'column',
-                        padding: '1.5rem'
-                      }}>
-                        <Box sx={{ flexGrow: 1 }}>
-                          {/* 分类 */}
-                          <Chip
-                            label={article.category}
-                            size="small"
-                            color="primary"
-                            sx={{ 
-                              alignSelf: 'flex-start', 
-                              mb: 1,
-                              height: '24px',
-                              fontSize: '0.75rem'
-                            }}
-                          />
-
-                          {/* 标题 */}
-                          <Typography
-                            variant="h6"
-                            component={RouterLink}
-                            to={`/articles/${article.id}`}
-                            sx={{
-                              fontWeight: 'bold',
-                              cursor: 'pointer',
-                              '&:hover': { color: 'primary.main' },
-                              textDecoration: 'none',
-                              color: 'inherit',
-                              fontSize: '1.25rem',
-                              lineHeight: 1.3,
-                              mb: 1,
-                              mt: 0,
-                              pt: 0
-                            }}
-                          >
-                            {article.title}
-                          </Typography>
-
-                          {/* 摘要 */}
-                          <Typography
-                            variant="body2"
-                            color="text.secondary"
-                            sx={{ 
-                              mb: 2, 
-                              flexGrow: 1,
-                              lineHeight: 1.6
-                            }}
-                          >
-                            {article.summary}
-                          </Typography>
-
-                          {/* 标签 */}
-                          {article.tags && article.tags.length > 0 && (
-                            <Box sx={{ 
-                              mb: 2, 
-                              display: 'flex', 
-                              flexWrap: 'wrap', 
-                              gap: 0.5
-                            }}>
-                              {article.tags.slice(0, 3).map((tag) => (
-                                <Chip
-                                  key={tag}
-                                  label={tag}
-                                  size="small"
-                                  variant="outlined"
-                                />
-                              ))}
-                              {article.tags.length > 3 && (
-                                <Chip
-                                  label={`+${article.tags.length - 3}`}
-                                  size="small"
-                                  variant="outlined"
-                                />
-                              )}
-                            </Box>
-                          )}
-
-                          {/* 统计信息 */}
-                          <Box sx={{ 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            gap: 1, 
-                            mb: 2,
-                            flexWrap: 'wrap'
-                          }}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                              <VisibilityIcon fontSize="small" color="action" />
-                              <Typography variant="caption" color="text.secondary">
-                                {article.views}
-                              </Typography>
-                            </Box>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                              <CommentIcon fontSize="small" color="action" />
-                              <Typography variant="caption" color="text.secondary">
-                                {article.comment_count}
-                              </Typography>
-                            </Box>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                              <CalendarIcon fontSize="small" color="action" />
-                              <Typography variant="caption" color="text.secondary">
-                                {formatDate(article.created_at)}
-                              </Typography>
-                            </Box>
-                          </Box>
-
-                          {/* 操作按钮 */}
-                          <Box sx={{ display: 'flex', gap: 1, mt: 'auto', pt: 2 }}>
-                            <Button
-                              variant="contained"
-                              size="small"
-                              fullWidth
-                              component={RouterLink}
-                              to={`/articles/${article.id}`}
-                            >
-                              阅读全文
-                            </Button>
-                            <IconButton
-                              size="small"
-                              onClick={() => handleShare(article)}
-                            >
-                              <ShareIcon />
-                            </IconButton>
-                          </Box>
+              {[...Array(6)].map((_, index) => (
+                <Grid item xs={12} key={index}>
+                  <Box sx={{ 
+                    height: { xs: 'auto', sm: '200px', md: '220px' },
+                    minHeight: { xs: '180px', sm: '200px', md: '220px' },
+                    maxHeight: { xs: 'none', sm: '220px', md: '240px' },
+                    display: 'flex', 
+                    flexDirection: 'row', 
+                    backgroundColor: 'rgba(0,0,0,0.05)', 
+                    borderRadius: 1,
+                    overflow: 'hidden'
+                  }}>
+                    <Box sx={{ 
+                      width: { xs: '120px', sm: '160px', md: '180px' },
+                      height: { xs: '120px', sm: '160px', md: '180px' },
+                      backgroundColor: 'rgba(0,0,0,0.1)', 
+                      flexShrink: 0,
+                      borderRadius: 1,
+                      m: { xs: 1, sm: 2 }
+                    }} />
+                    <Box sx={{ 
+                      flexGrow: 1, 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      justifyContent: 'space-between', 
+                      p: { xs: 1, sm: 2 },
+                      minWidth: 0,
+                      overflow: 'hidden'
+                    }}>
+                      <Box>
+                        <Box sx={{ width: 80, height: 24, backgroundColor: 'rgba(0,0,0,0.1)', borderRadius: 1, mb: 1 }} />
+                        <Box sx={{ width: '100%', height: 32, backgroundColor: 'rgba(0,0,0,0.1)', borderRadius: 1, mb: 1 }} />
+                        <Box sx={{ width: '100%', height: 20, backgroundColor: 'rgba(0,0,0,0.1)', borderRadius: 1, mb: 1 }} />
+                        <Box sx={{ width: '100%', height: 20, backgroundColor: 'rgba(0,0,0,0.1)', borderRadius: 1, mb: 2 }} />
+                        <Box sx={{ display: 'flex', gap: 0.5, mb: 2 }}>
+                          <Box sx={{ width: 60, height: 24, backgroundColor: 'rgba(0,0,0,0.1)', borderRadius: 1 }} />
+                          <Box sx={{ width: 60, height: 24, backgroundColor: 'rgba(0,0,0,0.1)', borderRadius: 1 }} />
                         </Box>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
+                        <Box sx={{ width: '100%', height: 32, backgroundColor: 'rgba(0,0,0,0.1)', borderRadius: 1 }} />
+                      </Box>
+                    </Box>
+                  </Box>
                 </Grid>
               ))}
             </Grid>
+          ) : articles.length === 0 ? (
+            <Box textAlign="center" py={8}>
+              <Typography variant="h6" color="text.secondary">
+                暂无文章
+              </Typography>
+            </Box>
+          ) : (
+            <>
+              <Grid container spacing={3}>
+                {articles.map((article, index) => (
+                  <Grid item xs={12} key={article.id}>
+                    <ArticleCard
+                      article={article}
+                      index={index}
+                      onShare={handleShare}
+                    />
+                  </Grid>
+                ))}
+              </Grid>
 
-            {/* 分页 */}
-            {totalPages > 1 && (
-              <Box sx={{ display: 'flex', justifyContent: 'center', mt: 6 }}>
-                <Pagination
-                  count={totalPages}
-                  page={currentPage}
-                  onChange={handlePageChange}
-                  color="primary"
-                  size="large"
-                />
-              </Box>
-            )}
-          </>
-        )}
+              {/* 分页 */}
+              <ArticlePagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={handlePageChange}
+              />
+            </>
+          )}
         </motion.div>
       </Container>
     </section>
   );
 };
 
-export default Articles; 
+export default Articles;

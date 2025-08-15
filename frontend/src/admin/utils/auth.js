@@ -8,7 +8,7 @@ export const verifyToken = async () => {
   }
 
   try {
-    const response = await fetch(getApiUrl.adminLogin().replace('/login', '/verify'), {
+    const response = await fetch(getApiUrl.adminVerify(), {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -41,5 +41,3 @@ export const getAndClearRedirectPath = () => {
   sessionStorage.removeItem('redirectPath');
   return path || '/admin';
 };
-
-

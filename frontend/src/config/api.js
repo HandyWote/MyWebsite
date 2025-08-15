@@ -162,6 +162,7 @@ export const getApiUrl = {
   // ========== 管理后台API ==========
   adminLogin: () => buildApiUrl(API_ENDPOINTS.ADMIN.LOGIN),                   // 管理员登录
   adminLogout: () => buildApiUrl(API_ENDPOINTS.ADMIN.LOGOUT),                 // 管理员登出
+  adminVerify: () => buildApiUrl('/api/admin/verify'),                      // 管理员验证token
   adminSiteBlocks: () => buildApiUrl(API_ENDPOINTS.ADMIN.SITE_BLOCKS),       // 管理网站内容块
   adminSkills: () => buildApiUrl(API_ENDPOINTS.ADMIN.SKILLS),                 // 管理技能
   adminContacts: () => buildApiUrl(API_ENDPOINTS.ADMIN.CONTACTS),             // 管理联系方式

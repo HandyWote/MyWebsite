@@ -68,9 +68,7 @@ function App() {
               </Suspense>
             } />
             
-            {/* 后台管理 */}
-            <Route path="/admin/*" element={<AdminRoutes />} />
-          </Routes>
+        </Routes>
         </Box>
       </Router>
     </ThemeProvider>
