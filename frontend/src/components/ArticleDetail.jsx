@@ -413,7 +413,6 @@ flowchart TD
             padding: '2rem',
             borderRadius: '1rem',
             maxWidth: '800px',
-            width: '800px',
             margin: '0 auto',
             minHeight: '100vh'
           }}

@@ -136,15 +136,20 @@ export const responsiveContainer = {
 
 // 文章卡片样式
 export const articleCard = {
-  height: { xs: 'auto', sm: '200px', md: '220px' },
-  minHeight: { xs: '180px', sm: '200px', md: '220px' },
-  maxHeight: { xs: 'none', sm: '220px', md: '240px' },
+  height: 'auto',
   display: 'flex',
   flexDirection: 'row',
-  overflow: 'hidden',
-  position: 'relative',
-  ...cardHover,
-  ...glassEffect,
+  transition: 'transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out',
+  backgroundColor: 'rgba(255, 255, 255, 0.8)',
+  backdropFilter: 'blur(10px)',
+  border: '1px solid rgba(255, 255, 255, 0.2)',
+  '&:hover': {
+    transform: 'translateY(-4px)',
+    boxShadow: '0 8px 25px rgba(0,0,0,0.15)',
+    '@media (prefers-color-scheme: dark)': {
+      boxShadow: '0 8px 25px rgba(255,255,255,0.1)'
+    }
+  }
 };
 
 // 文章卡片媒体样式
@@ -161,11 +166,9 @@ export const articleCardContent = {
   flexGrow: 1,
   display: 'flex',
   flexDirection: 'column',
-  padding: { xs: spacing.sm, sm: spacing.md },
+  padding: { xs: '1rem', sm: '1.5rem' },
   minWidth: 0,
-  overflow: 'hidden',
-  height: '100%',
-  boxSizing: 'border-box',
+  overflow: 'hidden'
 };
 
 // 按钮样式

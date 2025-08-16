@@ -103,7 +103,6 @@ const ArticleCard = ({ article, index, onShare }) => {
                 display: '-webkit-box',
                 WebkitLineClamp: 2,
                 WebkitBoxOrient: 'vertical',
-                flexShrink: 0,
               }}
             >
               {article.title}
