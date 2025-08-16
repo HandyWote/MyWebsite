@@ -2,7 +2,6 @@
 import { motion } from 'framer-motion';  // 用于实现动画效果
 import { Box, Typography, Container, Button } from '@mui/material';  // Material-UI组件
 import GitHubIcon from '@mui/icons-material/GitHub';  // GitHub图标
-import { io } from 'socket.io-client';
 import { useState, useEffect } from 'react';
 import { getApiUrl } from '../config/api'; // 导入API配置
 
@@ -71,20 +70,77 @@ const Home = () => {
     fetchContacts();
     fetchAvatar();
     
-    const socket = io(getApiUrl.websocket(), { 
-      path: '/socket.io/',
-      transports: ['websocket', 'polling'],
-      reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000
-    });
+    let socket = null;
+    let reconnectTimeout = null;
+    let ioModule = null;
     
-    socket.on('site_block_updated', fetchSiteBlock);
-    socket.on('skills_updated', fetchSkills);
-    socket.on('contacts_updated', fetchContacts);
-    socket.on('avatars_updated', fetchAvatar);
+    // 延迟建立WebSocket连接，避免阻塞页面加载
+    const connectWebSocket = async () => {
+      if (socket) return; // 避免重复连接
+      
+      try {
+        // 动态导入socket.io-client，避免在初始bundle中包含
+        if (!ioModule) {
+          ioModule = await import('socket.io-client');
+        }
+        
+        socket = ioModule.default(getApiUrl.websocket(), { 
+          path: '/socket.io/',
+          transports: ['websocket', 'polling'],
+          reconnection: true,
+          reconnectionAttempts: 3,
+          reconnectionDelay: 2000,
+          timeout: 5000
+        });
+        
+        socket.on('site_block_updated', fetchSiteBlock);
+        socket.on('skills_updated', fetchSkills);
+        socket.on('contacts_updated', fetchContacts);
+        socket.on('avatars_updated', fetchAvatar);
+        
+        socket.on('connect_error', (error) => {
+          console.log('WebSocket连接错误:', error);
+        });
+      } catch (error) {
+        console.log('WebSocket模块加载失败:', error);
+      }
+    };
     
-    return () => socket.disconnect();
+    // 延迟3秒建立连接，让页面先完成加载
+    reconnectTimeout = setTimeout(connectWebSocket, 3000);
+    
+    // 页面可见性变化时的处理
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        // 页面隐藏时断开连接
+        if (socket) {
+          socket.disconnect();
+          socket = null;
+        }
+        if (reconnectTimeout) {
+          clearTimeout(reconnectTimeout);
+          reconnectTimeout = null;
+        }
+      } else {
+        // 页面显示时重新连接
+        if (!socket) {
+          reconnectTimeout = setTimeout(connectWebSocket, 1000);
+        }
+      }
+    };
+    
+    // 监听页面可见性变化
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      if (reconnectTimeout) {
+        clearTimeout(reconnectTimeout);
+      }
+      if (socket) {
+        socket.disconnect();
+      }
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   useEffect(() => {

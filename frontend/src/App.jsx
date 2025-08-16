@@ -3,12 +3,14 @@ import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-route
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { useState, lazy, Suspense } from 'react';
 import { Box, CircularProgress } from '@mui/material';
-import Navbar from './components/Navbar';
-import Home from './components/Home';
-import Projects from './components/Projects';
-import Articles from './components/Articles';
-import ArticleDetail from './components/ArticleDetail';
-import AdminRoutes from './admin/routes';
+
+// 路由级别懒加载
+const Navbar = lazy(() => import('./components/Navbar'));
+const Home = lazy(() => import('./components/Home'));
+const Projects = lazy(() => import('./components/Projects'));
+const Articles = lazy(() => import('./components/Articles'));
+const ArticleDetail = lazy(() => import('./components/ArticleDetail'));
+const AdminRoutes = lazy(() => import('./admin/routes'));
 
 // 创建自定义主题
 const theme = createTheme({
@@ -25,17 +27,39 @@ function AppContent() {
   
   return (
     <>
-      {!isAdmin && <Navbar />}
+      {!isAdmin && (
+        <Suspense fallback={
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80px' }}>
+            <CircularProgress />
+          </Box>
+        }>
+          <Navbar />
+        </Suspense>
+      )}
       <Routes>
         {/* 文章详情页面路由 */}
-        <Route path="/articles/:id" element={<ArticleDetail />} />
+        <Route path="/articles/:id" element={
+          <Suspense fallback={
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+              <CircularProgress />
+            </Box>
+          }>
+            <ArticleDetail />
+          </Suspense>
+        } />
         {/* 主页面路由 */}
         <Route path="/" element={
+          <Suspense fallback={
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+              <CircularProgress />
+            </Box>
+          }>
             <>
               <Home />    {/* 首页介绍 */}
               <Projects />{/* 项目展示组件 */}
               <Articles />{/* 文章组件 */}
             </>
+          </Suspense>
         } />
       </Routes>
     </>
