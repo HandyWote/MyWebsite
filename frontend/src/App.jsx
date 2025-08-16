@@ -57,8 +57,18 @@ function AppContent() {
             <>
               <Home />    {/* 首页介绍 */}
               <Projects />{/* 项目展示组件 */}
-              <Articles />{/* 文章组件 */}
             </>
+          </Suspense>
+        } />
+        
+        {/* 独立文章页面路由 */}
+        <Route path="/articles" element={
+          <Suspense fallback={
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+              <CircularProgress />
+            </Box>
+          }>
+            <Articles />
           </Suspense>
         } />
       </Routes>

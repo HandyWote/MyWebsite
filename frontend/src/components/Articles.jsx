@@ -5,8 +5,11 @@ import {
   Box,
   Alert,
   Typography,
+  Button,
 } from '@mui/material';
 import { motion } from 'framer-motion';
+import { Link as RouterLink } from 'react-router-dom';
+import { ArrowBack as ArrowBackIcon } from '@mui/icons-material';
 import { getApiUrl } from '../config/api'; // 导入API配置
 
 // 导入子组件
@@ -212,6 +215,9 @@ const Articles = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
+  // 检查是否在独立页面
+  const isStandalonePage = window.location.pathname === '/articles';
+
   // 清除所有筛选
   const handleClearFilters = useCallback(() => {
     setSearchTerm('');
@@ -272,6 +278,20 @@ const Articles = () => {
             <Alert severity="info" sx={{ mb: 4 }}>
               当前处于演示模式，显示的是示例数据。要使用完整功能，请启动后端服务。
             </Alert>
+          )}
+
+          {/* 返回按钮（仅在独立页面显示） */}
+          {isStandalonePage && (
+            <Box sx={{ mb: 4 }}>
+              <Button
+                variant="outlined"
+                startIcon={<ArrowBackIcon />}
+                component={RouterLink}
+                to="/"
+              >
+                返回首页
+              </Button>
+            </Box>
           )}
 
           {/* 标题 */}

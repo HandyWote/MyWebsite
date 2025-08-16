@@ -1,6 +1,7 @@
 // 导入必要的React hooks和组件
 import { useState, useEffect } from 'react';
-import { Link } from 'react-scroll';  // 用于实现平滑滚动
+import { Link as RouterLink } from 'react-router-dom';  // 用于路由导航
+import { Link as ScrollLink } from 'react-scroll';  // 用于实现平滑滚动
 import { motion, AnimatePresence } from 'framer-motion';  // 用于添加动画效果
 import { AppBar, Toolbar, IconButton, Box, useMediaQuery, useTheme } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
@@ -8,12 +9,12 @@ import CloseIcon from '@mui/icons-material/Close';
 
 // 定义导航项配置
 const navItems = [
-  { title: '首页', to: 'home' },
-  { title: '关于我', to: 'about' },
-  { title: '技能', to: 'skills' },
-  { title: '联系', to: 'contact' },
-  { title: '项目', to: 'projects' },
-  { title: '文章', to: 'articles' }
+  { title: '首页', to: 'home', href: '/' },
+  { title: '关于我', to: 'about', href: '/#about' },
+  { title: '技能', to: 'skills', href: '/#skills' },
+  { title: '联系', to: 'contact', href: '/#contact' },
+  { title: '项目', to: 'projects', href: '/#projects' },
+  { title: '文章', to: 'articles', href: '/articles' }
 ];
 
 /**
@@ -71,7 +72,7 @@ const Navbar = () => {
       }}
     >
       <Toolbar sx={{ justifyContent: 'space-between' }}>
-        <Link to="home" spy smooth offset={-70} duration={500}>
+        <RouterLink to="/" style={{ textDecoration: 'none', color: 'inherit' }}>
           <Box
             component="span"
             sx={{
@@ -83,7 +84,7 @@ const Navbar = () => {
           >
             HandyWote
           </Box>
-        </Link>
+        </RouterLink>
 
         {isMobile ? (
           <>
@@ -113,14 +114,22 @@ const Navbar = () => {
                   }}
                 >
                   {navItems.map((item) => (
-                    <Link
+                    <RouterLink
                       key={item.to}
-                      to={item.to}
-                      spy
-                      smooth
-                      offset={-70}
-                      duration={500}
-                      onClick={() => setIsOpen(false)}
+                      to={item.href}
+                      style={{ textDecoration: 'none', color: 'inherit' }}
+                      onClick={() => {
+                        setIsOpen(false);
+                        // 如果是页面内锚点，执行平滑滚动
+                        if (item.href.startsWith('/#')) {
+                          setTimeout(() => {
+                            const element = document.getElementById(item.to);
+                            if (element) {
+                              element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            }
+                          }, 100);
+                        }
+                      }}
                     >
                       <Box
                         sx={{
@@ -134,7 +143,7 @@ const Navbar = () => {
                       >
                         {item.title}
                       </Box>
-                    </Link>
+                    </RouterLink>
                   ))}
                 </motion.div>
               )}
@@ -143,18 +152,26 @@ const Navbar = () => {
         ) : (
           <Box sx={{ display: 'flex', gap: 4 }}>
             {navItems.map((item) => (
-              <Link
+              <RouterLink
                 key={item.to}
-                to={item.to}
-                spy
-                smooth
-                offset={-70}
-                duration={500}
+                to={item.href}
+                style={{ textDecoration: 'none', color: 'inherit' }}
+                onClick={(e) => {
+                  // 如果是页面内锚点，执行平滑滚动
+                  if (item.href.startsWith('/#')) {
+                    e.preventDefault();
+                    const element = document.getElementById(item.to);
+                    if (element) {
+                      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                  }
+                }}
               >
                 <Box
                   sx={{
                     cursor: 'pointer',
                     position: 'relative',
+                    color: 'text.primary',
                     '&:hover': {
                       color: 'primary.main'
                     },
@@ -176,7 +193,7 @@ const Navbar = () => {
                 >
                   {item.title}
                 </Box>
-              </Link>
+              </RouterLink>
             ))}
           </Box>
         )}
