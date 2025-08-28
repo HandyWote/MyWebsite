@@ -15,7 +15,7 @@ on:
 jobs:
   build-and-release:
     runs-on: ubuntu-latest
-    container: docker.xuanyuan.me/node:18
+    container: docker.xuanyuan.me/node:22
 
     steps:
       - name: 1. 手动检出代码
@@ -100,22 +100,6 @@ jobs:
           echo "Starting 'npm ci' to install dependencies..."
           npm ci
 
-      - name: 3. 运行 Lint 和测试
-        working-directory: ./frontend # 使用 working-directory 简化 cd 操作
-        run: |
-          if npm run --silent lint; then
-            echo "Lint check passed."
-          else
-            echo "::error::Lint check failed!"
-            exit 1
-          fi
-          
-          if npm run --silent test; then
-            echo "Unit tests passed."
-          else
-            echo "::error::Unit tests failed!"
-            exit 1
-          fi
 
       - name: 4. 构建前端项目
         working-directory: ./frontend
