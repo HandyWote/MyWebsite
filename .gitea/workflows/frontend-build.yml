@@ -19,8 +19,8 @@ jobs:
 
     steps:
       - name: 1. 检出代码
-        run: |
-          echo "代码已检出。"
+        # 修正：使用标准的 actions/checkout 来真正地拉取代码
+        uses: actions/checkout@v3
 
       - name: 调试：检查项目根目录文件结构
         run: |
@@ -31,7 +31,7 @@ jobs:
           ls -laR
           echo "---"
 
-      - name: 2. 安装依赖 (已修复)
+      - name: 2. 安装依赖
         run: |
           echo "准备进入 frontend 目录..."
           cd frontend
@@ -70,7 +70,8 @@ jobs:
           cd frontend
           npm run build
           echo "构建完成，检查 dist 目录:"
-          ls -la frontend/dist/
+          # 注意：这里需要检查 frontend/dist，但因为你已经 cd frontend 了，所以路径是 dist/
+          ls -la dist/
       
       - name: 5. 打包并发布到 Gitea Release (仅在推送 Tag 时执行)
         if: startsWith(gitea.ref, 'refs/tags/v')
@@ -80,6 +81,7 @@ jobs:
           echo "检测到 Tag 推送，开始创建 Release..."
           
           RELEASE_TAG="${GITEA_REF_NAME}"
+          # 修正打包路径，打包文件将创建在工作区根目录
           ARCHIVE_NAME="frontend-dist-${RELEASE_TAG}.tar.gz"
           RELEASE_API_URL="${GITEA_API_URL}/repos/${GITEA_REPOSITORY}/releases"
 
