@@ -13,6 +13,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    container: docker.xuanyuan.me/node:18
     
     steps:
       - name: 检出代码
@@ -51,6 +52,7 @@ jobs:
   release:
     needs: build
     runs-on: ubuntu-latest
+    container: docker.xuanyuan.me/node:18
     if: startsWith(github.ref, 'refs/tags/v')
     
     steps:
