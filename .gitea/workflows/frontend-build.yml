@@ -1,6 +1,6 @@
 # .gitea/workflows/frontend-ci-cd.yml
 
-name: 前端构建与发布 (内网调试版)
+name: 前端构建与发布
 
 on:
   push:
@@ -18,59 +18,98 @@ jobs:
     container: docker.xuanyuan.me/node:18
 
     steps:
-      - name: 1. 检出代码
-        # 修正：使用标准的 actions/checkout 来真正地拉取代码
-        uses: actions/checkout@v3
+      - name: 1. 手动检出代码
+        env:
+          # GITEA_TOKEN 是由 Gitea 自动注入的临时令牌，用于认证
+          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
+        run: |
+          echo "================================================="
+          echo " STEP 1: MANUALLY CHECKING OUT SOURCE CODE"
+          echo "================================================="
+          
+          # 确保 git 可用
+          if ! command -v git &> /dev/null
+          then
+              echo "::error::git command not found. Please ensure git is installed in the container."
+              exit 1
+          fi
+          
+          # 配置 git 安全目录，避免 'dubious ownership' 错误
+          # GITEA_WORKSPACE 是 Gitea Runner 注入的当前工作区路径
+          git config --global --add safe.directory "${GITEA_WORKSPACE}"
+
+          # 拼接带认证信息的仓库 URL
+          # GITEA_SERVER_URL 和 GITEA_REPOSITORY 是 Gitea 自动提供的环境变量
+          # 例如: GITEA_SERVER_URL=http://gitea.example.com, GITEA_REPOSITORY=myuser/myrepo
+          REPO_URL="${GITEA_SERVER_URL}/${GITEA_REPOSITORY}.git"
+          
+          # 使用 'gitea-actions' 作为特殊用户名和 GITEA_TOKEN 作为密码进行认证
+          AUTH_REPO_URL=$(echo "$REPO_URL" | sed "s|://|://gitea-actions:${GITEA_TOKEN}@|")
+          
+          echo "Cloning repository from ${GITEA_REPOSITORY}..."
+          
+          # 使用 --depth=1 进行浅克隆以加快速度，并指定分支
+          # 注意：对于 tag push, GITEA_REF_NAME 是 tag name (e.g., v1.0.0)
+          # 对于 branch push, GITEA_REF_NAME 是 branch name (e.g., main)
+          git clone --depth=1 --branch="${GITEA_REF_NAME}" "${AUTH_REPO_URL}" .
+          
+          # 对于 Pull Request，GITEA_REF_NAME 可能是 'main', 但我们需要的是 PR 的 HEAD
+          # 不过，对于 push 和 tag 事件，上面的 clone 已经足够了。
+          # 为了确保工作区代码与触发事件的 commit 完全一致，再执行一次 checkout
+          echo "Checking out the specific commit: ${GITEA_SHA}"
+          git fetch origin "${GITEA_SHA}"
+          git checkout "${GITEA_SHA}"
+          
+          echo "Source code checked out successfully."
+          echo "-------------------------------------------------"
 
       - name: 调试：检查项目根目录文件结构
         run: |
-          echo "当前工作目录 (pwd):"
+          echo "Current working directory (pwd):"
           pwd
           echo "---"
-          echo "列出所有文件和目录 (ls -laR):"
+          echo "Listing all files and directories (ls -laR):"
           ls -laR
           echo "---"
 
       - name: 2. 安装依赖
         run: |
-          echo "准备进入 frontend 目录..."
+          echo "Entering 'frontend' directory..."
           cd frontend
           
-          echo "已进入目录，当前工作目录 (pwd):"
+          echo "Current directory (pwd):"
           pwd
           echo "---"
           
-          echo "列出 frontend 目录下的文件 (ls -la):"
+          echo "Listing files in 'frontend' (ls -la):"
           ls -la
           echo "---"
           
-          echo "现在，开始执行 npm ci..."
+          echo "Starting 'npm ci' to install dependencies..."
           npm ci
 
       - name: 3. 运行 Lint 和测试
+        working-directory: ./frontend # 使用 working-directory 简化 cd 操作
         run: |
-          cd frontend
-          # 确保 package.json 中有 lint 和 test 脚本
           if npm run --silent lint; then
-            echo "代码风格检查通过。"
+            echo "Lint check passed."
           else
-            echo "::error::代码风格检查失败！"
+            echo "::error::Lint check failed!"
             exit 1
           fi
           
           if npm run --silent test; then
-            echo "单元测试通过。"
+            echo "Unit tests passed."
           else
-            echo "::error::单元测试失败！"
+            echo "::error::Unit tests failed!"
             exit 1
           fi
 
       - name: 4. 构建前端项目
+        working-directory: ./frontend
         run: |
-          cd frontend
           npm run build
-          echo "构建完成，检查 dist 目录:"
-          # 注意：这里需要检查 frontend/dist，但因为你已经 cd frontend 了，所以路径是 dist/
+          echo "Build complete. Checking 'dist' directory:"
           ls -la dist/
       
       - name: 5. 打包并发布到 Gitea Release (仅在推送 Tag 时执行)
@@ -78,41 +117,44 @@ jobs:
         env:
           GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
         run: |
-          echo "检测到 Tag 推送，开始创建 Release..."
+          echo "Tag push detected, creating Gitea Release..."
           
           RELEASE_TAG="${GITEA_REF_NAME}"
-          # 修正打包路径，打包文件将创建在工作区根目录
           ARCHIVE_NAME="frontend-dist-${RELEASE_TAG}.tar.gz"
           RELEASE_API_URL="${GITEA_API_URL}/repos/${GITEA_REPOSITORY}/releases"
 
-          echo "正在打包构建产物..."
+          echo "Archiving build artifacts..."
+          # -C frontend/ dist/ 表示切换到 frontend 目录，然后打包其下的 dist 目录
           tar -czf "${ARCHIVE_NAME}" -C frontend/ dist/
-          echo "打包完成: ${ARCHIVE_NAME}"
+          echo "Archive created: ${ARCHIVE_NAME}"
           
+          # 使用 Heredoc 语法创建多行字符串
           RELEASE_BODY=$(cat <<EOF
           ## 🚀 Release ${RELEASE_TAG}
-          这是前端项目的自动化发布版本。
+          This is an automated release for the frontend project.
           EOF
           )
 
-          RESPONSE=$(curl --silent -X POST "${RELEASE_API_URL}" \
+          echo "Creating release for tag ${RELEASE_TAG}..."
+          RESPONSE=$(curl --silent --show-error -X POST "${RELEASE_API_URL}" \
             -H "Authorization: token ${GITEA_TOKEN}" \
             -H "Content-Type: application/json" \
             -d "{\"tag_name\": \"${RELEASE_TAG}\", \"name\": \"Release ${RELEASE_TAG}\", \"body\": \"${RELEASE_BODY}\"}"
           )
           
+          # 使用 jq (如果可用) 或 grep/sed 解析 JSON
           UPLOAD_URL=$(echo "${RESPONSE}" | grep -o '"upload_url":"[^"]*' | sed 's/"upload_url":"//')
 
           if [ -z "$UPLOAD_URL" ] || [ "$UPLOAD_URL" == "null" ]; then
-            echo "::error::创建 Release 失败或未能获取到上传 URL。"
-            echo "API 响应: ${RESPONSE}"
+            echo "::error::Failed to create release or get upload URL."
+            echo "API Response: ${RESPONSE}"
             exit 1
           fi
 
-          echo "正在上传附件..."
-          curl --silent -X POST "${UPLOAD_URL}?name=${ARCHIVE_NAME}" \
+          echo "Uploading attachment to ${UPLOAD_URL}..."
+          curl --silent --show-error -X POST "${UPLOAD_URL}?name=${ARCHIVE_NAME}" \
             -H "Authorization: token ${GITEA_TOKEN}" \
             -H "Content-Type: application/octet-stream" \
             --data-binary "@${ARCHIVE_NAME}"
 
-          echo "流程完成。"
+          echo "Process completed successfully."
