@@ -38,6 +38,14 @@ jobs:
           # GITEA_WORKSPACE 是 Gitea Runner 注入的当前工作区路径
           git config --global --add safe.directory "${GITEA_WORKSPACE}"
 
+          # 检查环境变量是否设置
+          if [ -z "$GITEA_SERVER_URL" ] || [ -z "$GITEA_REPOSITORY" ]; then
+            echo "::error::GITEA_SERVER_URL or GITEA_REPOSITORY is not set. Cannot clone repository."
+            echo "GITEA_SERVER_URL: ${GITEA_SERVER_URL}"
+            echo "GITEA_REPOSITORY: ${GITEA_REPOSITORY}"
+            exit 1
+          fi
+
           # 拼接带认证信息的仓库 URL
           # GITEA_SERVER_URL 和 GITEA_REPOSITORY 是 Gitea 自动提供的环境变量
           # 例如: GITEA_SERVER_URL=http://gitea.example.com, GITEA_REPOSITORY=myuser/myrepo
@@ -46,19 +54,28 @@ jobs:
           # 使用 'gitea-actions' 作为特殊用户名和 GITEA_TOKEN 作为密码进行认证
           AUTH_REPO_URL=$(echo "$REPO_URL" | sed "s|://|://gitea-actions:${GITEA_TOKEN}@|")
           
-          echo "Cloning repository from ${GITEA_REPOSITORY}..."
+          echo "Cloning repository from ${REPO_URL}..."
           
-          # 使用 --depth=1 进行浅克隆以加快速度，并指定分支
-          # 注意：对于 tag push, GITEA_REF_NAME 是 tag name (e.g., v1.0.0)
-          # 对于 branch push, GITEA_REF_NAME 是 branch name (e.g., main)
-          git clone --depth=1 --branch="${GITEA_REF_NAME}" "${AUTH_REPO_URL}" .
+          # 先初始化一个空的 git 仓库
+          git init
           
-          # 对于 Pull Request，GITEA_REF_NAME 可能是 'main', 但我们需要的是 PR 的 HEAD
-          # 不过，对于 push 和 tag 事件，上面的 clone 已经足够了。
-          # 为了确保工作区代码与触发事件的 commit 完全一致，再执行一次 checkout
-          echo "Checking out the specific commit: ${GITEA_SHA}"
-          git fetch origin "${GITEA_SHA}"
-          git checkout "${GITEA_SHA}"
+          # 添加远程仓库
+          git remote add origin "${AUTH_REPO_URL}"
+          
+          # 获取所有远程引用
+          git fetch origin
+          
+          # 检出指定的分支或标签
+          if [ -n "$GITEA_REF_NAME" ]; then
+            echo "Checking out branch/tag: ${GITEA_REF_NAME}"
+            git checkout "${GITEA_REF_NAME}"
+          elif [ -n "$GITEA_SHA" ]; then
+            echo "Checking out specific commit: ${GITEA_SHA}"
+            git checkout "${GITEA_SHA}"
+          else
+            echo "::error::Neither GITEA_REF_NAME nor GITEA_SHA is set. Cannot checkout code."
+            exit 1
+          fi
           
           echo "Source code checked out successfully."
           echo "-------------------------------------------------"
