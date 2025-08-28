@@ -1,0 +1,96 @@
+name: 前端构建与发布
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v3
+        
+      - name: 设置 Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+          
+      - name: 安装依赖
+        run: |
+          cd frontend
+          npm ci
+          
+      - name: 构建前端
+        run: |
+          cd frontend
+          npm run build
+          
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v3
+        with:
+          name: frontend-dist
+          path: frontend/dist/
+          
+      - name: 部署到服务器（可选）
+        if: github.ref == 'refs/heads/main'
+        run: |
+          echo "前端构建完成，可以在这里添加部署到服务器的步骤"
+          # 例如：使用 rsync 或 scp 将 dist 目录上传到服务器
+          # rsync -avz --delete frontend/dist/ user@server:/path/to/deploy/
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v3
+        
+      - name: 下载构建产物
+        uses: actions/download-artifact@v3
+        with:
+          name: frontend-dist
+          path: frontend/dist/
+          
+      - name: 创建发布包
+        run: |
+          cd frontend
+          tar -czf ../frontend-dist.tar.gz dist/
+          
+      - name: 获取版本号
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+        
+      - name: 创建发布
+        uses: actions/forgejo-release@v1
+        with:
+          tag: ${{ github.ref_name }}
+          title: 前端发布 v${{ steps.get_version.outputs.VERSION }}
+          body: |
+            ## 前端发布 v${{ steps.get_version.outputs.VERSION }}
+            
+            这是前端项目的自动化发布版本。
+            
+            ### 使用方法
+            1. 下载 `frontend-dist.tar.gz` 文件
+            2. 解压到你的 web 服务器目录
+            3. 配置你的 web 服务器指向解压后的目录
+            
+            ### 更新内容
+            - 请查看提交记录了解具体更新内容
+            
+            ---
+            *此版本由 Gitea Actions 自动生成*
+          files: |
+            frontend-dist.tar.gz
