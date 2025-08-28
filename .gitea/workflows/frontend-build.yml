@@ -31,7 +31,7 @@ jobs:
           if ! command -v git &> /dev/null
           then
               echo "::error::git command not found. Please ensure git is installed in the container."
-              exit 1
+              apt update && apt install -y git
           fi
           
           # 配置 git 安全目录，避免 'dubious ownership' 错误
