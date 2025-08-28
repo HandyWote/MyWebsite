@@ -38,17 +38,11 @@ jobs:
           # GITEA_WORKSPACE 是 Gitea Runner 注入的当前工作区路径
           git config --global --add safe.directory "${GITEA_WORKSPACE}"
 
-          # 检查环境变量是否设置
-          if [ -z "$GITEA_SERVER_URL" ] || [ -z "$GITEA_REPOSITORY" ]; then
-            echo "::error::GITEA_SERVER_URL or GITEA_REPOSITORY is not set. Cannot clone repository."
-            echo "GITEA_SERVER_URL: ${GITEA_SERVER_URL}"
-            echo "GITEA_REPOSITORY: ${GITEA_REPOSITORY}"
-            exit 1
-          fi
-
+          # 定义仓库信息（需要根据你的实际情况修改）
+          GITEA_SERVER_URL="https://git.handywote.top"
+          GITEA_REPOSITORY="Handy_Wote/MyWebsite"
+          
           # 拼接带认证信息的仓库 URL
-          # GITEA_SERVER_URL 和 GITEA_REPOSITORY 是 Gitea 自动提供的环境变量
-          # 例如: GITEA_SERVER_URL=http://gitea.example.com, GITEA_REPOSITORY=myuser/myrepo
           REPO_URL="${GITEA_SERVER_URL}/${GITEA_REPOSITORY}.git"
           
           # 使用 'gitea-actions' 作为特殊用户名和 GITEA_TOKEN 作为密码进行认证
@@ -73,8 +67,9 @@ jobs:
             echo "Checking out specific commit: ${GITEA_SHA}"
             git checkout "${GITEA_SHA}"
           else
-            echo "::error::Neither GITEA_REF_NAME nor GITEA_SHA is set. Cannot checkout code."
-            exit 1
+            # 默认检出 main 分支
+            echo "Checking out main branch (default)"
+            git checkout main || git checkout master
           fi
           
           echo "Source code checked out successfully."
