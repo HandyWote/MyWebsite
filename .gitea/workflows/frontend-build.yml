@@ -115,6 +115,11 @@ jobs:
         run: |
           echo "Tag push detected, creating Gitea Release..."
           
+          # 定义仓库信息（需要根据你的实际情况修改）
+          GITEA_SERVER_URL="https://git.handywote.top"
+          GITEA_REPOSITORY="Handy_Wote/MyWebsite"
+          GITEA_API_URL="${GITEA_SERVER_URL}/api/v1"
+          
           RELEASE_TAG="${GITEA_REF_NAME}"
           ARCHIVE_NAME="frontend-dist-${RELEASE_TAG}.tar.gz"
           RELEASE_API_URL="${GITEA_API_URL}/repos/${GITEA_REPOSITORY}/releases"
@@ -132,11 +137,14 @@ jobs:
           )
 
           echo "Creating release for tag ${RELEASE_TAG}..."
+          echo "API URL: ${RELEASE_API_URL}"
           RESPONSE=$(curl --silent --show-error -X POST "${RELEASE_API_URL}" \
             -H "Authorization: token ${GITEA_TOKEN}" \
             -H "Content-Type: application/json" \
             -d "{\"tag_name\": \"${RELEASE_TAG}\", \"name\": \"Release ${RELEASE_TAG}\", \"body\": \"${RELEASE_BODY}\"}"
           )
+          
+          echo "API Response: ${RESPONSE}"
           
           # 使用 jq (如果可用) 或 grep/sed 解析 JSON
           UPLOAD_URL=$(echo "${RESPONSE}" | grep -o '"upload_url":"[^"]*' | sed 's/"upload_url":"//')
