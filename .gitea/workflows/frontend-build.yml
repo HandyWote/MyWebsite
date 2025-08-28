@@ -1,4 +1,6 @@
-name: 前端构建与发布
+# .gitea/workflows/frontend-ci-cd.yml
+
+name: 前端构建与发布 (内网版)
 
 on:
   push:
@@ -11,88 +13,132 @@ on:
       - main
 
 jobs:
-  build:
+  build-and-release:
     runs-on: ubuntu-latest
+    # 确保此容器内包含: node, npm, git, curl, tar (推荐再包含 jq)
     container: docker.xuanyuan.me/node:18
-    
-    steps:
-      - name: 检出代码
-        uses: actions/checkout@v3
-        
-      - name: 设置 Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-          cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
-          
-      - name: 安装依赖
-        run: |
-          cd frontend
-          npm ci
-          
-      - name: 构建前端
-        run: |
-          cd frontend
-          npm run build
-          
-      - name: 上传构建产物
-        uses: actions/upload-artifact@v3
-        with:
-          name: frontend-dist
-          path: frontend/dist/
-          
-      - name: 部署到服务器（可选）
-        if: github.ref == 'refs/heads/main'
-        run: |
-          echo "前端构建完成，可以在这里添加部署到服务器的步骤"
-          # 例如：使用 rsync 或 scp 将 dist 目录上传到服务器
-          # rsync -avz --delete frontend/dist/ user@server:/path/to/deploy/
 
-  release:
-    needs: build
-    runs-on: ubuntu-latest
-    container: docker.xuanyuan.me/node:18
-    if: startsWith(github.ref, 'refs/tags/v')
-    
     steps:
-      - name: 检出代码
-        uses: actions/checkout@v3
-        
-      - name: 下载构建产物
-        uses: actions/download-artifact@v3
-        with:
-          name: frontend-dist
-          path: frontend/dist/
-          
-      - name: 创建发布包
+      - name: 1. 检出代码
+        # Gitea 会自动检出代码到工作目录，所以通常不需要手动 clone
+        # 如果需要确保是最新代码，可以运行以下命令
         run: |
-          cd frontend
-          tar -czf ../frontend-dist.tar.gz dist/
+          echo "代码已由 Gitea Runner 自动检出到当前目录。"
+          ls -la
           
-      - name: 获取版本号
-        id: get_version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-        
-      - name: 创建发布
-        uses: actions/forgejo-release@v1
-        with:
-          tag: ${{ github.ref_name }}
-          title: 前端发布 v${{ steps.get_version.outputs.VERSION }}
-          body: |
-            ## 前端发布 v${{ steps.get_version.outputs.VERSION }}
-            
-            这是前端项目的自动化发布版本。
-            
-            ### 使用方法
-            1. 下载 `frontend-dist.tar.gz` 文件
-            2. 解压到你的 web 服务器目录
-            3. 配置你的 web 服务器指向解压后的目录
-            
-            ### 更新内容
-            - 请查看提交记录了解具体更新内容
-            
-            ---
-            *此版本由 Gitea Actions 自动生成*
-          files: |
-            frontend-dist.tar.gz
+      - name: 2. 设置工作目录并安装依赖
+        # 使用 defaults 设置后续步骤的默认工作目录，使脚本更整洁
+        defaults:
+          run:
+            working-directory: ./frontend
+        run: |
+          echo "进入 frontend 目录..."
+          npm ci
+
+      - name: 3. 运行 Lint 和测试 (可选但强烈推荐)
+        defaults:
+          run:
+            working-directory: ./frontend
+        run: |
+          # 确保 package.json 中有 lint 和 test 脚本
+          if npm run --silent lint; then
+            echo "代码风格检查通过。"
+          else
+            echo "::error::代码风格检查失败！"
+            exit 1
+          fi
+          
+          if npm run --silent test; then
+            echo "单元测试通过。"
+          else
+            echo "::error::单元测试失败！"
+            exit 1
+          fi
+
+      - name: 4. 构建前端项目
+        defaults:
+          run:
+            working-directory: ./frontend
+        run: npm run build
+      
+      - name: 5. 打包并发布到 Gitea Release (仅在推送 Tag 时执行)
+        # 使用 Gitea 的内置变量来判断事件类型
+        if: startsWith(gitea.ref, 'refs/tags/v')
+        env:
+          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
+        run: |
+          echo "检测到 Tag 推送，开始创建 Release..."
+          
+          # 准备变量
+          RELEASE_TAG="${GITEA_REF_NAME}"
+          ARCHIVE_NAME="frontend-dist-${RELEASE_TAG}.tar.gz"
+          RELEASE_API_URL="${GITEA_API_URL}/repos/${GITEA_REPOSITORY}/releases"
+
+          # 1. 创建归档文件
+          echo "正在打包构建产物..."
+          cd frontend
+          tar -czf "../${ARCHIVE_NAME}" dist/
+          cd ..
+          echo "打包完成: ${ARCHIVE_NAME}"
+
+          # 2. 准备 Release 的 Body 内容
+          # 使用 cat 和 EOF 可以方便地创建多行字符串
+          RELEASE_BODY=$(cat <<EOF
+          ## 🚀 Release ${RELEASE_TAG}
+
+          这是前端项目的自动化发布版本。
+
+          ### 使用方法
+          1. 下载 \`${ARCHIVE_NAME}\` 文件。
+          2. 解压到你的 Web 服务器根目录。
+          3. 配置 Web 服务器（如 Nginx）指向解压后的 \`dist\` 目录。
+
+          ---
+          *此版本由 Gitea Actions 自动生成。*
+          EOF
+          )
+
+          # 3. 通过 Gitea API 创建 Release
+          echo "正在创建 Release..."
+          # 使用 jq 解析 API 响应来获取 upload_url。如果没装 jq，会改用 grep/sed
+          if command -v jq &> /dev/null
+          then
+            # 使用 jq 的版本 (更健壮)
+            RESPONSE=$(curl --silent -X POST "${RELEASE_API_URL}" \
+              -H "Authorization: token ${GITEA_TOKEN}" \
+              -H "Content-Type: application/json" \
+              -d @- <<PAYLOAD
+              {
+                "tag_name": "${RELEASE_TAG}",
+                "name": "Release ${RELEASE_TAG}",
+                "body": "${RELEASE_BODY}"
+              }
+              PAYLOAD
+            )
+            UPLOAD_URL=$(echo "${RESPONSE}" | jq -r .upload_url)
+          else
+            # 不使用 jq 的版本 (兼容性好)
+            RESPONSE=$(curl --silent -X POST "${RELEASE_API_URL}" \
+              -H "Authorization: token ${GITEA_TOKEN}" \
+              -H "Content-Type: application/json" \
+              -d "{\"tag_name\": \"${RELEASE_TAG}\", \"name\": \"Release ${RELEASE_TAG}\", \"body\": \"${RELEASE_BODY}\"}"
+            )
+            UPLOAD_URL=$(echo "${RESPONSE}" | grep -o '"upload_url":"[^"]*' | sed 's/"upload_url":"//')
+          fi
+
+          if [ -z "$UPLOAD_URL" ] || [ "$UPLOAD_URL" == "null" ]; then
+            echo "::error::创建 Release 失败或未能获取到上传 URL。"
+            echo "API 响应: ${RESPONSE}"
+            exit 1
+          fi
+          echo "Release 创建成功，上传 URL: ${UPLOAD_URL}"
+
+          # 4. 上传构建产物作为附件
+          echo "正在上传附件..."
+          curl --silent -X POST "${UPLOAD_URL}?name=${ARCHIVE_NAME}" \
+            -H "Authorization: token ${GITEA_TOKEN}" \
+            -H "Content-Type: application/octet-stream" \
+            --data-binary "@${ARCHIVE_NAME}"
+
+          echo "附件 ${ARCHIVE_NAME} 上传成功！"
+          echo "流程完成。"
