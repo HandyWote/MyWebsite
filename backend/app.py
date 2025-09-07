@@ -180,7 +180,12 @@ def create_app():
                      "https://handywote.site",
                      "http://www.handywote.site",
                      "http://handywote.site",
-                     "https://webbackend.handywote.site"
+                     "https://webbackend.handywote.site",
+                     "https://www.handywote.top",
+                     "https://handywote.top",
+                     "http://www.handywote.top",
+                     "http://handywote.top",
+                     "https://webbackend.handywote.top"
                  ],
                  "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
                  "allow_headers": ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
