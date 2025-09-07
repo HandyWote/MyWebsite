@@ -27,7 +27,7 @@ services:
       - backend_network
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    restart: unless-stopped
+    restart: always
 
 networks:
   backend_network:

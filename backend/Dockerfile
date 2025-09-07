@@ -2,8 +2,11 @@ FROM docker.xuanyuan.me/library/python:3.10
 
 WORKDIR /app
 
+# 安装 uv
+RUN pip install uv
+
 # 配置国内镜像源
-RUN pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
+RUN uv config set index-url https://pypi.tuna.tsinghua.edu.cn/simple
 
 # 安装系统依赖
 RUN apt-get update && apt-get install -y \
@@ -15,14 +18,11 @@ RUN apt-get update && apt-get install -y \
 # 设置时区
 ENV TZ=Asia/Shanghai
 
-# 复制requirements文件
-COPY requirements.txt .
+# 复制项目文件
+COPY pyproject.toml uv.lock ./
 
-# 安装Python依赖
-RUN pip install --no-cache-dir -r requirements.txt
-
-# 安装生产环境需要的gunicorn和gevent
-RUN pip install gunicorn gevent
+# 使用 uv 安装依赖
+RUN uv sync --frozen
 
 # 创建非root用户和必要目录
 RUN adduser --disabled-password --gecos '' appuser && \
@@ -44,4 +44,4 @@ USER appuser
 EXPOSE 5000
 
 # 使用gunicorn启动应用
-CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:5000", "--worker-class", "gevent", "--worker-connections", "1000", "--max-requests", "1000", "--max-requests-jitter", "100", "--keep-alive", "5", "--timeout", "30", "app:app"]
+CMD ["uv", "run", "gunicorn", "-w", "4", "-b", "0.0.0.0:5000", "--worker-class", "gevent", "--worker-connections", "1000", "--max-requests", "1000", "--max-requests-jitter", "100", "--keep-alive", "5", "--timeout", "30", "app:app"]
