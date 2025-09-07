@@ -8,6 +8,7 @@ import os
 from flask import send_from_directory
 from werkzeug.utils import secure_filename
 import uuid
+from utils.image_utils import convert_to_webp, should_convert_to_webp, get_webp_filename
 
 UPLOAD_FOLDER = 'uploads'  # 可根据实际情况调整
 ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp'}
@@ -134,12 +135,42 @@ def upload_article_cover():
     ext = file.filename.rsplit('.', 1)[-1].lower()
     if ext not in ALLOWED_IMAGE_EXTENSIONS:
         return jsonify({'code': 1, 'msg': '不支持的图片格式'}), 400
-    filename = f"{uuid.uuid4().hex}.{ext}"
-    save_path = os.path.join(UPLOAD_FOLDER, filename)
+    
+    # 临时文件名（原格式）
+    temp_filename = f"{uuid.uuid4().hex}.{ext}"
+    temp_path = os.path.join(UPLOAD_FOLDER, temp_filename)
+    
+    # 保存原始文件
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-    file.save(save_path)
-    url = f"/api/admin/articles/cover/{filename}"
-    return jsonify({'code': 0, 'msg': '上传成功', 'url': url})
+    file.save(temp_path)
+    
+    try:
+        # 判断是否需要转换为webp格式
+        if should_convert_to_webp(temp_filename):
+            # 转换为webp格式
+            webp_filename = get_webp_filename(temp_filename)
+            webp_path = os.path.join(UPLOAD_FOLDER, webp_filename)
+            
+            # 执行转换
+            if convert_to_webp(temp_path, webp_path):
+                # 转换成功，删除临时文件，使用webp文件
+                os.remove(temp_path)
+                final_filename = webp_filename
+            else:
+                # 转换失败，使用原始文件
+                final_filename = temp_filename
+        else:
+            # 已经是webp格式，直接使用
+            final_filename = temp_filename
+        
+        url = f"/api/admin/articles/cover/{final_filename}"
+        return jsonify({'code': 0, 'msg': '上传成功', 'url': url})
+        
+    except Exception as e:
+        # 发生错误，清理临时文件
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+        return jsonify({'code': 1, 'msg': f'上传失败: {str(e)}'}), 500
 
 # 2. 文章封面图片静态访问接口
 @article_bp.route('/articles/cover/<filename>')
