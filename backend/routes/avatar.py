@@ -7,6 +7,7 @@ from datetime import datetime
 import os
 import uuid
 from extensions import socketio
+from utils.image_utils import convert_to_webp, should_convert_to_webp, get_webp_filename
 
 avatar_bp = Blueprint('avatar', __name__)
 
@@ -26,20 +27,57 @@ def upload_avatar():
     file = request.files.get('file')
     if not file:
         return jsonify({'code': 1, 'msg': '未上传文件'}), 400
+    
     ext = file.filename.rsplit('.', 1)[-1].lower()
     if ext not in current_app.config['ALLOWED_IMAGE_EXTENSIONS']:
         return jsonify({'code': 1, 'msg': '不支持的图片格式'}), 400
-    filename = f"{uuid.uuid4().hex}.{ext}"
-    save_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
-    file.save(save_path)
-    avatar = Avatar(filename=filename, is_current=True, cropped_info=request.form.get('cropped_info'))
-    # 取消之前头像的 is_current
-    Avatar.query.filter_by(is_current=True, deleted_at=None).update({'is_current': False})
-    db.session.add(avatar)
-    db.session.commit()
-    url = f"/api/admin/avatars/file/{filename}"
-    socketio.emit('avatars_updated')
-    return jsonify({'code': 0, 'msg': '上传成功', 'url': url, 'id': avatar.id})
+    
+    # 临时文件名（原格式）
+    temp_filename = f"{uuid.uuid4().hex}.{ext}"
+    temp_path = os.path.join(current_app.config['UPLOAD_FOLDER'], temp_filename)
+    
+    # 保存原始文件
+    file.save(temp_path)
+    
+    try:
+        # 判断是否需要转换为webp格式
+        if should_convert_to_webp(temp_filename):
+            # 转换为webp格式
+            webp_filename = get_webp_filename(temp_filename)
+            webp_path = os.path.join(current_app.config['UPLOAD_FOLDER'], webp_filename)
+            
+            # 执行转换
+            if convert_to_webp(temp_path, webp_path):
+                # 转换成功，删除临时文件，使用webp文件
+                os.remove(temp_path)
+                final_filename = webp_filename
+            else:
+                # 转换失败，使用原始文件
+                os.remove(temp_path)
+                final_filename = temp_filename
+        else:
+            # 已经是webp格式，直接使用
+            final_filename = temp_filename
+        
+        # 创建头像记录
+        avatar = Avatar(filename=final_filename, is_current=True, cropped_info=request.form.get('cropped_info'))
+        
+        # 取消之前头像的 is_current
+        Avatar.query.filter_by(is_current=True, deleted_at=None).update({'is_current': False})
+        
+        db.session.add(avatar)
+        db.session.commit()
+        
+        url = f"/api/admin/avatars/file/{final_filename}"
+        socketio.emit('avatars_updated')
+        
+        return jsonify({'code': 0, 'msg': '上传成功', 'url': url, 'id': avatar.id})
+        
+    except Exception as e:
+        # 发生错误，清理临时文件
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+        return jsonify({'code': 1, 'msg': f'上传失败: {str(e)}'}), 500
 
 @avatar_bp.route('/avatars/file/<filename>')
 def get_avatar_file(filename):
