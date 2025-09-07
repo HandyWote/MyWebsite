@@ -13,7 +13,7 @@ __pycache__/
 *.swo
 *.~ 
 *.orig
-
+IFLOW.md
 # Python virtualenv
 .env
 venv/

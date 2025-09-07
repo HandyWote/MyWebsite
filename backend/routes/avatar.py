@@ -38,6 +38,7 @@ def upload_avatar():
     
     # 保存原始文件
     file.save(temp_path)
+    print(f"文件已保存到: {temp_path}")
     
     try:
         # 判断是否需要转换为webp格式
@@ -45,19 +46,28 @@ def upload_avatar():
             # 转换为webp格式
             webp_filename = get_webp_filename(temp_filename)
             webp_path = os.path.join(current_app.config['UPLOAD_FOLDER'], webp_filename)
+            print(f"准备转换为webp格式: {temp_path} -> {webp_path}")
             
             # 执行转换
             if convert_to_webp(temp_path, webp_path):
                 # 转换成功，删除临时文件，使用webp文件
                 os.remove(temp_path)
                 final_filename = webp_filename
+                print(f"转换成功，使用webp文件: {webp_path}")
             else:
                 # 转换失败，使用原始文件
                 os.remove(temp_path)
                 final_filename = temp_filename
+                print(f"转换失败，使用原始文件: {temp_path}")
         else:
             # 已经是webp格式，直接使用
             final_filename = temp_filename
+            print(f"已经是webp格式，直接使用: {temp_path}")
+        
+        # 检查文件是否存在
+        final_path = os.path.join(current_app.config['UPLOAD_FOLDER'], final_filename)
+        print(f"最终文件路径: {final_path}")
+        print(f"文件是否存在: {os.path.exists(final_path)}")
         
         # 创建头像记录
         avatar = Avatar(filename=final_filename, is_current=True, cropped_info=request.form.get('cropped_info'))
@@ -69,6 +79,7 @@ def upload_avatar():
         db.session.commit()
         
         url = f"/api/admin/avatars/file/{final_filename}"
+        print(f"返回的URL: {url}")
         socketio.emit('avatars_updated')
         
         return jsonify({'code': 0, 'msg': '上传成功', 'url': url, 'id': avatar.id})
@@ -77,15 +88,27 @@ def upload_avatar():
         # 发生错误，清理临时文件
         if os.path.exists(temp_path):
             os.remove(temp_path)
+        print(f"上传失败: {str(e)}")
         return jsonify({'code': 1, 'msg': f'上传失败: {str(e)}'}), 500
 
 @avatar_bp.route('/avatars/file/<filename>')
 def get_avatar_file(filename):
     import os
-    print('图片实际路径:', os.path.join(current_app.config['UPLOAD_FOLDER'], filename))
-    print('UPLOAD_FOLDER:', current_app.config['UPLOAD_FOLDER'])
+    upload_folder = current_app.config['UPLOAD_FOLDER']
+    file_path = os.path.join(upload_folder, filename)
+    print('UPLOAD_FOLDER:', upload_folder)
     print('请求文件名:', filename)
-    return send_from_directory(current_app.config['UPLOAD_FOLDER'], filename)
+    print('图片实际路径:', file_path)
+    print('文件是否存在:', os.path.exists(file_path))
+    print('UPLOAD_FOLDER绝对路径:', os.path.abspath(upload_folder))
+    print('文件绝对路径:', os.path.abspath(file_path))
+    
+    # 检查文件是否存在
+    if not os.path.exists(file_path):
+        print(f"文件不存在: {file_path}")
+        return jsonify({'code': 1, 'msg': '文件不存在'}), 404
+    
+    return send_from_directory(upload_folder, filename)
 
 @avatar_bp.route('/avatars/<int:avatar_id>/set_current', methods=['PUT'])
 @jwt_required()
