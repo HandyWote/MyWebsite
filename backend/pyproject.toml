@@ -12,6 +12,7 @@ dependencies = [
     "flask-jwt-extended>=4.7.1",
     "flask-socketio>=5.5.1",
     "flask-sqlalchemy>=3.1.1",
+    "gevent>=25.8.2",
     "pillow>=11.3.0",
     "psycopg2-binary>=2.9.10",
     "python-dotenv>=1.1.1",
