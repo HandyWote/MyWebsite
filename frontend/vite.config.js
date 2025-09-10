@@ -28,7 +28,7 @@ export default defineConfig({
     proxy: {
       // API代理配置
       '/api': {
-        target: 'http://192.168.31.129:5000',
+        target: process.env.VITE_API_BASE_URL || 'http://localhost:5000',
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path,
@@ -46,7 +46,7 @@ export default defineConfig({
       },
       // WebSocket代理配置 - 支持Flask-SocketIO
       '/socket.io': {
-        target: 'http://192.168.31.129:5000',
+        target: process.env.VITE_API_BASE_URL || 'http://localhost:5000',
         changeOrigin: true,
         ws: true,
         secure: false,
@@ -54,7 +54,7 @@ export default defineConfig({
       },
       // 文件上传代理配置
       '/uploads': {
-        target: 'http://192.168.31.129:5000',
+        target: process.env.VITE_API_BASE_URL || 'http://localhost:5000',
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path,
