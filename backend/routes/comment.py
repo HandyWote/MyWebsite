@@ -1,9 +1,10 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from extensions import db
 from models.comment import Comment
 from models.article import Article
 from utils.response import success, error
-from flask_jwt_extended import jwt_required
+from utils.comment_limits import check_comment_limit, get_comment_limit_info
+from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime
 import logging
 
@@ -87,6 +88,29 @@ def create_comment(article_id):
         
         logger.info(f"找到文章: {article.title}, deleted_at: {article.deleted_at}")
         
+        # 获取用户IP地址
+        # 优先使用代理传递的IP地址，然后使用直接连接的IP地址
+        ip_address = request.headers.get('X-Forwarded-For', request.headers.get('X-Real-IP', request.remote_addr))
+        # 如果X-Forwarded-For包含多个IP，取第一个
+        if ',' in ip_address:
+            ip_address = ip_address.split(',')[0].strip()
+        logger.info(f"用户IP地址: {ip_address}")
+        
+        # 获取用户身份（如果有）
+        user_identity = None
+        try:
+            # 尝试获取JWT身份
+            user_identity = get_jwt_identity()
+            logger.info(f"用户身份: {user_identity}")
+        except Exception as e:
+            logger.info(f"未获取到用户身份: {e}")
+        
+        # 检查评论限制
+        can_comment, limit_reason = check_comment_limit(article_id, ip_address, user_identity)
+        if not can_comment:
+            logger.warning(f"评论被限制: {limit_reason}")
+            return error(limit_reason, 429)  # 429 Too Many Requests
+        
         # 创建评论
         logger.info("开始创建评论")
         comment = Comment(
@@ -94,7 +118,7 @@ def create_comment(article_id):
             author=data['author'].strip(),
             email=data.get('email', '').strip() or None,
             content=data['content'].strip(),
-            ip_address=request.remote_addr,
+            ip_address=ip_address,
             user_agent=request.headers.get('User-Agent', '')
         )
         
@@ -176,3 +200,14 @@ def admin_delete_comment(comment_id):
     except Exception as e:
         db.session.rollback()
         return error(f'评论删除失败: {str(e)}', 500)
+
+
+@comment_bp.route('/admin/comments/limits', methods=['GET'])
+@jwt_required()
+def get_comment_limits():
+    """获取评论限制配置（管理后台）"""
+    try:
+        limits_info = get_comment_limit_info()
+        return success(limits_info)
+    except Exception as e:
+        return error(f'获取评论限制配置失败: {str(e)}', 500)

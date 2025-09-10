@@ -315,6 +315,10 @@ flowchart TD
         
         // 显示成功消息
         alert('评论发布成功！');
+      } else if (response.status === 429) {
+        // 处理评论限制错误
+        const errorData = await response.json();
+        alert(errorData.msg || '评论发布频率过高，请稍后再试');
       } else {
         throw new Error('评论发布失败');
       }

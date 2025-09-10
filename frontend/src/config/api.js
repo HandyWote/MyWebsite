@@ -100,6 +100,7 @@ export const API_ENDPOINTS = {
     ARTICLE_IMPORT_MD: '/api/admin/articles/import-md', // 导入Markdown
     ADMIN_COMMENTS: '/api/admin/comments',                   // 获取所有评论
     DELETE_COMMENT: (id) => `/api/admin/comments/${id}`,      // 删除评论
+    COMMENT_LIMITS: '/api/admin/comments/limits',             // 获取评论限制配置
     EXPORT: '/api/admin/export',               // 导出数据
     IMPORT: '/api/admin/import',               // 导入数据
   },
@@ -176,6 +177,7 @@ export const getApiUrl = {
   adminArticleImportMd: () => buildApiUrl(API_ENDPOINTS.ADMIN.ARTICLE_IMPORT_MD),
   adminComments: () => buildApiUrl(API_ENDPOINTS.ADMIN.ADMIN_COMMENTS),              // 获取所有评论
   deleteComment: (id) => buildApiUrl(API_ENDPOINTS.ADMIN.DELETE_COMMENT(id)),         // 删除评论
+  adminCommentLimits: () => buildApiUrl(API_ENDPOINTS.ADMIN.COMMENT_LIMITS),         // 获取评论限制配置
   adminExport: () => buildApiUrl(API_ENDPOINTS.ADMIN.EXPORT),
   adminImport: () => buildApiUrl(API_ENDPOINTS.ADMIN.IMPORT),
   
