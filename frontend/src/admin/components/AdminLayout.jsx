@@ -9,6 +9,7 @@ const tabList = [
   { label: '联系方式', path: '/admin/contacts' },
   { label: '头像管理', path: '/admin/avatars' },
   { label: '文章管理', path: '/admin/articles' },
+  { label: '评论管理', path: '/admin/comments' },
   { label: '数据管理', path: '/admin/data' }
 ];
 

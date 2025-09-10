@@ -12,6 +12,7 @@ class Comment(db.Model):
     content = db.Column(db.Text, nullable=False)
     ip_address = db.Column(db.String(45), nullable=True)  # 记录IP地址
     user_agent = db.Column(db.Text, nullable=True)  # 记录用户代理
+    status = db.Column(db.String(20), nullable=False, default='normal')  # 评论状态：normal, pending, spam
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
@@ -25,6 +26,9 @@ class Comment(db.Model):
             'author': self.author,
             'email': self.email,
             'content': self.content,
+            'ip_address': self.ip_address,
+            'user_agent': self.user_agent,
+            'status': self.status,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
