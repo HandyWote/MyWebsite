@@ -1,12 +1,5 @@
 #!/usr/bin/env python3
 
-# 尽早执行 gevent monkey-patch，避免 ssl 模块导入警告
-try:
-    from gevent import monkey
-    monkey.patch_all()
-except ImportError:
-    pass
-
 from flask import Flask
 from flask_cors import CORS
 from extensions import db, jwt, scheduler, socketio, cors
