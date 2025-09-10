@@ -28,6 +28,14 @@ def convert_to_webp(input_path, output_path, quality=85):
             
             # 保存为webp格式
             img.save(output_path, 'webp', quality=quality, optimize=True)
+            
+            # 确保输出文件有正确的权限
+            try:
+                import os
+                os.chmod(output_path, 0o644)
+            except Exception as e:
+                print(f"设置输出文件权限失败: {e}")
+            
             return True
             
     except Exception as e:

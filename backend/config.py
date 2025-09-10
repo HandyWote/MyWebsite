@@ -28,7 +28,15 @@ class Config:
         self.SQLALCHEMY_TRACK_MODIFICATIONS = False
 
         # 上传相关
-        self.UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER', 'uploads')
+        upload_folder = os.environ.get('UPLOAD_FOLDER', 'uploads')
+        # 检查是否在Docker容器中
+        if os.path.exists('/app/.dockerenv'):
+            # 在Docker容器中，使用/app/uploads
+            upload_folder = '/app/uploads'
+        elif not os.path.isabs(upload_folder):
+            # 在开发环境中，使用绝对路径
+            upload_folder = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), upload_folder))
+        self.UPLOAD_FOLDER = upload_folder
         self.MAX_CONTENT_LENGTH = int(os.environ.get('MAX_CONTENT_LENGTH', 5 * 1024 * 1024))
         self.ALLOWED_IMAGE_EXTENSIONS = set(os.environ.get('ALLOWED_IMAGE_EXTENSIONS', 'jpg,jpeg,png,webp').split(','))
 

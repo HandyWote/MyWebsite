@@ -10,22 +10,19 @@ RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list.d/debia
     sed -i 's/security.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list.d/debian.sources
 
 # 安装 uv（尝试多个源）
-RUN pip install uv -i https://pypi.tuna.tsinghua.edu.cn/simple/ || \
-    pip install uv -i https://mirrors.aliyun.com/pypi/simple/ || \
-    pip install uv
+RUN pip install uv -i https://pypi.tuna.tsinghua.edu.cn/simple/
 
 # 复制项目文件
 COPY pyproject.toml uv.lock ./
 
-# 配置uv使用国内源（尝试多个源）
-RUN uv sync --frozen --index-url https://pypi.tuna.tsinghua.edu.cn/simple/ || \
-    uv sync --frozen --index-url https://mirrors.aliyun.com/pypi/simple/ || \
-    uv sync --frozen
+RUN uv sync --frozen
 
 # 创建非root用户和必要目录
 RUN adduser --disabled-password --gecos '' appuser && \
     mkdir -p /app/uploads && \
-    chown -R appuser:appuser /app
+    chown -R appuser:appuser /app && \
+    chmod -R 755 /app && \
+    chmod 777 /app/uploads
 
 # 复制环境变量文件
 COPY .env* ./
@@ -34,7 +31,9 @@ COPY .env* ./
 COPY . .
 
 # 确保appuser对所有文件有正确权限
-RUN chown -R appuser:appuser /app
+RUN chown -R appuser:appuser /app && \
+    chmod -R 755 /app && \
+    chmod 777 /app/uploads
 
 USER appuser
 

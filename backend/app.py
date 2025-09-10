@@ -1,4 +1,12 @@
 #!/usr/bin/env python3
+
+# 尽早执行 gevent monkey-patch，避免 ssl 模块导入警告
+try:
+    from gevent import monkey
+    monkey.patch_all()
+except ImportError:
+    pass
+
 from flask import Flask
 from flask_cors import CORS
 from extensions import db, jwt, scheduler, socketio, cors
@@ -193,8 +201,25 @@ def create_app():
 
     # 确保上传目录存在 - 使用绝对路径
     upload_dir = os.path.abspath(app.config['UPLOAD_FOLDER'])
-    os.makedirs(upload_dir, exist_ok=True)
+    os.makedirs(upload_dir, exist_ok=True, mode=0o755)
     logger.info(f"Upload directory ensured: {upload_dir}")
+    
+    # 确保上传目录有正确的权限
+    try:
+        os.chmod(upload_dir, 0o755)
+        logger.info(f"Upload directory permissions set: {upload_dir}")
+    except Exception as e:
+        logger.warning(f"Failed to set upload directory permissions: {e}")
+    
+    # 验证上传目录是否可写
+    try:
+        test_file = os.path.join(upload_dir, 'test_write.tmp')
+        with open(test_file, 'w') as f:
+            f.write('test')
+        os.remove(test_file)
+        logger.info(f"Upload directory is writable: {upload_dir}")
+    except Exception as e:
+        logger.error(f"Upload directory is not writable: {upload_dir}, error: {e}")
 
     # 添加健康检查路由
     @app.route('/health')
@@ -412,12 +437,7 @@ if __name__ == '__main__':
         logger.info("⏹️  按 Ctrl+C 停止服务")
         
         # 开发环境启动
-        try:
-            from gevent import monkey
-            monkey.patch_all()
-            socketio.run(app, host=args.host, port=args.port, debug=args.debug)
-        except ImportError:
-            app.run(host=args.host, port=args.port, debug=args.debug)
+        socketio.run(app, host=args.host, port=args.port, debug=args.debug)
     except Exception as e:
         logger.error(f"❌ 启动服务失败: {e}")
 

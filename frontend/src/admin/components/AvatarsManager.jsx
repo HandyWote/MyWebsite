@@ -209,15 +209,7 @@ const AvatarsManager = () => {
       if (data.code === 0) {
         setSnackbarMsg('上传成功');
         setSnackbarOpen(true);
-        // 立即将新头像插入到列表最前面，提升用户体验
-        const newAvatar = {
-          id: data.id,
-          filename: file.name,
-          url: data.url || '',
-          uploaded_at: new Date().toISOString(),
-          is_current: true
-        };
-        setAvatars(prev => [newAvatar, ...prev]);
+        // 从服务器获取最新列表，确保数据一致性
         fetchAvatars();
       } else {
         throw new Error(data.msg || '上传失败');

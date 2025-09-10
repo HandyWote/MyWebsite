@@ -40,6 +40,13 @@ def upload_avatar():
     file.save(temp_path)
     print(f"文件已保存到: {temp_path}")
     
+    # 确保文件有正确的权限
+    try:
+        os.chmod(temp_path, 0o644)
+        print(f"文件权限已设置: {temp_path}")
+    except Exception as e:
+        print(f"设置文件权限失败: {e}")
+    
     try:
         # 判断是否需要转换为webp格式
         if should_convert_to_webp(temp_filename):
@@ -54,6 +61,13 @@ def upload_avatar():
                 os.remove(temp_path)
                 final_filename = webp_filename
                 print(f"转换成功，使用webp文件: {webp_path}")
+                
+                # 确保webp文件有正确的权限
+                try:
+                    os.chmod(webp_path, 0o644)
+                    print(f"webp文件权限已设置: {webp_path}")
+                except Exception as e:
+                    print(f"设置webp文件权限失败: {e}")
             else:
                 # 转换失败，使用原始文件
                 os.remove(temp_path)
