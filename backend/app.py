@@ -259,6 +259,15 @@ def create_app():
             'routes': routes
         }
 
+    # 输出环境变量信息
+    logger.info("Environment variables:")
+    logger.info(f"  DB_HOST: {os.environ.get('DB_HOST', 'Not set')}")
+    logger.info(f"  DB_PORT: {os.environ.get('DB_PORT', 'Not set')}")
+    logger.info(f"  DB_NAME: {os.environ.get('DB_NAME', 'Not set')}")
+    logger.info(f"  DB_USER: {os.environ.get('DB_USER', 'Not set')}")
+    logger.info(f"  DB_PASSWORD: {'*' * len(os.environ.get('DB_PASSWORD', '')) if os.environ.get('DB_PASSWORD') else 'Not set'}")
+
+    
     # 在应用上下文中初始化数据库
     with app.app_context():
         try:
