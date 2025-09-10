@@ -1,7 +1,7 @@
 import os
 from werkzeug.utils import secure_filename
-from setup import Config
 import uuid
+from config import Config
 
 def allowed_file(filename):
     config = Config()

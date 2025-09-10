@@ -49,10 +49,10 @@ def verify_env_loading():
         except Exception as e:
             print(f"读取.env文件时出错: {e}")
     
-    # 测试通过setup.py加载配置
-    print("\n=== 通过 setup.py 加载配置 ===")
+    # 测试通过config.py加载配置
+    print("\n=== 通过 config.py 加载配置 ===")
     try:
-        from setup import Config
+        from config import Config
         config = Config()
         
         print("✅ Config类导入成功")

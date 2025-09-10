@@ -15,7 +15,7 @@ def test_ai_service():
     
     try:
         # 导入配置
-        from setup import Config
+        from config import Config
         config = Config()
         
         print(f"AI配置检查:")

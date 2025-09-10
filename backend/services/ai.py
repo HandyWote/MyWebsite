@@ -1,7 +1,7 @@
 import requests
 import json
 import re
-from setup import Config
+from config import Config
 
 def analyze_article_content(title, content, summary=""):
     """

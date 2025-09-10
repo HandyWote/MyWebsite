@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM docker.xuanyuan.me/library/python:3.11-slim
 
 WORKDIR /app
 
@@ -9,21 +9,18 @@ ENV TZ=Asia/Shanghai
 RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list.d/debian.sources && \
     sed -i 's/security.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list.d/debian.sources
 
-# 安装系统依赖
-RUN apt-get update && apt-get install -y \
-    gcc \
-    postgresql-client \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
-
-# 安装 uv（使用阿里源）
-RUN pip install uv -i https://mirrors.aliyun.com/pypi/simple/
+# 安装 uv（尝试多个源）
+RUN pip install uv -i https://pypi.tuna.tsinghua.edu.cn/simple/ || \
+    pip install uv -i https://mirrors.aliyun.com/pypi/simple/ || \
+    pip install uv
 
 # 复制项目文件
 COPY pyproject.toml uv.lock ./
 
-# 配置uv使用阿里源
-RUN uv sync --frozen --index-url https://mirrors.aliyun.com/pypi/simple
+# 配置uv使用国内源（尝试多个源）
+RUN uv sync --frozen --index-url https://pypi.tuna.tsinghua.edu.cn/simple/ || \
+    uv sync --frozen --index-url https://mirrors.aliyun.com/pypi/simple/ || \
+    uv sync --frozen
 
 # 创建非root用户和必要目录
 RUN adduser --disabled-password --gecos '' appuser && \
