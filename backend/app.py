@@ -91,6 +91,12 @@ OPENAI_API_URL=https://api.openai.com/v1
 # JWT 有效期
 JWT_ACCESS_TOKEN_EXPIRES=86400
 JWT_REMEMBER_TOKEN_EXPIRES=604800
+
+# 评论限制配置
+COMMENT_LIMIT_ENABLED=true
+COMMENT_LIMIT_TIME_WINDOW=24
+COMMENT_LIMIT_MAX_COUNT=3
+COMMENT_LIMIT_EXEMPT_ADMIN=true
 """
     
     # 在backend目录下创建.env文件
@@ -126,6 +132,12 @@ def create_app():
     app.config["OPENAI_MODEL"] = config.OPENAI_MODEL
     app.config["JWT_ACCESS_TOKEN_EXPIRES"] = config.JWT_ACCESS_TOKEN_EXPIRES
     app.config["JWT_REMEMBER_TOKEN_EXPIRES"] = config.JWT_REMEMBER_TOKEN_EXPIRES
+    
+    # 评论限制配置
+    app.config["COMMENT_LIMIT_ENABLED"] = config.COMMENT_LIMIT_ENABLED
+    app.config["COMMENT_LIMIT_TIME_WINDOW"] = config.COMMENT_LIMIT_TIME_WINDOW
+    app.config["COMMENT_LIMIT_MAX_COUNT"] = config.COMMENT_LIMIT_MAX_COUNT
+    app.config["COMMENT_LIMIT_EXEMPT_ADMIN"] = config.COMMENT_LIMIT_EXEMPT_ADMIN
     
     # 数据库连接池配置
     app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {

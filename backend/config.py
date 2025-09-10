@@ -53,7 +53,6 @@ class Config:
         self.COMMENT_LIMIT_ENABLED = os.environ.get('COMMENT_LIMIT_ENABLED', 'true').lower() == 'true'
         self.COMMENT_LIMIT_TIME_WINDOW = int(os.environ.get('COMMENT_LIMIT_TIME_WINDOW', 24))  # 小时
         self.COMMENT_LIMIT_MAX_COUNT = int(os.environ.get('COMMENT_LIMIT_MAX_COUNT', 1))  # 每个时间窗口内最大评论数
-        self.COMMENT_LIMIT_WHITELIST_IPS = os.environ.get('COMMENT_LIMIT_WHITELIST_IPS', '').split(',') if os.environ.get('COMMENT_LIMIT_WHITELIST_IPS') else []
         self.COMMENT_LIMIT_EXEMPT_ADMIN = os.environ.get('COMMENT_LIMIT_EXEMPT_ADMIN', 'true').lower() == 'true'  # 是否豁免管理员
 
         # 开发环境配置

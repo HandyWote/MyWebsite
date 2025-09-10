@@ -27,13 +27,12 @@ class CommentLimitChecker:
         初始化评论限制检查器
         
         Args:
-            config: 应用配置对象
+            config: Flask应用配置字典
         """
-        self.enabled = config.COMMENT_LIMIT_ENABLED
-        self.time_window_hours = config.COMMENT_LIMIT_TIME_WINDOW
-        self.max_comments = config.COMMENT_LIMIT_MAX_COUNT
-        self.whitelist_ips = config.COMMENT_LIMIT_WHITELIST_IPS
-        self.exempt_admin = config.COMMENT_LIMIT_EXEMPT_ADMIN
+        self.enabled = config.get('COMMENT_LIMIT_ENABLED', True)
+        self.time_window_hours = config.get('COMMENT_LIMIT_TIME_WINDOW', 24)
+        self.max_comments = config.get('COMMENT_LIMIT_MAX_COUNT', 3)
+        self.exempt_admin = config.get('COMMENT_LIMIT_EXEMPT_ADMIN', True)
     
     def check_comment_limit(self, article_id, ip_address, user_identity=None):
         """
@@ -56,16 +55,7 @@ class CommentLimitChecker:
             logger.info(f"IP {ip_address} 在白名单中，豁免评论限制")
             return True, ""
         
-        # 检查管理员豁免
-        if self.exempt_admin and user_identity:
-            try:
-                # 这里可以根据实际需求判断是否为管理员
-                # 例如：检查用户角色或权限
-                if self._is_admin_user(user_identity):
-                    logger.info(f"用户 {user_identity} 是管理员，豁免评论限制")
-                    return True, ""
-            except Exception as e:
-                logger.warning(f"检查管理员权限时出错: {e}")
+        # 移除了管理员豁免检查，所有用户都遵守评论限制
         
         # 计算时间窗口的起始时间
         time_start = datetime.utcnow() - timedelta(hours=self.time_window_hours)
@@ -78,35 +68,26 @@ class CommentLimitChecker:
                 Comment.created_at >= time_start
             ).count()
             
+            logger.info(f"=== 评论限制调试信息 ===")
             logger.info(f"IP {ip_address} 在文章 {article_id} 过去 {self.time_window_hours} 小时内发表了 {comment_count} 条评论")
+            logger.info(f"时间窗口起始: {time_start}")
+            logger.info(f"当前时间: {datetime.utcnow()}")
+            logger.info(f"最大允许评论数: {self.max_comments}")
+            logger.info(f"评论限制功能启用状态: {self.enabled}")
             
             if comment_count >= self.max_comments:
+                logger.warning(f"评论被限制: 已发表 {comment_count} 条，超过最大限制 {self.max_comments}")
                 return False, f"在 {self.time_window_hours} 小时内只能发表 {self.max_comments} 条评论"
             
+            logger.info(f"评论允许通过: 已发表 {comment_count} 条，未超过最大限制 {self.max_comments}")
             return True, ""
             
         except Exception as e:
             logger.error(f"检查评论限制时出错: {e}")
+            import traceback
+            logger.error(f"堆栈跟踪: {traceback.format_exc()}")
             # 出错时默认允许，避免误拒正常用户
             return True, ""
-    
-    def _is_admin_user(self, user_identity):
-        """
-        检查用户是否为管理员
-        
-        Args:
-            user_identity (str): 用户身份标识
-        
-        Returns:
-            bool: 是否为管理员
-        """
-        # 这里可以根据实际需求实现管理员判断逻辑
-        # 例如：查询数据库中的用户角色
-        # 或者检查用户名是否匹配管理员用户名
-        
-        # 简单实现：检查用户名是否为配置中的管理员用户名
-        admin_username = current_app.config.get('ADMIN_USERNAME')
-        return user_identity == admin_username
 
 
 def check_comment_limit(article_id, ip_address, user_identity=None):
@@ -121,8 +102,16 @@ def check_comment_limit(article_id, ip_address, user_identity=None):
     Returns:
         tuple: (bool, str) - (是否允许, 拒绝原因)
     """
+    logger.info(f"=== 调用 check_comment_limit 函数 ===")
+    logger.info(f"文章ID: {article_id}")
+    logger.info(f"IP地址: {ip_address}")
+    logger.info(f"用户身份: {user_identity}")
+    
     checker = CommentLimitChecker(current_app.config)
-    return checker.check_comment_limit(article_id, ip_address, user_identity)
+    result = checker.check_comment_limit(article_id, ip_address, user_identity)
+    
+    logger.info(f"检查结果: {result}")
+    return result
 
 
 def get_comment_limit_info():
@@ -134,11 +123,10 @@ def get_comment_limit_info():
     """
     config = current_app.config
     return {
-        'enabled': config.COMMENT_LIMIT_ENABLED,
-        'time_window_hours': config.COMMENT_LIMIT_TIME_WINDOW,
-        'max_comments': config.COMMENT_LIMIT_MAX_COUNT,
-        'whitelist_ips': config.COMMENT_LIMIT_WHITELIST_IPS,
-        'exempt_admin': config.COMMENT_LIMIT_EXEMPT_ADMIN
+        'enabled': config.get('COMMENT_LIMIT_ENABLED', True),
+        'time_window_hours': config.get('COMMENT_LIMIT_TIME_WINDOW', 24),
+        'max_comments': config.get('COMMENT_LIMIT_MAX_COUNT', 3),
+        'exempt_admin': config.get('COMMENT_LIMIT_EXEMPT_ADMIN', True)
     }
 
 
@@ -152,17 +140,11 @@ def validate_comment_limit_config():
     config = current_app.config
     
     # 检查时间窗口是否为正数
-    if config.COMMENT_LIMIT_TIME_WINDOW <= 0:
+    if config.get('COMMENT_LIMIT_TIME_WINDOW', 24) <= 0:
         return False, "评论限制时间窗口必须大于0"
     
     # 检查最大评论数是否为正数
-    if config.COMMENT_LIMIT_MAX_COUNT <= 0:
+    if config.get('COMMENT_LIMIT_MAX_COUNT', 3) <= 0:
         return False, "评论限制最大数量必须大于0"
-    
-    # 检查白名单IP格式（简单检查）
-    for ip in config.COMMENT_LIMIT_WHITELIST_IPS:
-        ip = ip.strip()
-        if ip and not (ip.replace('.', '').isdigit() or ':' in ip):
-            return False, f"无效的IP地址格式: {ip}"
     
     return True, ""
