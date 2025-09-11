@@ -37,10 +37,11 @@ const getApiBaseUrl = () => {
     return 'http://localhost:5000';
   }
   
-  // 生产环境默认值 - 使用当前域名
+  // 生产环境默认值 - 在同一容器内使用相对路径
   if (import.meta.env.PROD) {
-    // 生产环境默认使用当前域名，假设API在同一域名下
-    return window.location.origin;
+    // 如果在Docker容器内，API和前端在同一域名下，使用相对路径
+    // 这样可以通过Nginx代理到后端，无需跨域
+    return '';
   }
   
   // 其他情况默认值
