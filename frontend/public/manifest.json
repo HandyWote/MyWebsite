@@ -9,21 +9,21 @@
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/avatar.png",
+      "src": "/avatar.webp",
       "sizes": "180x180",
-      "type": "image/png",
+      "type": "image/webp",
       "purpose": "any maskable"
     },
     {
-      "src": "/avatar.png",
+      "src": "/avatar.webp",
       "sizes": "192x192",
-      "type": "image/png",
+      "type": "image/webp",
       "purpose": "any maskable"
     },
     {
-      "src": "/avatar.png",
+      "src": "/avatar.webp",
       "sizes": "512x512",
-      "type": "image/png",
+      "type": "image/webp",
       "purpose": "any maskable"
     }
   ],
