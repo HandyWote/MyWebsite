@@ -18,7 +18,7 @@ console.log('contacts:', getApiUrl.contacts());
 console.log('avatars:', getApiUrl.avatars());
 console.log('articles:', getApiUrl.articles());
 console.log('articleDetail(1):', getApiUrl.articleDetail(1));
-console.log('avatarFile("test.jpg"):', getApiUrl.avatarFile('test.jpg'));
+console.log('avatarFile("test.webp"):', getApiUrl.avatarFile('test.webp'));
 
 console.log('=== 管理后台API测试 ===');
 console.log('adminLogin:', getApiUrl.adminLogin());

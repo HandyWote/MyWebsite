@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
-  base: './',
+  base: process.env.NODE_ENV === 'production' ? '/' : './',
   build: {
     rollupOptions: {
       output: {
@@ -61,7 +61,11 @@ export default defineConfig({
       }
     },
     port: 3131,
-    host: '0.0.0.0'
+    host: '0.0.0.0',
+    hmr: {
+      host: 'localhost',
+      protocol: 'ws'
+    }
   },
   optimizeDeps: {
     include: ['react', 'react-dom', 'react-router-dom']

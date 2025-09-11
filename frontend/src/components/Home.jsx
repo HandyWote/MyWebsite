@@ -58,9 +58,9 @@ const Home = () => {
       const res = await fetch(getApiUrl.avatars());
       const data = await res.json();
       const current = (data.avatars || data.data || []).find(a => a.is_current);
-      setAvatarUrl(current ? getApiUrl.avatarFile(current.filename) : './avatar.jpg');
-    } catch { 
-      setAvatarUrl('./avatar.jpg'); 
+      setAvatarUrl(current ? getApiUrl.avatarFile(current.filename) : '/avatar.webp');
+    } catch {
+      setAvatarUrl('/avatar.webp');
     }
   };
 
@@ -177,7 +177,7 @@ const Home = () => {
                 <LazyImage
                   src={avatarUrl}
                   alt="HandyWote"
-                  fallbackSrc="./avatar.jpg"
+                  fallbackSrc="/avatar.webp"
                   sx={{
                     width: { xs: 140, sm: 180 },
                     height: { xs: 140, sm: 180 },
