@@ -193,7 +193,7 @@ def create_app():
     
     if is_gunicorn:
         # Gunicorn环境下使用threading模式
-        socketio.init_app(app, cors_allowed_origins="*", async_mode='threading')
+        socketio.init_app(app, cors_allowed_origins="*", async_mode='threading', path='/socket.io/')
         logger.info("SocketIO initialized with threading mode for Gunicorn")
     else:
         # 开发环境下使用完整WebSocket支持

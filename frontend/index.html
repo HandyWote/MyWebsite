@@ -2,7 +2,7 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/jpeg" href="./avatar.jpg" />
+    <link rel="icon" type="image/webp" href="/avatar.webp" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="HandyWote的个人网站 - 汕头大学" />
     <meta name="keywords" content="HandyWote, 黄应辉, 个人网站, 汕头大学" />
@@ -19,8 +19,8 @@
     <link rel="preload" href="./src/main.jsx" as="script" crossorigin="anonymous" />
     <link rel="preload" href="./src/App.css" as="style" />
     <link rel="preload" href="./src/index.css" as="style" />
-    <link rel="preload" href="./public/avatar.jpg" as="image" />
-    <link rel="preload" href="./public/default-cover.svg" as="image" />
+    <link rel="preload" href="/avatar.webp" as="image" />
+    <link rel="preload" href="/default-cover.svg" as="image" />
     
     <!-- 性能优化meta标签 -->
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
@@ -30,7 +30,7 @@
     <link rel="shortcut icon" href="#" />
     
     <!-- PWA支持 -->
-    <link rel="manifest" href="./manifest.json" />
+    <link rel="manifest" href="/manifest.json" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="HandyWote" />
@@ -46,7 +46,7 @@
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('./sw.js')
+          navigator.serviceWorker.register('/sw.js')
             .then(registration => {
               console.log('ServiceWorker registration successful with scope: ', registration.scope);
             })

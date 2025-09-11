@@ -18,6 +18,7 @@ COPY pyproject.toml ./
 
 # 安装项目依赖
 RUN pip install -e .
+RUN pip install eventlet
 
 # 创建非root用户和必要目录
 RUN adduser --disabled-password --gecos '' appuser && \
