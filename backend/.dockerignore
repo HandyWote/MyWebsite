@@ -1,68 +1,49 @@
-# Python相关
-__pycache__
-*.pyc
-*.pyo
-*.pyd
-.Python
-*.so
-.coverage
-.coverage.*
-.cache
-.pytest_cache
-.pytest_cache/
-eggs/
-.eggs/
-*.egg-info/
-*.egg-info
-build/
-develop-eggs/
-dist/
-downloads/
-.sdist/
-.pydist/
-.installed.cfg
-*.egg
-pip-log.txt
-pip-delete-this-directory.txt
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py,cover
-.hypothesis/
-.pyre/
-.dmypy.json
-dmypy.json
-
-# 虚拟环境
-venv/
-env/
-ENV/
-.venv/
-.env/
-.ENV/
-
-# IDE相关
-.vscode/
-.idea/
-*.sublime-project
-*.sublime-workspace
-
-# Git相关
-.git
+# 忽略版本控制目录
+.git/
 .gitignore
 
-# 日志文件
+# 忽略日志文件
 *.log
 
-# 系统文件
+# 忽略临时文件和目录
+tmp/
+temp/
+*.tmp
+*.temp
+
+# 忽略IDE和编辑器文件
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 忽略系统文件
 .DS_Store
 Thumbs.db
 
-# 其他
+# 忽略node_modules（虽然这是后端，但以防万一）
+node_modules/
+
+# 忽略测试文件（如果有的话）
+tests/
+test/
+
+# 忽略上传目录（将在运行时挂载）
 uploads/
+
+# 忽略环境变量文件（将在运行时提供）
+.env
+.env.local
+.env.*.local
+
+# 忽略文档文件
+README.md
+docs/
+
+# 忽略Docker相关文件（除了这个.dockerignore文件）
+docker/
+Dockerfile*
+
+# 忽略构建产物
+dist/
+build/

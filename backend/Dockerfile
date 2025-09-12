@@ -1,27 +1,21 @@
-# 使用Python 3.11的官方镜像作为基础镜像
-FROM docker.1ms.run/python:3.11-slim
+# 使用uv提供的Python镜像作为基础镜像
+FROM ghcr.io/astral-sh/uv:python3.11-alpine
 
 # 设置工作目录
 WORKDIR /app
 
-# 安装系统依赖
-RUN apt-get update && apt-get install -y \
-    gcc \
-    && rm -rf /var/lib/apt/lists/*
+# 复制依赖文件
+COPY pyproject.toml uv.lock ./
+
+# 使用uv安装依赖（更快且支持lock文件）
+# 使用国内镜像源加速下载
+RUN uv pip install --system -e . --index https://pypi.tuna.tsinghua.edu.cn/simple/
 
 # 复制后端代码
 COPY . .
 
-# 安装uv包管理工具
-RUN pip install uv
-
-# 使用uv安装依赖（更快且支持lock文件）
-# 使用国内镜像源加速下载
-RUN uv pip install --system -e . --index https://pypi.tuna.tsinghua.edu.cn/simple/ && \
-    uv pip install --system eventlet gunicorn --index https://pypi.tuna.tsinghua.edu.cn/simple/
-
 # 创建非root用户
-RUN useradd --create-home --shell /bin/bash appuser && \
+RUN adduser -D appuser && \
     chown -R appuser:appuser /app
 
 # 切换到非root用户
