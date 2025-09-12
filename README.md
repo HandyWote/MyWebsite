@@ -1,305 +1,76 @@
-# HandyWote 个人网站项目
+# MyWebsite Docker部署说明
 
-## 📖 项目简介
+## 方案一：使用分离的Docker Compose配置（推荐）
 
-HandyWote 是一个现代化的个人网站项目，采用前后端分离架构，包含个人展示、文章管理、技能展示等功能。项目支持响应式设计，提供完整的管理后台。
+为了避免supervisord的pkg_resources弃用警告和配置文件读取错误，我们提供了新的分离式Docker Compose配置，分别运行Nginx和后端服务。
 
-## 🏗️ 技术架构
+### 特点
 
-### 前端技术栈
-- **框架**: React 18 + Vite
-- **路由**: React Router v6
-- **样式**: CSS3 + 响应式设计
-- **构建工具**: Vite
-- **包管理**: npm
+1. **避免supervisord问题**：不再使用supervisord，避免了pkg_resources弃用警告
+2. **现代化架构**：前后端服务分离，符合微服务架构理念
+3. **独立扩展**：可以独立扩展前端或后端服务
+4. **简化调试**：更容易定位和解决特定服务的问题
 
-### 后端技术栈
-- **框架**: Flask (Python)
-- **数据库**: MySQL
-- **ORM**: SQLAlchemy
-- **认证**: JWT (JSON Web Token)
-- **实时通信**: Socket.IO
-- **AI集成**: OpenAI API
-- **文件上传**: 本地存储
+### 使用方法
 
-### 部署技术
-- **容器化**: Docker + Docker Compose
-- **Web服务器**: Nginx
-- **SSL证书**: Let's Encrypt
-- **进程管理**: PM2 / systemd
-
-## 📁 项目结构
-
-```
-MyWebsite/
-├── frontend/                 # 前端代码
-│   ├── src/
-│   │   ├── components/      # 公共组件
-│   │   ├── admin/          # 管理后台
-│   │   ├── config/         # 配置文件
-│   │   └── main.jsx        # 入口文件
-│   ├── public/             # 静态资源
-│   ├── dist/               # 构建输出
-│   └── package.json        # 前端依赖
-├── backend/                # 后端代码
-│   ├── routes/            # API路由
-│   ├── models/            # 数据模型
-│   ├── services/          # 业务逻辑
-│   ├── utils/             # 工具函数
-│   └── app.py             # 应用入口
-├── docker-compose.yml     # Docker编排
-├── nginx.conf             # Nginx配置
-└── README.md              # 项目文档
-```
-
-## 🚀 快速开始
-
-### 环境要求
-- Node.js 18+
-- Python 3.8+
-- MySQL 8.0+
-- Docker (可选)
-
-### 本地开发
-
-1. **克隆项目**
 ```bash
-git clone <repository-url>
-cd MyWebsite
-```
-
-2. **前端开发**
-```bash
-# 安装依赖
-npm install
-
-# 启动开发服务器
-npm run dev
-```
-
-3. **后端开发**
-```bash
-cd backend
-
-# 创建虚拟环境
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-
-# 安装依赖
-pip install -r requirements.txt
-
-# 启动后端服务
-python app.py
-```
-
-4. **环境变量配置**
-```bash
-# 前端环境变量 (.env.local)
-VITE_API_BASE_URL=http://localhost:5000/
-
-# 后端环境变量 (backend/.env)
-DB_HOST=localhost
-DB_PORT=3306
-DB_USER=your_username
-DB_PASSWORD=your_password
-DB_NAME=handywrite
-SECRET_KEY=your_secret_key
-OPENAI_API_KEY=your_openai_key
-```
-
-### Docker 部署
-
-1. **构建镜像**
-```bash
-docker-compose build
-```
-
-2. **启动服务**
-```bash
+# 使用docker-compose文件
 docker-compose up -d
 ```
 
-3. **查看日志**
+### 配置说明
+
+- 前端服务运行在端口80，映射到主机的4419端口
+- 后端服务运行在端口5000，通过Docker网络与前端通信
+- 环境变量通过.env文件和docker-compose配置传递
+
+## 方案二：使用原有的整合Dockerfile
+
+原有的整合Dockerfile仍然可用，但可能会遇到supervisord相关的问题。
+
+### Dockerfile更新说明
+
+为了解决pkg_resources弃用警告和supervisord配置文件读取错误，我们对Dockerfile进行了以下改进：
+
+#### 1. 解决pkg_resources弃用警告
+
+- 使用`uv`作为Python包管理工具，它是一个现代的、快速的Python包安装程序，避免了使用旧的setuptools和pkg_resources
+- 使用国内镜像源（清华大学PyPI镜像）加速依赖安装
+- 通过使用`--system`标志将依赖安装到系统Python环境中，避免了虚拟环境相关的路径问题
+
+#### 2. 修复supervisord配置文件读取错误
+
+- 将supervisord配置文件放置在标准目录`/etc/supervisor/conf.d/`中
+- 确保supervisord日志目录`/var/log/supervisor`存在并具有正确的权限
+- 在supervisord配置中明确指定用户为`appuser`
+
+#### 3. 现代化进程管理
+
+- 使用supervisord作为进程管理器，同时管理Nginx和后端服务
+- 配置了健康检查机制
+- 正确设置日志输出到标准输出/标准错误，便于Docker日志收集
+
+#### 4. 权限和安全性
+
+- 创建非root用户`appuser`运行应用
+- 正确设置文件和目录权限
+- 使用多阶段构建减小最终镜像大小
+
+## 构建和运行
+
 ```bash
-docker-compose logs -f
+# 构建镜像
+docker build -t mywebsite .
+
+# 运行容器
+docker run -d -p 80:80 mywebsite
 ```
 
-## 🌐 生产环境部署
+## 故障排除
 
-### 域名配置
-- **前端域名**: `https://www.handywote.site`
-- **后端域名**: `https://webbackend.handywote.site`
+如果遇到任何问题，请检查以下几点：
 
-### 部署步骤
-
-1. **服务器准备**
-```bash
-# 更新系统
-sudo apt update && sudo apt upgrade -y
-
-# 安装必要软件
-sudo apt install nginx certbot python3-certbot-nginx -y
-```
-
-2. **SSL证书配置**
-```bash
-# 为前端域名申请证书
-sudo certbot --nginx -d www.handywote.site
-
-# 为后端域名申请证书
-sudo certbot --nginx -d webbackend.handywote.site
-```
-
-3. **前端部署**
-```bash
-# 构建生产版本
-npm run build
-
-# 上传到服务器
-scp -r dist/* user@server:/var/www/handywote.site/
-```
-
-4. **后端部署**
-```bash
-# 上传后端代码
-scp -r backend/* user@server:/opt/handywrite/backend/
-
-# 安装依赖
-pip install -r requirements.txt
-
-# 启动服务
-pm2 start app.py --name handywrite-backend
-```
-
-## 🔧 配置说明
-
-### API 配置
-项目使用集中化的 API 配置管理，详见 `src/config/api.js`：
-
-```javascript
-// 环境变量配置
-VITE_API_BASE_URL=https://webbackend.handywote.site/
-
-// 使用示例
-import { getApiUrl } from '@/config/api';
-
-// 获取文章列表
-const articles = await fetch(getApiUrl.articles());
-
-// 获取文章详情
-const article = await fetch(getApiUrl.articleDetail(123));
-```
-
-### CORS 配置
-后端已配置 CORS 支持跨域访问：
-
-```python
-CORS(app, resources={
-    r"/api/*": {
-        "origins": [
-            "http://localhost:5173",
-            "https://www.handywote.site",
-            "https://handywote.site"
-        ],
-        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        "allow_headers": ["Content-Type", "Authorization"]
-    }
-})
-```
-
-## 📚 功能模块
-
-### 公共功能
-- **首页展示**: 个人介绍、技能展示
-- **文章系统**: 文章列表、详情、分类、标签
-- **联系方式**: 社交媒体链接
-- **响应式设计**: 支持移动端访问
-
-### 管理后台
-- **内容管理**: 网站内容块编辑
-- **文章管理**: 文章的增删改查
-- **技能管理**: 技能标签管理
-- **头像管理**: 头像上传和管理
-- **数据导入导出**: 支持数据备份恢复
-- **AI 辅助**: OpenAI 集成，智能分析
-
-## 🔒 安全特性
-
-- **JWT 认证**: 管理后台访问控制
-- **CORS 配置**: 跨域安全控制
-- **输入验证**: 前后端双重验证
-- **SQL 注入防护**: ORM 自动防护
-- **XSS 防护**: 输出转义处理
-
-## 🐛 常见问题
-
-### 1. CORS 错误
-**问题**: 前端无法访问后端 API
-**解决**: 检查后端 CORS 配置，确保包含前端域名
-
-### 2. 环境变量不生效
-**问题**: 修改环境变量后前端仍使用旧配置
-**解决**: 重新构建前端 `npm run build`
-
-### 3. WebSocket 连接失败
-**问题**: 实时通信功能异常
-**解决**: 检查 WebSocket URL 配置和 SSL 证书
-
-### 4. 数据库连接失败
-**问题**: 后端无法连接数据库
-**解决**: 检查数据库配置和网络连接
-
-## 📝 开发指南
-
-### 添加新 API 端点
-
-1. **后端路由** (`backend/routes/`)
-```python
-@bp.route('/api/new-endpoint', methods=['GET'])
-def new_endpoint():
-    return jsonify({'message': 'success'})
-```
-
-2. **前端配置** (`src/config/api.js`)
-```javascript
-// 添加端点定义
-NEW_ENDPOINT: '/api/new-endpoint',
-
-// 添加便捷方法
-newEndpoint: () => buildApiUrl(API_ENDPOINTS.PUBLIC.NEW_ENDPOINT),
-```
-
-3. **前端使用**
-```javascript
-import { getApiUrl } from '@/config/api';
-
-const response = await fetch(getApiUrl.newEndpoint());
-```
-
-### 添加新组件
-
-1. **创建组件文件** (`src/components/`)
-2. **添加路由配置** (`src/App.jsx`)
-3. **更新导航菜单** (如需要)
-
-## 📄 许可证
-
-本项目采用 MIT 许可证，详见 [LICENSE](LICENSE) 文件。
-
-## 🤝 贡献指南
-
-1. Fork 项目
-2. 创建功能分支
-3. 提交更改
-4. 推送到分支
-5. 创建 Pull Request
-
-## 📞 联系方式
-
-- **项目地址**: [GitHub Repository]
-- **在线演示**: [https://www.handywote.site]
-- **问题反馈**: [GitHub Issues]
-
----
-
-**注意**: 本项目仅供学习和个人使用，请遵守相关法律法规。
+1. 确保所有配置文件都正确复制到镜像中
+2. 检查supervisord配置文件中的路径和权限设置
+3. 验证环境变量是否正确设置
+4. 查看容器日志以获取更多错误信息：`docker logs <container_id>`
