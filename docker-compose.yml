@@ -9,9 +9,6 @@ services:
     environment:
       # 时区配置
       TZ: Asia/Shanghai
-      # 数据库配置（使用Docker内部网络访问宿主机）
-      DB_HOST: host.docker.internal
-      DB_PORT: 5431
     volumes:
       - ./backend/uploads:/app/uploads
       - ./logs/backend:/var/log
@@ -24,6 +21,9 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    # 不暴露端口到宿主机，仅在Docker网络内部访问
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   # 前端服务（Nginx）
   frontend:
