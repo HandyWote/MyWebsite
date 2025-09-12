@@ -24,6 +24,10 @@ COPY nginx.conf /etc/nginx/nginx.conf
 # 从前端构建阶段复制构建好的静态文件
 COPY --from=frontend-builder /app/dist /usr/share/nginx/html
 
+# 设置静态文件权限，确保nginx可以读取
+RUN chmod -R 644 /usr/share/nginx/html/ && \
+    find /usr/share/nginx/html/ -type d -exec chmod 755 {} \;
+
 # 暴露端口
 EXPOSE 80
 
