@@ -425,6 +425,16 @@ def ws_logs_connect():
     logger.info('WebSocket /logs connected')
     socketio.emit('message', {'msg': 'logs ws connected'}, namespace='/logs')
 
+@socketio.on('connect', namespace='/comments')
+def ws_comments_connect():
+    logger.info('WebSocket /comments connected')
+    socketio.emit('message', {'msg': 'comments ws connected'}, namespace='/comments')
+
+@socketio.on('connect', namespace='/site_blocks')
+def ws_site_blocks_connect():
+    logger.info('WebSocket /site_blocks connected')
+    socketio.emit('message', {'msg': 'site_blocks ws connected'}, namespace='/site_blocks')
+
 if __name__ == '__main__':
     # 解析命令行参数
     parser = argparse.ArgumentParser(description='启动网站后端服务')

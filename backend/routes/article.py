@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required
-from extensions import db
+from extensions import db, socketio
 from models.article import Article
 from services.ai import analyze_article_content
 from datetime import datetime
@@ -44,6 +44,7 @@ def add_article():
     )
     db.session.add(article)
     db.session.commit()
+    socketio.emit('articles_updated', namespace='/articles')
     return jsonify({'code': 0, 'msg': '新增成功', 'id': article.id})
 
 @article_bp.route('/articles/<int:article_id>', methods=['PUT'])
@@ -59,6 +60,7 @@ def update_article(article_id):
     article.content = data.get('content', article.content)
     article.updated_at = datetime.utcnow()
     db.session.commit()
+    socketio.emit('articles_updated', namespace='/articles')
     return jsonify({'code': 0, 'msg': '更新成功'})
 
 @article_bp.route('/articles/<int:article_id>', methods=['DELETE'])
@@ -67,6 +69,7 @@ def delete_article(article_id):
     article = Article.query.get_or_404(article_id)
     article.deleted_at = datetime.utcnow()
     db.session.commit()
+    socketio.emit('articles_updated', namespace='/articles')
     return jsonify({'code': 0, 'msg': '删除成功'})
 
 @article_bp.route('/articles/<int:article_id>', methods=['GET'])
@@ -214,4 +217,5 @@ def batch_delete_articles():
     for article in articles:
         article.deleted_at = datetime.utcnow()
     db.session.commit()
-    return jsonify({'code': 0, 'msg': f'已批量删除{len(articles)}篇文章'}) 
+    socketio.emit('articles_updated', namespace='/articles')
+    return jsonify({'code': 0, 'msg': f'已批量删除{len(articles)}篇文章'})

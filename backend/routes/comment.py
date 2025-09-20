@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify, current_app
-from extensions import db
+from extensions import db, socketio
 from models.comment import Comment
 from models.article import Article
 from utils.response import success, error
@@ -157,6 +157,7 @@ def delete_comment(comment_id):
         comment = Comment.query.get_or_404(comment_id)
         db.session.delete(comment)
         db.session.commit()
+        socketio.emit('comments_updated', namespace='/comments')
         
         return success({'message': '评论删除成功'})
     except Exception as e:
@@ -218,6 +219,7 @@ def admin_delete_comment(comment_id):
         comment = Comment.query.get_or_404(comment_id)
         db.session.delete(comment)
         db.session.commit()
+        socketio.emit('comments_updated', namespace='/comments')
         
         return success({'message': '评论删除成功'})
     except Exception as e:
@@ -239,6 +241,7 @@ def update_comment_status(comment_id):
         comment = Comment.query.get_or_404(comment_id)
         comment.status = status
         db.session.commit()
+        socketio.emit('comments_updated', namespace='/comments')
         
         return success({'message': '评论状态更新成功'})
     except Exception as e:

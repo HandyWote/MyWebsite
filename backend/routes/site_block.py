@@ -23,5 +23,5 @@ def update_site_blocks():
         if block:
             block.content = item['content']
             db.session.commit()
-    socketio.emit('site_block_updated')
-    return jsonify({'code': 0, 'msg': '更新成功'}) 
+    socketio.emit('site_block_updated', namespace='/site_blocks')
+    return jsonify({'code': 0, 'msg': '更新成功'})

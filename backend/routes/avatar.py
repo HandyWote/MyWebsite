@@ -94,7 +94,7 @@ def upload_avatar():
         
         url = f"/api/admin/avatars/file/{final_filename}"
         print(f"返回的URL: {url}")
-        socketio.emit('avatars_updated')
+        socketio.emit('avatars_updated', namespace='/avatars')
         
         return jsonify({'code': 0, 'msg': '上传成功', 'url': url, 'id': avatar.id})
         
@@ -131,7 +131,7 @@ def set_current_avatar(avatar_id):
     avatar = Avatar.query.get_or_404(avatar_id)
     avatar.is_current = True
     db.session.commit()
-    socketio.emit('avatars_updated')
+    socketio.emit('avatars_updated', namespace='/avatars')
     return jsonify({'code': 0, 'msg': '已设为当前头像'})
 
 @avatar_bp.route('/avatars/<int:avatar_id>', methods=['DELETE'])
@@ -141,7 +141,7 @@ def delete_avatar(avatar_id):
         avatar = Avatar.query.get_or_404(avatar_id)
         avatar.deleted_at = datetime.utcnow()
         db.session.commit()
-        socketio.emit('avatars_updated')
+        socketio.emit('avatars_updated', namespace='/avatars')
         return jsonify({'code': 0, 'msg': '删除成功'})
     except Exception as e:
         db.session.rollback()

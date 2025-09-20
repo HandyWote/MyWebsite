@@ -19,6 +19,7 @@ import rehypeMermaid from 'rehype-mermaid';
 import xss from 'xss';
 import Snackbar from '@mui/material/Snackbar';
 import 'katex/dist/katex.min.css';
+import { io } from 'socket.io-client';
 import { getApiUrl } from '../../config/api'; // 导入API配置
 
 function parseMarkdown(md) {
@@ -61,6 +62,7 @@ const ArticlesManager = () => {
   const [fileUploading, setFileUploading] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [previewContent, setPreviewContent] = useState('');
+  const [socket, setSocket] = useState(null);
 
   // AI分析相关状态
   const [aiAnalyzing, setAiAnalyzing] = useState(false);
@@ -84,7 +86,42 @@ const ArticlesManager = () => {
     setLoading(false);
   };
 
-  useEffect(() => { fetchArticles({ page: 1 }); }, []);
+  useEffect(() => {
+    fetchArticles({ page: 1 });
+    
+    // 初始化WebSocket连接
+    const newSocket = io(`${getApiUrl.websocket()}/articles`, {
+      transports: ['websocket'],
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+      path: '/socket.io/',
+    });
+    
+    // 监听文章更新事件
+    newSocket.on('articles_updated', () => {
+      console.log('收到文章更新通知，刷新数据...');
+      fetchArticles({ page: page + 1 });
+    });
+    
+    // 监听连接事件
+    newSocket.on('connect', () => {
+      console.log('WebSocket连接已建立');
+    });
+    
+    newSocket.on('disconnect', () => {
+      console.log('WebSocket连接已断开');
+    });
+    
+    setSocket(newSocket);
+    
+    // 清理函数
+    return () => {
+      if (newSocket) {
+        newSocket.disconnect();
+      }
+    };
+  }, []);
 
   // 分页、搜索
   const handleChangePage = (e, newPage) => { setPage(newPage); fetchArticles({ page: newPage + 1 }); };
