@@ -7,6 +7,7 @@ import { CSS } from '@dnd-kit/utilities';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import { io } from 'socket.io-client';
 import { getApiUrl } from '../../config/api'; // 导入API配置
 
 function SortableSkillCard({ skill, index, onEdit, onAdd, onDelete, ...props }) {
@@ -112,6 +113,7 @@ const SkillsManager = () => {
   const [saving, setSaving] = useState(false);
   const [deleteIndex, setDeleteIndex] = useState(null);
   const sensors = useSensors(useSensor(PointerSensor));
+  const [socket, setSocket] = useState(null);
 
   // 拉取技能数据
   const fetchSkills = async () => {
@@ -130,6 +132,48 @@ const SkillsManager = () => {
 
   useEffect(() => {
     fetchSkills();
+    
+    // 初始化WebSocket连接
+    const newSocket = io(`${getApiUrl.websocket()}/skills`, {
+      transports: ['websocket'],
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+      path: '/socket.io/',
+    });
+    
+    // 监听技能更新事件
+    newSocket.on('skills_updated', () => {
+      console.log('收到技能更新通知，刷新数据...');
+      fetchSkills();
+    });
+    
+    // 监听命名空间连接事件
+    newSocket.on('connect', () => {
+      console.log('WebSocket连接已建立');
+    });
+    
+    newSocket.on('disconnect', () => {
+      console.log('WebSocket连接已断开');
+    });
+    
+    // 监听命名空间连接事件
+    newSocket.on('connect', () => {
+      console.log('WebSocket连接已建立');
+    });
+    
+    newSocket.on('disconnect', () => {
+      console.log('WebSocket连接已断开');
+    });
+    
+    setSocket(newSocket);
+    
+    // 清理函数
+    return () => {
+      if (newSocket) {
+        newSocket.disconnect();
+      }
+    };
   }, []);
 
   // 编辑本地副本

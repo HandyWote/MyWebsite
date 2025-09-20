@@ -22,7 +22,7 @@ def add_skill():
     skill = Skill(name=data['name'], description=data.get('description', ''), level=data.get('level', 0))
     db.session.add(skill)
     db.session.commit()
-    socketio.emit('skills_updated')
+    socketio.emit('skills_updated', namespace='/skills')
     return jsonify({'code': 0, 'msg': '新增成功', 'id': skill.id})
 
 @skill_bp.route('/skills/<int:skill_id>', methods=['PUT'])
@@ -35,7 +35,7 @@ def update_skill(skill_id):
     skill.level = data.get('level', skill.level)
     skill.updated_at = datetime.utcnow()
     db.session.commit()
-    socketio.emit('skills_updated')
+    socketio.emit('skills_updated', namespace='/skills')
     return jsonify({'code': 0, 'msg': '更新成功'})
 
 @skill_bp.route('/skills/<int:skill_id>', methods=['DELETE'])
@@ -44,5 +44,5 @@ def delete_skill(skill_id):
     skill = Skill.query.get_or_404(skill_id)
     skill.deleted_at = datetime.utcnow()
     db.session.commit()
-    socketio.emit('skills_updated')
-    return jsonify({'code': 0, 'msg': '删除成功'}) 
+    socketio.emit('skills_updated', namespace='/skills')
+    return jsonify({'code': 0, 'msg': '删除成功'})
