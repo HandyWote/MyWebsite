@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { Box, AppBar, Toolbar, Typography, Tabs, Tab, Button, useMediaQuery } from '@mui/material';
+import { Box, AppBar, Toolbar, Typography, Tabs, Tab, Button, useMediaQuery, Divider } from '@mui/material';
 import { verifyToken, clearAuth, saveRedirectPath } from '../utils/auth';
 
 const tabList = [
@@ -17,7 +17,7 @@ const AdminLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const isMobile = useMediaQuery('(max-width:900px)');
-  const currentTab = tabList.findIndex(tab => location.pathname.startsWith(tab.path));
+  const tabValue = tabList.findIndex(tab => location.pathname.startsWith(tab.path)) ?? 0;
 
   // 定期验证token有效性
   useEffect(() => {
@@ -51,60 +51,103 @@ const AdminLayout = () => {
     navigate('/admin/login', { replace: true });
   };
 
+  const renderTabs = (orientation = 'vertical', extraSx = {}) => (
+    <Tabs
+      orientation={orientation}
+      value={tabValue === -1 ? 0 : tabValue}
+      onChange={handleTabChange}
+      variant="scrollable"
+      allowScrollButtonsMobile
+      sx={extraSx}
+      TabIndicatorProps={{
+        sx: orientation === 'vertical' ? { left: 0, width: 4, bgcolor: 'primary.main' } : { height: 3, borderRadius: 3 }
+      }}
+    >
+      {tabList.map(tab => (
+        <Tab
+          key={tab.path}
+          label={tab.label}
+          sx={{
+            px: orientation === 'vertical' ? 3 : 2,
+            py: orientation === 'vertical' ? 2 : 1,
+            alignItems: orientation === 'vertical' ? 'flex-start' : 'center',
+            fontWeight: 500,
+            fontSize: 16,
+            color: '#333',
+            '&.Mui-selected': {
+              color: 'primary.main',
+              background: orientation === 'vertical' ? 'rgba(25,118,210,0.08)' : 'transparent'
+            }
+          }}
+        />
+      ))}
+    </Tabs>
+  );
+
   return (
-    <Box sx={{ minHeight: '100vh', background: '#f5f7fa' }}>
+    <Box sx={{ minHeight: '100vh', bgcolor: '#f5f7fa' }}>
       <AppBar position="static" color="primary" sx={{ boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
         <Toolbar>
           <Typography variant="h6" sx={{ flexGrow: 1, letterSpacing: 2 }}>管理后台</Typography>
           <Button color="inherit" onClick={handleLogout}>退出登录</Button>
         </Toolbar>
       </AppBar>
-      <Box sx={{ display: 'flex', minHeight: 'calc(100vh - 64px)', width: '100vw', background: '#f5f7fa' }}>
-        {/* 左侧菜单栏 */}
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', md: 'row' },
+          minHeight: 'calc(100vh - 64px)',
+          width: '100%',
+          background: '#f5f7fa'
+        }}
+      >
         {!isMobile && (
-          <Box sx={{
-            width: 200,
-            bgcolor: 'white',
-            borderRight: '1px solid #eee',
-            pt: 2,
-            boxShadow: '2px 0 8px rgba(0,0,0,0.03)',
-            minHeight: 'calc(100vh - 64px)'
-          }}>
-          <Tabs 
-              orientation="vertical"
-            value={currentTab === -1 ? 0 : currentTab} 
-            onChange={handleTabChange}
-              variant="scrollable"
-              sx={{ height: '100%' }}
-              TabIndicatorProps={{ style: { background: '#1976d2', width: 4, left: 0 } }}
+          <Box
+            sx={{
+              width: 220,
+              bgcolor: 'white',
+              borderRight: '1px solid #eee',
+              pt: 2,
+              boxShadow: '2px 0 8px rgba(0,0,0,0.03)',
+              minHeight: 'calc(100vh - 64px)'
+            }}
           >
-              {tabList.map(tab => (
-                <Tab key={tab.path} label={tab.label} sx={{
-                  alignItems: 'flex-start',
-                  px: 3,
-                  py: 2,
-                  fontWeight: 500,
-                  fontSize: 16,
-                  color: '#333',
-                  '&.Mui-selected': {
-                    color: '#1976d2',
-                    background: 'rgba(25, 118, 210, 0.08)',
-                    borderRadius: 0, // 直角
-                  }
-                }} />
-            ))}
-          </Tabs>
+            {renderTabs('vertical', { height: '100%' })}
           </Box>
         )}
-        {/* 右侧内容区，铺满剩余空间 */}
-        <Box sx={{
-          flex: 1,
-          minHeight: 'calc(100vh - 64px)',
-          background: '#f5f7fa',
-          p: { xs: 2, sm: 4 },
-          overflow: 'auto'
-        }}>
-        <Outlet />
+
+        <Box
+          sx={{
+            flex: 1,
+            width: '100%',
+            minHeight: 'calc(100vh - 64px)',
+            background: '#f5f7fa',
+            overflowY: 'auto'
+          }}
+        >
+          {isMobile && (
+            <Box sx={{ bgcolor: 'white', borderBottom: '1px solid #eee' }}>
+              {renderTabs('horizontal', {
+                px: 2,
+                '& .MuiTabs-flexContainer': {
+                  gap: 0.5
+                }
+              })}
+              <Divider />
+            </Box>
+          )}
+
+          <Box
+            sx={{
+              width: '100%',
+              maxWidth: '1200px',
+              mx: 'auto',
+              px: { xs: 2, sm: 4 },
+              py: { xs: 3, md: 4 }
+            }}
+          >
+            <Outlet />
+          </Box>
         </Box>
       </Box>
     </Box>
