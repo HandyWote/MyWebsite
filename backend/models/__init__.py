@@ -6,3 +6,4 @@ from .contact import Contact
 from .article import Article
 from .avatar import Avatar
 from .comment import Comment
+from .ai_setting import AISetting

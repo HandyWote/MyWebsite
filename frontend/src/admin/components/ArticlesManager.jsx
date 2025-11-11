@@ -9,10 +9,12 @@ import EditIcon from '@mui/icons-material/Edit';
 import AddIcon from '@mui/icons-material/Add';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import SettingsSuggestIcon from '@mui/icons-material/SettingsSuggest';
 import Snackbar from '@mui/material/Snackbar';
 import { io } from 'socket.io-client';
 import { getApiUrl } from '../../config/api'; // 导入API配置
 import ArticleEditDialog from './articles/ArticleEditDialog';
+import AiSettingsDialog from './articles/AiSettingsDialog';
 
 function parseMarkdown(md) {
   // 简单提取标题和正文
@@ -55,6 +57,11 @@ const ArticlesManager = () => {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [previewContent, setPreviewContent] = useState('');
   const [socket, setSocket] = useState(null);
+  const [aiSettingsOpen, setAiSettingsOpen] = useState(false);
+  const [aiSettings, setAiSettings] = useState({ prompt: '', model: '', base_url: '', api_key: '' });
+  const [aiSettingsLoading, setAiSettingsLoading] = useState(false);
+  const [aiSettingsSaving, setAiSettingsSaving] = useState(false);
+  const [aiTesting, setAiTesting] = useState(false);
 
   // AI分析相关状态
   const [aiAnalyzing, setAiAnalyzing] = useState(false);
@@ -471,6 +478,84 @@ const ArticlesManager = () => {
     setBatchAiCancelled(true);
   };
 
+  const fetchAiSettings = async () => {
+    setAiSettingsLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(getApiUrl.adminAiSettings(), {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) {
+        throw new Error('读取AI设置失败');
+      }
+      const json = await res.json();
+      const payload = json.data || {};
+      setAiSettings({
+        prompt: payload.prompt || '',
+        model: payload.model || '',
+        base_url: payload.base_url || '',
+        api_key: ''
+      });
+    } catch (error) {
+      setSnackbar({ open: true, message: error.message, severity: 'error' });
+    } finally {
+      setAiSettingsLoading(false);
+    }
+  };
+
+  const handleOpenAiSettings = () => {
+    setAiSettingsOpen(true);
+    fetchAiSettings();
+  };
+
+  const handleSaveAiSettings = async () => {
+    setAiSettingsSaving(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(getApiUrl.adminAiSettings(), {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(aiSettings)
+      });
+      if (!res.ok) {
+        throw new Error('保存AI设置失败');
+      }
+      setSnackbar({ open: true, message: 'AI设置已保存', severity: 'success' });
+      setAiSettingsOpen(false);
+    } catch (error) {
+      setSnackbar({ open: true, message: error.message, severity: 'error' });
+    } finally {
+      setAiSettingsSaving(false);
+    }
+  };
+
+  const handleTestAiSettings = async () => {
+    setAiTesting(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(getApiUrl.adminAiSettingsTest(), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(aiSettings)
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.msg || '测试失败');
+      }
+      setSnackbar({ open: true, message: data.msg || 'AI服务可用', severity: 'success' });
+    } catch (error) {
+      setSnackbar({ open: true, message: error.message, severity: 'error' });
+    } finally {
+      setAiTesting(false);
+    }
+  };
+
   return (
     <Box sx={{ p: 3 }}>
       <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
@@ -487,6 +572,14 @@ const ArticlesManager = () => {
         </Button>
         <Button variant="outlined" component="label" startIcon={<CloudUploadIcon />}>批量导入MD
           <input type="file" accept=".md" multiple hidden onChange={handleBatchImport} />
+        </Button>
+        <Button
+          variant="outlined"
+          startIcon={<SettingsSuggestIcon />}
+          onClick={handleOpenAiSettings}
+          size="small"
+        >
+          AI设置
         </Button>
         <TextField size="small" placeholder="搜索标题" value={search} onChange={e => setSearch(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSearch()} sx={{ width: 200 }} />
         <Button variant="outlined" onClick={handleSearch}>搜索</Button>
@@ -592,6 +685,17 @@ const ArticlesManager = () => {
         previewContent={previewContent}
         onPreviewContentChange={setPreviewContent}
         onMarkdownError={(message, severity) => setSnackbar({ open: true, message, severity })}
+      />
+      <AiSettingsDialog
+        open={aiSettingsOpen}
+        loading={aiSettingsLoading}
+        saving={aiSettingsSaving}
+        testing={aiTesting}
+        settings={aiSettings}
+        onClose={() => setAiSettingsOpen(false)}
+        onChange={setAiSettings}
+        onSave={handleSaveAiSettings}
+        onTest={handleTestAiSettings}
       />
       <Snackbar
         open={snackbar.open}

@@ -2,44 +2,13 @@ import requests
 import json
 import re
 from config import Config
+from models.ai_setting import AISetting
 
-def analyze_article_content(title, content, summary=""):
-    """
-    使用AI分析文章内容，自动识别分类和标签
-
-    Args:
-        title (str): 文章标题
-        content (str): 文章正文内容
-        summary (str): 文章摘要（可选）
-
-    Returns:
-        dict: {
-            'success': bool,
-            'category': str,
-            'tags': list,
-            'suggested_summary': str,  # 如果没有摘要，AI会生成建议摘要
-            'error': str  # 错误信息（如果有）
-        }
-    """
-    config = Config()
-
-    # 检查API密钥配置
-    if not config.OPENAI_API_KEY or config.OPENAI_API_KEY == 'sk-xxxx':
-        return {
-            'success': False,
-            'category': '',
-            'tags': [],
-            'suggested_summary': '',
-            'error': 'OpenAI API密钥未配置或无效'
-        }
-
-    # 构建更详细的prompt
-    prompt = f"""
+DEFAULT_PROMPT_TEMPLATE = """
 请分析以下文章内容，并提供智能分类和标签建议：
 
 标题：{title}
-{f"摘要：{summary}" if summary else ""}
-正文内容：{content[:1000]}...
+{summary_block}正文内容：{content_excerpt}...
 
 请根据文章内容分析并返回以下信息：
 1. 最合适的分类（从以下选项中选择或提出新的分类）：
@@ -63,13 +32,85 @@ def analyze_article_content(title, content, summary=""):
 }}
 """
 
+def _get_runtime_settings(override=None):
+    config = Config()
+    runtime = {
+        'prompt': DEFAULT_PROMPT_TEMPLATE,
+        'model': config.OPENAI_MODEL,
+        'base_url': config.OPENAI_API_URL,
+        'api_key': config.OPENAI_API_KEY
+    }
+
+    setting = AISetting.query.first()
+    if setting:
+        runtime['prompt'] = setting.prompt or runtime['prompt']
+        runtime['model'] = setting.model or runtime['model']
+        runtime['base_url'] = setting.base_url or runtime['base_url']
+        runtime['api_key'] = setting.api_key or runtime['api_key']
+
+    if override:
+        for key, value in override.items():
+            if value:
+                runtime[key] = value
+
+    return runtime
+
+
+def _render_prompt(template, title, summary, content):
+    content = content or ''
+    summary_block = f"摘要：{summary}\n" if summary else ''
+    context = {
+        'title': title,
+        'summary': summary,
+        'summary_block': summary_block,
+        'content': content,
+        'content_excerpt': content[:1000]
+    }
+    try:
+        return template.format(**context)
+    except Exception:
+        return DEFAULT_PROMPT_TEMPLATE.format(**context)
+
+
+def analyze_article_content(title, content, summary="", override_settings=None):
+    """
+    使用AI分析文章内容，自动识别分类和标签
+
+    Args:
+        title (str): 文章标题
+        content (str): 文章正文内容
+        summary (str): 文章摘要（可选）
+
+    Returns:
+        dict: {
+            'success': bool,
+            'category': str,
+            'tags': list,
+            'suggested_summary': str,  # 如果没有摘要，AI会生成建议摘要
+            'error': str  # 错误信息（如果有）
+        }
+    """
+    settings = _get_runtime_settings(override_settings)
+
+    # 检查API密钥配置
+    if not settings['api_key'] or settings['api_key'] == 'sk-xxxx':
+        return {
+            'success': False,
+            'category': '',
+            'tags': [],
+            'suggested_summary': '',
+            'error': 'OpenAI API密钥未配置或无效'
+        }
+
+    prompt = _render_prompt(settings['prompt'] or DEFAULT_PROMPT_TEMPLATE, title, summary, content)
+
     headers = {
-        'Authorization': f'Bearer {config.OPENAI_API_KEY}',
+        'Authorization': f"Bearer {settings['api_key']}",
         'Content-Type': 'application/json'
     }
 
     data = {
-        'model': config.OPENAI_MODEL,
+        'model': settings['model'],
         'messages': [
             {
                 "role": "system",
@@ -86,7 +127,7 @@ def analyze_article_content(title, content, summary=""):
 
     try:
         # 构建API URL，确保正确处理末尾斜杠
-        api_base_url = config.OPENAI_API_URL.rstrip('/')
+        api_base_url = (settings['base_url'] or '').rstrip('/')
         api_url = f"{api_base_url}/chat/completions"
 
 
@@ -195,3 +236,20 @@ def complete_article_category_and_tags(title, summary, content):
         'category': result['category'],
         'tags': ','.join(result['tags']) if result['tags'] else ''
     }
+
+
+def test_ai_settings(settings):
+    """使用指定设置测试AI服务可用性"""
+    override = {
+        'prompt': settings.get('prompt') or DEFAULT_PROMPT_TEMPLATE,
+        'model': settings.get('model'),
+        'base_url': settings.get('base_url'),
+        'api_key': settings.get('api_key')
+    }
+    result = analyze_article_content(
+        'AI连接测试',
+        '这是一段用于测试AI服务配置的示例文本，用于验证配置是否可用。',
+        '',
+        override_settings=override
+    )
+    return result

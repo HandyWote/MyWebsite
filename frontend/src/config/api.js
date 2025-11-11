@@ -99,6 +99,8 @@ export const API_ENDPOINTS = {
     ARTICLE_AI_ANALYZE: '/api/admin/articles/ai-analyze', // AI分析文章
     ARTICLE_BATCH_DELETE: '/api/admin/articles/batch-delete', // 批量删除文章
     ARTICLE_IMPORT_MD: '/api/admin/articles/import-md', // 导入Markdown
+    AI_SETTINGS: '/api/admin/ai-settings',
+    AI_SETTINGS_TEST: '/api/admin/ai-settings/test',
     ADMIN_COMMENTS: '/api/admin/comments',                   // 获取所有评论
     DELETE_COMMENT: (id) => `/api/admin/comments/${id}`,      // 删除评论
     COMMENT_LIMITS: '/api/admin/comments/limits',             // 获取评论限制配置
@@ -176,6 +178,8 @@ export const getApiUrl = {
   adminArticleAiAnalyze: () => buildApiUrl(API_ENDPOINTS.ADMIN.ARTICLE_AI_ANALYZE),
   adminArticleBatchDelete: () => buildApiUrl(API_ENDPOINTS.ADMIN.ARTICLE_BATCH_DELETE),
   adminArticleImportMd: () => buildApiUrl(API_ENDPOINTS.ADMIN.ARTICLE_IMPORT_MD),
+  adminAiSettings: () => buildApiUrl(API_ENDPOINTS.ADMIN.AI_SETTINGS),
+  adminAiSettingsTest: () => buildApiUrl(API_ENDPOINTS.ADMIN.AI_SETTINGS_TEST),
   adminComments: () => buildApiUrl(API_ENDPOINTS.ADMIN.ADMIN_COMMENTS),              // 获取所有评论
   deleteComment: (id) => buildApiUrl(API_ENDPOINTS.ADMIN.DELETE_COMMENT(id)),         // 删除评论
   adminCommentLimits: () => buildApiUrl(API_ENDPOINTS.ADMIN.COMMENT_LIMITS),         // 获取评论限制配置

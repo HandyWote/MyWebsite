@@ -7,6 +7,7 @@ from .avatar import avatar_bp
 from .export_import import export_import_bp
 from .public import public_bp
 from .comment import comment_bp
+from .ai_settings import ai_settings_bp
 
 def register_all_blueprints(app):
     # 公开 API 路由（前端使用）
@@ -21,3 +22,4 @@ def register_all_blueprints(app):
     app.register_blueprint(article_bp, url_prefix='/api/admin')
     app.register_blueprint(avatar_bp, url_prefix='/api/admin')
     app.register_blueprint(export_import_bp, url_prefix='/api/admin')
+    app.register_blueprint(ai_settings_bp, url_prefix='/api/admin')
