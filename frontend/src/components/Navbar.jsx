@@ -64,6 +64,7 @@ const Navbar = () => {
   return (
     <AppBar
       position="fixed"
+      color="transparent"
       sx={{
         background: scrolled ? 'rgba(255, 255, 255, 0.7)' : 'transparent',
         backdropFilter: scrolled ? 'blur(10px)' : 'none',
@@ -110,14 +111,15 @@ const Navbar = () => {
                     right: 0,
                     background: 'rgba(255, 255, 255, 0.9)',
                     backdropFilter: 'blur(10px)',
-                    padding: '1rem'
+                    padding: '1rem',
+                    color: theme.palette.text.primary
                   }}
                 >
                   {navItems.map((item) => (
                     <RouterLink
                       key={item.to}
                       to={item.href}
-                      style={{ textDecoration: 'none', color: 'inherit' }}
+                      style={{ textDecoration: 'none', color: theme.palette.text.primary }}
                       onClick={() => {
                         setIsOpen(false);
                         // 如果是页面内锚点，执行平滑滚动
@@ -136,6 +138,7 @@ const Navbar = () => {
                           py: 1,
                           textAlign: 'center',
                           cursor: 'pointer',
+                          color: theme.palette.text.primary,
                           '&:hover': {
                             color: 'primary.main'
                           }

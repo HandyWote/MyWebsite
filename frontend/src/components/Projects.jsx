@@ -254,7 +254,13 @@ const Projects = () => {
             </Typography>
           )}
 
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 3, sm: 2 } }}>
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: { xs: '1fr', md: 'repeat(2, minmax(0, 1fr))' },
+              gap: { xs: 3, md: 2 }
+            }}
+          >
             {loading ? (
               <Typography variant="body1" sx={{ textAlign: 'center' }}>
                 正在加载项目信息...
@@ -268,16 +274,20 @@ const Projects = () => {
                   whileInView="visible"
                   viewport={{ once: true }}
                   variants={projectVariants}
+                  style={{ height: '100%' }}
                 >
                   <Card
                     sx={{
                       background: 'rgba(255, 255, 255, 0.1)',
                       backdropFilter: 'blur(10px)',
                       border: '1px solid rgba(255, 255, 255, 0.18)',
-                      borderRadius: '1rem'
+                      borderRadius: '1rem',
+                      height: '100%',
+                      display: 'flex',
+                      flexDirection: 'column'
                     }}
                   >
-                    <CardContent sx={{ pb: { xs: 2, sm: 1 } }}>
+                    <CardContent sx={{ pb: { xs: 2, sm: 1 }, flexGrow: 1 }}>
                       <Typography variant="h5" gutterBottom sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
                         {project.title}
                       </Typography>
@@ -293,6 +303,7 @@ const Projects = () => {
                         target="_blank"
                         rel="noopener noreferrer"
                         sx={{
+                          width: { xs: '100%', sm: 'auto' },
                           borderRadius: '2rem',
                           px: { xs: 3, sm: 2 },
                           py: { xs: 1.5, sm: 1 },

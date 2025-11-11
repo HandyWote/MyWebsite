@@ -13,8 +13,11 @@ services:
       - ./backend/uploads:/app/uploads
       - ./logs/backend:/var/log
     networks:
-      - app_network
-    restart: unless-stopped
+      - Web_network
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
       interval: 30s
@@ -35,8 +38,8 @@ services:
     volumes:
       - ./logs/nginx:/var/log/nginx
     networks:
-      - app_network
-    restart: unless-stopped
+      - Web_network
+    restart: always
     depends_on:
       - backend
     healthcheck:
@@ -46,9 +49,32 @@ services:
       retries: 3
       start_period: 40s
 
+  postgres:
+    image: docker.xuanyuan.me/pgvector/pgvector:pg17
+    container_name: mywebsite-postgres
+    environment:
+      POSTGRES_DB: mywebsite
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      TZ: Asia/Shanghai
+    ports:
+      - 5432:5432
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - Web_network
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d mywebsite"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
 networks:
-  app_network:
+  Web_network:
     driver: bridge
 
 volumes:
   logs:
+  postgres_data:
