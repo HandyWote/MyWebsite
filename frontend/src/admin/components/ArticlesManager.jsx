@@ -1,26 +1,18 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Box, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, TablePagination,
-  TextField, Dialog, DialogTitle, DialogContent, DialogActions, Stack, Checkbox, IconButton, Typography, Chip,
-  Alert, CircularProgress, Tooltip, Divider
+  TextField, Stack, Checkbox, IconButton, Typography,
+  Alert, CircularProgress, Divider
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import AddIcon from '@mui/icons-material/Add';
-import UploadFileIcon from '@mui/icons-material/UploadFile';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
-import SmartToyIcon from '@mui/icons-material/SmartToy';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import remarkMath from 'remark-math';
-import rehypeKatex from 'rehype-katex';
-import rehypeMermaid from 'rehype-mermaid';
-import xss from 'xss';
 import Snackbar from '@mui/material/Snackbar';
-import 'katex/dist/katex.min.css';
 import { io } from 'socket.io-client';
 import { getApiUrl } from '../../config/api'; // 导入API配置
+import ArticleEditDialog from './articles/ArticleEditDialog';
 
 function parseMarkdown(md) {
   // 简单提取标题和正文
@@ -581,190 +573,26 @@ const ArticlesManager = () => {
         labelRowsPerPage="每页行数"
       />
       {/* 新增/编辑弹窗 */}
-      <Dialog open={openDialog} onClose={closeEdit} maxWidth="md" fullWidth>
-        <DialogContent 
-          dividers
-          sx={{
-            height: '80vh',
-            overflowY: 'auto',
-            px: 2, // 左右内边距增加到 48px
-            py: 2  // 上下内边距保持 32px
-          }}
-        ></DialogContent>
-          <Stack spacing={3}>
-            <TextField 
-              label="标题" 
-              value={editArticle.title || ''} 
-              onChange={e => setEditArticle(a => ({ ...a, title: e.target.value }))} 
-              fullWidth 
-              required 
-            />
-            
-            <TextField 
-              label="分类" 
-              value={editArticle.category || ''} 
-              onChange={e => setEditArticle(a => ({ ...a, category: e.target.value }))} 
-              fullWidth 
-            />
-            
-            <TextField 
-              label="标签（逗号分隔）" 
-              value={editArticle.tags || ''} 
-              onChange={e => setEditArticle(a => ({ ...a, tags: e.target.value }))} 
-              fullWidth 
-              error={!!editArticle.tags && !validateTags(editArticle.tags)} 
-              helperText={!!editArticle.tags && !validateTags(editArticle.tags) ? '标签格式不合法' : ''} 
-            />
-            
-            <TextField 
-              label="摘要" 
-              value={editArticle.summary || ''} 
-              onChange={e => setEditArticle(a => ({ ...a, summary: e.target.value }))} 
-              fullWidth 
-              multiline 
-              minRows={2} 
-            />
-
-            {/* 上传封面区域 */}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Button 
-                variant="outlined" 
-                component="label" 
-                startIcon={<UploadFileIcon />} 
-                disabled={fileUploading}
-              >
-                上传封面
-                <input type="file" accept="image/*" hidden onChange={handleUploadCover} />
-              </Button>
-              {editArticle.cover && (
-                <img 
-                  src={getCoverUrl(editArticle.cover)} 
-                  alt="封面" 
-                  style={{ width: 64, height: 40, objectFit: 'cover' }} 
-                  onError={e => { e.target.onerror = null; e.target.src = DEFAULT_COVER; }} 
-                />
-              )}
-              {fileUploading && <Typography color="text.secondary">上传中...</Typography>}
-            </Box>
-
-            {/* AI智能识别区域 */}
-            <Box sx={{
-              p: 2,
-              bgcolor: 'primary.50',
-              border: '1px solid',
-              borderColor: 'primary.200',
-              borderRadius: 2,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: 2
-            }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flex: 1 }}>
-                <SmartToyIcon color="primary" sx={{ fontSize: 24 }} />
-                <Box>
-                  <Typography variant="subtitle1" color="primary" fontWeight="600">
-                    AI智能识别
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>
-                    基于标题和内容自动识别分类、标签和摘要
-                  </Typography>
-                </Box>
-              </Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Tooltip title="需要填写标题和内容才能进行AI分析">
-                  <span>
-                    <Button
-                      variant="contained"
-                      startIcon={aiAnalyzing ? <CircularProgress size={16} color="inherit" /> : <AutoAwesomeIcon />}
-                      onClick={handleAiAnalyze}
-                      disabled={aiAnalyzing || !editArticle.title.trim() || !editArticle.content.trim()}
-                      size="medium"
-                      sx={{ minWidth: 120, fontWeight: 600 }}
-                    >
-                      {aiAnalyzing ? '分析中...' : '开始分析'}
-                    </Button>
-                  </span>
-                </Tooltip>
-              </Box>
-            </Box>
-
-            {/* AI分析结果显示 */}
-            {aiSuggestions && (
-              <Alert severity="success" sx={{ bgcolor: 'success.50', border: '1px solid', borderColor: 'success.200' }}>
-                <Box sx={{ mb: 2 }}>
-                  <Typography variant="subtitle2" gutterBottom>AI分析建议：</Typography>
-                  {aiSuggestions.category && (
-                    <Typography variant="body2" sx={{ mb: 1 }}>
-                      <strong>建议分类：</strong>{aiSuggestions.category}
-                    </Typography>
-                  )}
-                  {aiSuggestions.tags && aiSuggestions.tags.length > 0 && (
-                    <Typography variant="body2" sx={{ mb: 1 }}>
-                      <strong>建议标签：</strong>{aiSuggestions.tags.join(', ')}
-                    </Typography>
-                  )}
-                  {aiSuggestions.suggested_summary && (
-                    <Typography variant="body2" sx={{ mb: 1 }}>
-                      <strong>建议摘要：</strong>{aiSuggestions.suggested_summary}
-                    </Typography>
-                  )}
-                </Box>
-                <Button variant="outlined" size="small" onClick={applyAiSuggestions}>
-                  应用建议
-                </Button>
-              </Alert>
-            )}
-
-            <TextField 
-              label="正文（Markdown）" 
-              value={editArticle.content || ''} 
-              onChange={e => {
-                setEditArticle(a => ({ ...a, content: e.target.value }));
-                setPreviewContent(e.target.value);
-              }}
-              fullWidth 
-              multiline 
-              minRows={10} 
-              required 
-            />
-
-            {/* Markdown渲染预览区域 */}
-            <Box>
-              <Typography variant="subtitle2" sx={{ mb: 1 }}>Markdown 渲染预览：</Typography>
-              <Paper 
-                variant="outlined" 
-                sx={{ 
-                  p: 2, 
-                  minHeight: 120,
-                  bgcolor: '#fafafa',
-                  '& h1, & h2, & h3, & h4, & h5, & h6': {
-                    marginTop: 1,
-                    marginBottom: 1
-                  },
-                  '& p': {
-                    marginBottom: 1
-                  },
-                  '& ul, & ol': {
-                    marginBottom: 1,
-                    paddingLeft: 2
-                  }
-                }}
-              >
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm, remarkMath]}
-                  rehypePlugins={[rehypeKatex]}
-                >
-                  {previewContent || '在上方输入Markdown内容，这里将显示渲染效果...'}
-                </ReactMarkdown>
-              </Paper>
-            </Box>
-          </Stack>
-        
-        <DialogActions sx={{ p: 2, borderTop: '1px solid', borderColor: 'divider' }}>
-          <Button onClick={closeEdit}>取消</Button>
-          <Button onClick={handleSave} variant="contained" disabled={loading}>保存</Button>
-        </DialogActions>
-      </Dialog>
+      <ArticleEditDialog
+        open={openDialog}
+        loading={loading}
+        isEdit={Boolean(editId)}
+        article={editArticle}
+        onClose={closeEdit}
+        onSave={handleSave}
+        onArticleChange={setEditArticle}
+        validateTags={validateTags}
+        fileUploading={fileUploading}
+        onUploadCover={handleUploadCover}
+        coverPreview={getCoverUrl(editArticle.cover)}
+        aiAnalyzing={aiAnalyzing}
+        aiSuggestions={aiSuggestions}
+        onAiAnalyze={handleAiAnalyze}
+        onApplySuggestions={applyAiSuggestions}
+        previewContent={previewContent}
+        onPreviewContentChange={setPreviewContent}
+        onMarkdownError={(message, severity) => setSnackbar({ open: true, message, severity })}
+      />
       <Snackbar
         open={snackbar.open}
         autoHideDuration={2000}

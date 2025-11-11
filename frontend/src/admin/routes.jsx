@@ -10,7 +10,7 @@ import SkillsManager from './components/SkillsManager';
 import ContactsManager from './components/ContactsManager';
 import AvatarsManager from './components/AvatarsManager';
 import ArticlesManager from './components/ArticlesManager';
-import ArticleEditor from './components/ArticleEditor';
+
 import CommentsManager from './components/CommentsManager';
 import DataImportExport from './components/DataImportExport';
 
@@ -94,8 +94,7 @@ export default function AdminRoutes() {
         <Route path="avatars" element={<AvatarsManager />} />
         <Route path="articles" element={<ArticlesManager />} />
         <Route path="comments" element={<CommentsManager />} />
-        <Route path="articles/new" element={<ArticleEditor />} />
-        <Route path="articles/:id/edit" element={<ArticleEditor />} />
+
         <Route path="data" element={<DataImportExport />} />
       </Route>
       <Route path="*" element={<Navigate to="/admin" />} />
