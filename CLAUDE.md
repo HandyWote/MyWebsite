@@ -5,21 +5,21 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Essential Commands
+## Development Mode (Currently Used)
 
-### Quick Start with Docker
+In development mode, only the database runs in Docker, while the backend and frontend run directly on the host:
+
+### Database (Docker Only)
 ```bash
-docker-compose up -d              # Start all services
-docker-compose logs -f backend    # Monitor backend logs
-docker-compose down               # Stop all services
+docker-compose up -d              # Start PostgreSQL database only
 ```
 
 ### Backend Development
 ```bash
 cd backend
-uv pip install -e .               # Install dependencies using uv package manager
-python app.py --debug             # Start development server with debug mode
-python test_ai.py                 # Test AI service configuration
+uv sync                           # Install dependencies using uv package manager
+uv run app.py --debug             # Start development server (port 5000)
+uv run test_ai.py                 # Test AI service configuration
 ```
 
 ### Frontend Development
@@ -32,14 +32,42 @@ npm run lint                      # Run ESLint
 npm run preview                   # Preview production build
 ```
 
-### Testing
-```bash
-# Backend AI service test
-python backend/test_ai.py
+### Service Communication
+- **Frontend**: http://localhost:3131
+- **Backend**: http://localhost:5000
+- **Database**: PostgreSQL runs in Docker
 
+The frontend uses Vite proxy to automatically forward `/api`, `/socket.io`, and `/uploads` requests to the backend (see `vite.config.js` lines 27-68), no CORS configuration needed.
+
+## Full Docker Deployment
+
+### Quick Start with Docker
+```bash
+docker-compose up -d              # Start all services
+```
+
+### Monitoring
+```bash
+docker-compose logs -f backend    # Monitor backend logs
+docker-compose logs -f frontend   # Monitor frontend logs
+docker-compose down               # Stop all services
+```
+
+## Testing
+
+### Backend Tests
+```bash
+cd backend
+uv run test_ai.py                 # Test AI service configuration
+```
+
+### Frontend Tests
+```bash
 # Frontend API configuration test
 cd frontend && node src/config/api.test.js
 ```
+
+docker-compose logs -f backend    # Monitor backend logs
 
 ## High-Level Architecture
 

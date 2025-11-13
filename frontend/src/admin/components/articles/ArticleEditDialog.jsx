@@ -127,42 +127,6 @@ const ArticleEditDialog = ({
         }}
       >
         <Stack spacing={3} sx={{ mt: 1 }}>
-          <SectionCard title="内容类型" subtitle="选择文章的内容格式">
-            <FormControl component="fieldset">
-              <RadioGroup
-                row
-                value={article.content_type || 'markdown'}
-                onChange={handleContentTypeChange}
-              >
-                <FormControlLabel
-                  value="markdown"
-                  control={<Radio />}
-                  label={
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <DescriptionIcon color="primary" />
-                      <Box>
-                        <Typography variant="body2" sx={{ fontWeight: 600 }}>Markdown 文本</Typography>
-                        <Typography variant="caption" color="text.secondary">支持富文本编辑和代码高亮</Typography>
-                      </Box>
-                    </Box>
-                  }
-                />
-                <FormControlLabel
-                  value="pdf"
-                  control={<Radio />}
-                  label={
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <PictureAsPdfIcon color="error" />
-                      <Box>
-                        <Typography variant="body2" sx={{ fontWeight: 600 }}>PDF 文件</Typography>
-                        <Typography variant="caption" color="text.secondary">上传PDF文档作为内容</Typography>
-                      </Box>
-                    </Box>
-                  }
-                />
-              </RadioGroup>
-            </FormControl>
-          </SectionCard>
 
           <SectionCard title="基础信息" subtitle="文章标题、分类、标签与摘要">
             <Grid container spacing={2}>
@@ -205,27 +169,45 @@ const ArticleEditDialog = ({
               </Grid>
             </Grid>
           </SectionCard>
+          
+          <SectionCard title="内容类型" subtitle="选择文章的内容格式">
+            <FormControl component="fieldset">
+              <RadioGroup
+                row
+                value={article.content_type || 'markdown'}
+                onChange={handleContentTypeChange}
+              >
+                <FormControlLabel
+                  value="markdown"
+                  control={<Radio />}
+                  label={
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <DescriptionIcon color="primary" />
+                      <Box>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>Markdown 文本</Typography>
+                        <Typography variant="caption" color="text.secondary">支持富文本编辑和代码高亮</Typography>
+                      </Box>
+                    </Box>
+                  }
+                />
+                <FormControlLabel
+                  value="pdf"
+                  control={<Radio />}
+                  label={
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <PictureAsPdfIcon color="error" />
+                      <Box>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>PDF 文件</Typography>
+                        <Typography variant="caption" color="text.secondary">上传PDF文档作为内容</Typography>
+                      </Box>
+                    </Box>
+                  }
+                />
+              </RadioGroup>
+            </FormControl>
+          </SectionCard>
 
           <SectionCard title="封面与媒体" subtitle="上传封面图片，增强文章的视觉表现">
-            {article.content_type === 'pdf' && (
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="subtitle2" gutterBottom>
-                  PDF 文件
-                </Typography>
-                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ xs: 'stretch', sm: 'center' }}>
-                  <Button variant="outlined" component="label" startIcon={<PictureAsPdfIcon />} disabled={pdfUploading}>
-                    上传 PDF 文件
-                    <input type="file" accept=".pdf" hidden onChange={handlePdfUpload} />
-                  </Button>
-                  {article.pdf_filename && (
-                    <Typography variant="body2" color="success.main">
-                      已上传: {article.pdf_filename}
-                    </Typography>
-                  )}
-                  {pdfUploading && <Typography color="text.secondary">上传中...</Typography>}
-                </Stack>
-              </Box>
-            )}
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ xs: 'stretch', sm: 'center' }}>
               <Button variant="outlined" component="label" startIcon={<UploadFileIcon />} disabled={fileUploading}>
                 上传封面
@@ -324,8 +306,22 @@ const ArticleEditDialog = ({
                 onError={onMarkdownError}
               />
             </SectionCard>
-          ) : (
+          ) : ( 
             <SectionCard title="PDF 文件" subtitle="已上传的 PDF 文件">
+              <Box sx={{ mb: 2 }}>
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ xs: 'stretch', sm: 'center' }}>
+                  <Button variant="outlined" component="label" startIcon={<PictureAsPdfIcon />} disabled={pdfUploading}>
+                    上传 PDF 文件
+                    <input type="file" accept=".pdf" hidden onChange={handlePdfUpload} />
+                  </Button>
+                  {article.pdf_filename && (
+                    <Typography variant="body2" color="success.main">
+                      已上传: {article.pdf_filename}
+                    </Typography>
+                  )}
+                  {pdfUploading && <Typography color="text.secondary">上传中...</Typography>}
+                </Stack>
+              </Box>
               {article.pdf_filename ? (
                 <Alert severity="success" sx={{ mb: 2 }}>
                   <Typography variant="body2">
