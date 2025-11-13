@@ -38,6 +38,8 @@ const defaultArticle = {
   summary: '',
   content: '',
   cover: '',
+  content_type: 'markdown',  // 默认内容类型
+  pdf_filename: '',
 };
 
 const DEFAULT_COVER = '/default-cover.svg'; 
@@ -62,6 +64,7 @@ const ArticlesManager = () => {
   const [aiSettingsLoading, setAiSettingsLoading] = useState(false);
   const [aiSettingsSaving, setAiSettingsSaving] = useState(false);
   const [aiTesting, setAiTesting] = useState(false);
+  const [pdfUploading, setPdfUploading] = useState(false);
 
   // AI分析相关状态
   const [aiAnalyzing, setAiAnalyzing] = useState(false);
@@ -240,7 +243,16 @@ const ArticlesManager = () => {
 
   // 保存
   const handleSave = async () => {
-    if (!editArticle.title || !editArticle.content) return setSnackbar({ open: true, message: '标题和正文必填', severity: 'error' });
+    // 验证必填字段
+    if (!editArticle.title) return setSnackbar({ open: true, message: '标题必填', severity: 'error' });
+
+    // 根据内容类型验证对应的内容
+    if (editArticle.content_type === 'markdown') {
+      if (!editArticle.content) return setSnackbar({ open: true, message: 'Markdown内容必填', severity: 'error' });
+    } else if (editArticle.content_type === 'pdf') {
+      if (!editArticle.pdf_filename) return setSnackbar({ open: true, message: 'PDF文件必填', severity: 'error' });
+    }
+
     if (editArticle.tags && !validateTags(editArticle.tags)) return setSnackbar({ open: true, message: '标签格式不合法，只能包含中英文、数字、逗号、下划线、短横线', severity: 'error' });
     setLoading(true);
     try {
@@ -304,6 +316,32 @@ const ArticlesManager = () => {
     setFileUploading(false);
   };
 
+  // 上传PDF文件
+  const handleUploadPdf = async (file) => {
+    if (!file) return;
+    setPdfUploading(true);
+    const token = localStorage.getItem('token');
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      const res = await fetch(getApiUrl.adminArticlePdfUpload(), {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData
+      });
+      const data = await res.json();
+      if (data.code === 0) {
+        setEditArticle(a => ({ ...a, pdf_filename: data.filename }));
+        setSnackbar({ open: true, message: 'PDF上传成功', severity: 'success' });
+      } else {
+        setSnackbar({ open: true, message: data.msg || 'PDF上传失败', severity: 'error' });
+      }
+    } catch (e) {
+      setSnackbar({ open: true, message: 'PDF上传失败', severity: 'error' });
+    }
+    setPdfUploading(false);
+  };
+
   // 批量导入md
   const handleBatchImport = async e => {
     const files = Array.from(e.target.files);
@@ -332,13 +370,17 @@ const ArticlesManager = () => {
     fetchArticles({ page: 1 });
   };
 
-  // 更新预览内容
+  // 更新预览内容（仅Markdown文章）
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setPreviewContent(editArticle.content || '');
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [editArticle.content]);
+    if (editArticle.content_type === 'markdown') {
+      const timer = setTimeout(() => {
+        setPreviewContent(editArticle.content || '');
+      }, 300);
+      return () => clearTimeout(timer);
+    } else {
+      setPreviewContent('');
+    }
+  }, [editArticle.content, editArticle.content_type]);
 
   // 封面图片显示适配
   const getCoverUrl = cover => {
@@ -374,9 +416,9 @@ const ArticlesManager = () => {
           });
           const articleData = await articleRes.json();
           
-          if (!articleData.title || !articleData.content) {
+          if (!articleData.title || (articleData.content_type === 'markdown' && !articleData.content)) {
             failCount++;
-            failedArticles.push({ id: articleId, title: articleData.title || '未知标题', error: '标题或内容为空' });
+            failedArticles.push({ id: articleId, title: articleData.title || '未知标题', error: articleData.content_type === 'pdf' ? 'PDF文章不支持AI分析' : '标题或内容为空' });
             continue;
           }
           
@@ -685,6 +727,8 @@ const ArticlesManager = () => {
         previewContent={previewContent}
         onPreviewContentChange={setPreviewContent}
         onMarkdownError={(message, severity) => setSnackbar({ open: true, message, severity })}
+        onUploadPdf={handleUploadPdf}
+        pdfUploading={pdfUploading}
       />
       <AiSettingsDialog
         open={aiSettingsOpen}

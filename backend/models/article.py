@@ -10,6 +10,8 @@ class Article(db.Model):
     cover = db.Column(db.String(256))
     summary = db.Column(db.Text)
     content = db.Column(db.Text)
+    content_type = db.Column(db.String(16), default='markdown')  # 'markdown' or 'pdf'
+    pdf_filename = db.Column(db.String(256))  # PDF文件名（当content_type='pdf'时使用）
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow)
     deleted_at = db.Column(db.DateTime) 

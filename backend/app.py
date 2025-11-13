@@ -287,10 +287,50 @@ def init_database(app):
     try:
         with app.app_context():
             app.logger.info("开始初始化数据库...")
-            
-            # 创建表结构 - 修复SQLAlchemy兼容性问题
+
+            # 首先尝试创建表结构
             db.create_all()
             app.logger.info("✅ 数据库表创建/检查完成")
+
+            # 自动迁移：检查并添加PDF相关字段
+            try:
+                app.logger.info("开始检查PDF字段...")
+
+                # 使用SQLAlchemy Inspector检查字段是否存在
+                from sqlalchemy import inspect
+                inspector = inspect(db.engine)
+                columns = inspector.get_columns('article')
+                column_names = [col['name'] for col in columns]
+
+                # 检查并添加content_type字段
+                if 'content_type' not in column_names:
+                    with db.engine.connect() as conn:
+                        conn.execute(db.text("""
+                            ALTER TABLE article
+                            ADD COLUMN content_type VARCHAR(16) DEFAULT 'markdown'
+                        """))
+                        conn.commit()
+                    app.logger.info("✅ 添加content_type字段成功")
+                else:
+                    app.logger.info("✓ content_type字段已存在")
+
+                # 检查并添加pdf_filename字段
+                if 'pdf_filename' not in column_names:
+                    with db.engine.connect() as conn:
+                        conn.execute(db.text("""
+                            ALTER TABLE article
+                            ADD COLUMN pdf_filename VARCHAR(256)
+                        """))
+                        conn.commit()
+                    app.logger.info("✅ 添加pdf_filename字段成功")
+                else:
+                    app.logger.info("✓ pdf_filename字段已存在")
+
+                app.logger.info("✅ PDF字段检查完成")
+
+            except Exception as e:
+                app.logger.warning(f"PDF字段迁移失败: {e}")
+                # 不中断初始化流程，继续执行
             
             # 插入示例数据（仅在表为空时）
             if not SiteBlock.query.first():

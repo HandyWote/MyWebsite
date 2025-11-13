@@ -12,11 +12,18 @@ import {
   CircularProgress,
   Alert,
   Paper,
-  Grid
+  Grid,
+  FormControl,
+  FormLabel,
+  RadioGroup,
+  FormControlLabel,
+  Radio
 } from '@mui/material';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
+import DescriptionIcon from '@mui/icons-material/Description';
 import MarkdownUploadPreview from './MarkdownUploadPreview';
 
 const SectionCard = ({ icon, title, subtitle, children, spacing = 2 }) => (
@@ -70,20 +77,47 @@ const ArticleEditDialog = ({
   onApplySuggestions,
   previewContent,
   onPreviewContentChange,
-  onMarkdownError
+  onMarkdownError,
+  onUploadPdf,
+  pdfUploading,
+  pdfPreview
 }) => {
   const handleFieldChange = field => e => {
     onArticleChange(prev => ({ ...prev, [field]: e.target.value }));
   };
 
-  const canAnalyze = article.title.trim() && article.content.trim();
+  const handleContentTypeChange = e => {
+    const newType = e.target.value;
+    if (newType === 'pdf' && article.content) {
+      // 提醒用户：切换类型会清空现有Markdown内容
+      if (!window.confirm('切换为PDF将清空现有Markdown内容，是否继续？')) {
+        return;
+      }
+    }
+    onArticleChange(prev => ({
+      ...prev,
+      content_type: newType,
+      // 清空对应的内容
+      content: newType === 'pdf' ? '' : prev.content,
+      pdf_filename: newType === 'markdown' ? '' : prev.pdf_filename
+    }));
+  };
+
+  const handlePdfUpload = e => {
+    const file = e.target.files?.[0];
+    if (file) {
+      onUploadPdf(file);
+    }
+  };
+
+  const canAnalyze = article.title.trim() && (article.content_type === 'markdown' ? article.content.trim() : true);
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="md">
       <DialogTitle sx={{ pb: 1.5 }}>
         {isEdit ? '编辑文章' : '新增文章'}
         <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-          请完整填写文章元信息，并上传 Markdown 正文以获得实时预览
+          选择内容类型并填写文章信息，支持 Markdown 和 PDF 两种格式
         </Typography>
       </DialogTitle>
       <DialogContent
@@ -93,6 +127,43 @@ const ArticleEditDialog = ({
         }}
       >
         <Stack spacing={3} sx={{ mt: 1 }}>
+          <SectionCard title="内容类型" subtitle="选择文章的内容格式">
+            <FormControl component="fieldset">
+              <RadioGroup
+                row
+                value={article.content_type || 'markdown'}
+                onChange={handleContentTypeChange}
+              >
+                <FormControlLabel
+                  value="markdown"
+                  control={<Radio />}
+                  label={
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <DescriptionIcon color="primary" />
+                      <Box>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>Markdown 文本</Typography>
+                        <Typography variant="caption" color="text.secondary">支持富文本编辑和代码高亮</Typography>
+                      </Box>
+                    </Box>
+                  }
+                />
+                <FormControlLabel
+                  value="pdf"
+                  control={<Radio />}
+                  label={
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <PictureAsPdfIcon color="error" />
+                      <Box>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>PDF 文件</Typography>
+                        <Typography variant="caption" color="text.secondary">上传PDF文档作为内容</Typography>
+                      </Box>
+                    </Box>
+                  }
+                />
+              </RadioGroup>
+            </FormControl>
+          </SectionCard>
+
           <SectionCard title="基础信息" subtitle="文章标题、分类、标签与摘要">
             <Grid container spacing={2}>
               <Grid item xs={12}>
@@ -136,6 +207,25 @@ const ArticleEditDialog = ({
           </SectionCard>
 
           <SectionCard title="封面与媒体" subtitle="上传封面图片，增强文章的视觉表现">
+            {article.content_type === 'pdf' && (
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="subtitle2" gutterBottom>
+                  PDF 文件
+                </Typography>
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ xs: 'stretch', sm: 'center' }}>
+                  <Button variant="outlined" component="label" startIcon={<PictureAsPdfIcon />} disabled={pdfUploading}>
+                    上传 PDF 文件
+                    <input type="file" accept=".pdf" hidden onChange={handlePdfUpload} />
+                  </Button>
+                  {article.pdf_filename && (
+                    <Typography variant="body2" color="success.main">
+                      已上传: {article.pdf_filename}
+                    </Typography>
+                  )}
+                  {pdfUploading && <Typography color="text.secondary">上传中...</Typography>}
+                </Stack>
+              </Box>
+            )}
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ xs: 'stretch', sm: 'center' }}>
               <Button variant="outlined" component="label" startIcon={<UploadFileIcon />} disabled={fileUploading}>
                 上传封面
@@ -224,15 +314,36 @@ const ArticleEditDialog = ({
             )}
           </SectionCard>
 
-          <SectionCard title="正文内容" subtitle="上传 Markdown 文件并实时预览渲染效果">
-            <MarkdownUploadPreview
-              content={article.content || ''}
-              onContentChange={value => onArticleChange(prev => ({ ...prev, content: value }))}
-              previewContent={previewContent}
-              onPreviewContentChange={onPreviewContentChange}
-              onError={onMarkdownError}
-            />
-          </SectionCard>
+          {article.content_type === 'markdown' ? (
+            <SectionCard title="正文内容" subtitle="上传 Markdown 文件并实时预览渲染效果">
+              <MarkdownUploadPreview
+                content={article.content || ''}
+                onContentChange={value => onArticleChange(prev => ({ ...prev, content: value }))}
+                previewContent={previewContent}
+                onPreviewContentChange={onPreviewContentChange}
+                onError={onMarkdownError}
+              />
+            </SectionCard>
+          ) : (
+            <SectionCard title="PDF 文件" subtitle="已上传的 PDF 文件">
+              {article.pdf_filename ? (
+                <Alert severity="success" sx={{ mb: 2 }}>
+                  <Typography variant="body2">
+                    已上传 PDF 文件: {article.pdf_filename}
+                  </Typography>
+                </Alert>
+              ) : (
+                <Alert severity="warning" sx={{ mb: 2 }}>
+                  <Typography variant="body2">
+                    请上传 PDF 文件
+                  </Typography>
+                </Alert>
+              )}
+              <Typography variant="body2" color="text.secondary">
+                PDF 文件将作为文章的主要内容显示，访客可以直接在浏览器中查看或下载。
+              </Typography>
+            </SectionCard>
+          )}
         </Stack>
       </DialogContent>
       <DialogActions sx={{ p: 2, borderTop: '1px solid', borderColor: 'divider' }}>

@@ -82,6 +82,7 @@ export const API_ENDPOINTS = {
     CATEGORIES: '/api/categories',             // 文章分类
     TAGS: '/api/tags',                         // 文章标签
     AVATAR_FILE: (filename) => `/api/admin/avatars/file/${filename}`, // 头像文件
+    ARTICLE_PDF: (filename) => `/api/articles/pdf/${filename}`, // PDF文件访问
   },
   
   // 管理后台API - 需要JWT认证
@@ -96,6 +97,8 @@ export const API_ENDPOINTS = {
     ARTICLES: '/api/admin/articles',           // 管理文章
     ARTICLE_DETAIL: (id) => `/api/admin/articles/${id}`, // 文章详情
     ARTICLE_COVER: '/api/admin/articles/cover', // 上传文章封面
+    ARTICLE_PDF_UPLOAD: '/api/admin/articles/pdf/upload', // 上传文章PDF
+    ARTICLE_PDF_DELETE: '/api/admin/articles/pdf/delete', // 删除文章PDF
     ARTICLE_AI_ANALYZE: '/api/admin/articles/ai-analyze', // AI分析文章
     ARTICLE_BATCH_DELETE: '/api/admin/articles/batch-delete', // 批量删除文章
     ARTICLE_IMPORT_MD: '/api/admin/articles/import-md', // 导入Markdown
@@ -162,6 +165,7 @@ export const getApiUrl = {
   categories: () => buildApiUrl(API_ENDPOINTS.PUBLIC.CATEGORIES),             // 文章分类
   tags: () => buildApiUrl(API_ENDPOINTS.PUBLIC.TAGS),                         // 文章标签
   avatarFile: (filename) => buildApiUrl(API_ENDPOINTS.PUBLIC.AVATAR_FILE(filename)), // 头像文件
+  articlePdf: (filename) => buildApiUrl(API_ENDPOINTS.PUBLIC.ARTICLE_PDF(filename)), // PDF文件访问
   
   // ========== 管理后台API ==========
   adminLogin: () => buildApiUrl(API_ENDPOINTS.ADMIN.LOGIN),                   // 管理员登录
@@ -175,6 +179,8 @@ export const getApiUrl = {
   adminArticles: () => buildApiUrl(API_ENDPOINTS.ADMIN.ARTICLES),             // 管理文章
   adminArticleDetail: (id) => buildApiUrl(API_ENDPOINTS.ADMIN.ARTICLE_DETAIL(id)),
   adminArticleCover: () => buildApiUrl(API_ENDPOINTS.ADMIN.ARTICLE_COVER),
+  adminArticlePdfUpload: () => buildApiUrl(API_ENDPOINTS.ADMIN.ARTICLE_PDF_UPLOAD), // 上传文章PDF
+  adminArticlePdfDelete: () => buildApiUrl(API_ENDPOINTS.ADMIN.ARTICLE_PDF_DELETE), // 删除文章PDF
   adminArticleAiAnalyze: () => buildApiUrl(API_ENDPOINTS.ADMIN.ARTICLE_AI_ANALYZE),
   adminArticleBatchDelete: () => buildApiUrl(API_ENDPOINTS.ADMIN.ARTICLE_BATCH_DELETE),
   adminArticleImportMd: () => buildApiUrl(API_ENDPOINTS.ADMIN.ARTICLE_IMPORT_MD),

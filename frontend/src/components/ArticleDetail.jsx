@@ -33,6 +33,79 @@ import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import 'katex/dist/katex.min.css';
 import { getApiUrl } from '../config/api'; // 导入API配置
 
+// PDF查看器组件
+const PDFViewer = ({ filename }) => {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [numPages, setNumPages] = useState(null);
+  const [pageNumber, setPageNumber] = useState(1);
+
+  const pdfUrl = getApiUrl.articlePdf(filename);
+
+  useEffect(() => {
+    // 动态加载PDF.js库
+    const loadPdfJs = async () => {
+      try {
+        // 检查是否支持PDF.js或浏览器原生PDF查看
+        setLoading(false);
+      } catch (err) {
+        setError('PDF加载失败: ' + err.message);
+        setLoading(false);
+      }
+    };
+
+    loadPdfJs();
+  }, [filename]);
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Alert severity="error" sx={{ mb: 2 }}>
+        {error}
+      </Alert>
+    );
+  }
+
+  return (
+    <Box sx={{
+      border: '1px solid #ddd',
+      borderRadius: 2,
+      overflow: 'hidden',
+      backgroundColor: '#f5f5f5'
+    }}>
+      <Box sx={{ p: 2, borderBottom: '1px solid #ddd', backgroundColor: 'white' }}>
+        <Typography variant="body2" color="text.secondary">
+          PDF 文件 - {filename}
+        </Typography>
+        <Button
+          variant="outlined"
+          size="small"
+          sx={{ mt: 1 }}
+          onClick={() => window.open(pdfUrl, '_blank')}
+        >
+          在新窗口打开
+        </Button>
+      </Box>
+      <Box sx={{ height: 600, position: 'relative' }}>
+        <iframe
+          src={pdfUrl}
+          width="100%"
+          height="100%"
+          style={{ border: 'none' }}
+          title="PDF Viewer"
+        />
+      </Box>
+    </Box>
+  );
+};
+
 // Mermaid 组件 - 使用动态导入避免同步渲染问题
 const MermaidComponent = ({ code }) => {
   const [svg, setSvg] = useState('');
@@ -491,10 +564,10 @@ flowchart TD
         </Box>
 
         {/* 文章内容 */}
-        <Paper 
-          elevation={1} 
-          sx={{ 
-            p: 4, 
+        <Paper
+          elevation={1}
+          sx={{
+            p: 4,
             mb: 4,
             backgroundColor: 'rgba(255, 255, 255, 0.8)',
             backdropFilter: 'blur(10px)',
@@ -506,83 +579,89 @@ flowchart TD
             }
           }}
         >
-          <Box
-            sx={{
-              minHeight: { xs: '300px', sm: '400px', md: '500px' },
-              height: { xs: 'auto', sm: '100%' },
-              overflow: 'auto',
-              '& h1, & h2, & h3, & h4, & h5, & h6': {
-                mt: 4,
-                mb: 2,
-                fontWeight: 'bold'
-              },
-              '& p': {
-                mb: 2,
-                lineHeight: 1.8
-              },
-              '& ul, & ol': {
-                mb: 2,
-                pl: 3
-              },
-              '& li': {
-                mb: 1
-              },
-              '& blockquote': {
-                borderLeft: '4px solid #2196F3',
-                pl: 2,
-                ml: 0,
-                fontStyle: 'italic',
-                color: 'text.secondary'
-              },
-              '& code': {
-                backgroundColor: 'grey.100',
-                px: 1,
-                py: 0.5,
-                borderRadius: 1,
-                fontSize: '0.9em',
-                '@media (prefers-color-scheme: dark)': {
-                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                  color: '#e5e5e5'
+          {article.content_type === 'pdf' ? (
+            // PDF内容渲染
+            <PDFViewer filename={article.pdf_filename} />
+          ) : (
+            // Markdown内容渲染
+            <Box
+              sx={{
+                minHeight: { xs: '300px', sm: '400px', md: '500px' },
+                height: { xs: 'auto', sm: '100%' },
+                overflow: 'auto',
+                '& h1, & h2, & h3, & h4, & h5, & h6': {
+                  mt: 4,
+                  mb: 2,
+                  fontWeight: 'bold'
+                },
+                '& p': {
+                  mb: 2,
+                  lineHeight: 1.8
+                },
+                '& ul, & ol': {
+                  mb: 2,
+                  pl: 3
+                },
+                '& li': {
+                  mb: 1
+                },
+                '& blockquote': {
+                  borderLeft: '4px solid #2196F3',
+                  pl: 2,
+                  ml: 0,
+                  fontStyle: 'italic',
+                  color: 'text.secondary'
+                },
+                '& code': {
+                  backgroundColor: 'grey.100',
+                  px: 1,
+                  py: 0.5,
+                  borderRadius: 1,
+                  fontSize: '0.9em',
+                  '@media (prefers-color-scheme: dark)': {
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                    color: '#e5e5e5'
+                  }
+                },
+                '& pre': {
+                  mb: 3
+                },
+                '& img': {
+                  maxWidth: '100%',
+                  height: 'auto',
+                  borderRadius: 1,
+                  my: 2
+                },
+                '& table': {
+                  width: '100%',
+                  borderCollapse: 'collapse',
+                  mb: 3
+                },
+                '& th, & td': {
+                  border: '1px solid #ddd',
+                  p: 1,
+                  textAlign: 'left'
+                },
+                '& th': {
+                  backgroundColor: 'grey.100',
+                  '@media (prefers-color-scheme: dark)': {
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                    color: '#e5e5e5'
+                  }
                 }
-              },
-              '& pre': {
-                mb: 3
-              },
-              '& img': {
-                maxWidth: '100%',
-                height: 'auto',
-                borderRadius: 1,
-                my: 2
-              },
-              '& table': {
-                width: '100%',
-                borderCollapse: 'collapse',
-                mb: 3
-              },
-              '& th, & td': {
-                border: '1px solid #ddd',
-                p: 1,
-                textAlign: 'left'
-              },
-              '& th': {
-                backgroundColor: 'grey.100',
-                '@media (prefers-color-scheme: dark)': {
-                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                  color: '#e5e5e5'
-                }
-              }
-            }}
-          >
-            <ReactMarkdown
-              remarkPlugins={[remarkGfm, remarkMath]}
-              rehypePlugins={[rehypeKatex]}
-              components={{
-                code: CodeBlock
               }}
             >
-              {article.content}
-            </ReactMarkdown>
-          </Box>
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm, remarkMath]}
+                rehypePlugins={[rehypeKatex]}
+                components={{
+                  code: CodeBlock
+                }}
+              >
+                {article.content}
+              </ReactMarkdown>
+            </Box>
+          )}
         </Paper>
 
         {/* 评论区 */}

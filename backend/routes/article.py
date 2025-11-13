@@ -3,6 +3,7 @@ from flask_jwt_extended import jwt_required
 from extensions import db, socketio
 from models.article import Article
 from services.ai import analyze_article_content
+from services.file import save_pdf_file, delete_pdf_file, allowed_pdf_file
 from datetime import datetime
 import os
 from flask import send_from_directory
@@ -26,13 +27,26 @@ def get_articles():
         query = query.filter(Article.title.ilike(f'%{search}%'))
     pagination = query.order_by(Article.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
     return jsonify({'code': 0, 'msg': 'success', 'data': [
-        {'id': a.id, 'title': a.title, 'category': a.category, 'tags': a.tags, 'cover': a.cover, 'summary': a.summary, 'created_at': a.created_at, 'updated_at': a.updated_at} for a in pagination.items
+        {'id': a.id, 'title': a.title, 'category': a.category, 'tags': a.tags, 'cover': a.cover, 'summary': a.summary, 'content_type': a.content_type, 'pdf_filename': a.pdf_filename, 'created_at': a.created_at, 'updated_at': a.updated_at} for a in pagination.items
     ], 'total': pagination.total, 'pages': pagination.pages, 'current_page': page})
 
 @article_bp.route('/articles', methods=['POST'])
 @jwt_required()
 def add_article():
     data = request.json
+
+    # 验证内容类型和相关字段
+    content_type = data.get('content_type', 'markdown')
+    if content_type not in ['markdown', 'pdf']:
+        return jsonify({'code': 1, 'msg': '无效的内容类型'}), 400
+
+    if content_type == 'markdown':
+        if not data.get('content'):
+            return jsonify({'code': 1, 'msg': 'Markdown内容不能为空'}), 400
+    elif content_type == 'pdf':
+        if not data.get('pdf_filename'):
+            return jsonify({'code': 1, 'msg': 'PDF文件不能为空'}), 400
+
     # TODO: AI补全分类/标签
     article = Article(
         title=data['title'],
@@ -40,7 +54,9 @@ def add_article():
         tags=data.get('tags', ''),
         cover=data.get('cover', ''),
         summary=data.get('summary', ''),
-        content=data.get('content', '')
+        content=data.get('content', ''),
+        content_type=content_type,
+        pdf_filename=data.get('pdf_filename', '')
     )
     db.session.add(article)
     db.session.commit()
@@ -52,12 +68,29 @@ def add_article():
 def update_article(article_id):
     data = request.json
     article = Article.query.get_or_404(article_id)
+
+    # 如果修改了内容类型，需要验证
+    if 'content_type' in data:
+        new_content_type = data['content_type']
+        if new_content_type not in ['markdown', 'pdf']:
+            return jsonify({'code': 1, 'msg': '无效的内容类型'}), 400
+
+        # 验证新内容类型的必填字段
+        if new_content_type == 'markdown':
+            if 'content' in data and not data['content']:
+                return jsonify({'code': 1, 'msg': 'Markdown内容不能为空'}), 400
+        elif new_content_type == 'pdf':
+            if 'pdf_filename' in data and not data['pdf_filename']:
+                return jsonify({'code': 1, 'msg': 'PDF文件不能为空'}), 400
+
     article.title = data.get('title', article.title)
     article.category = data.get('category', article.category)
     article.tags = data.get('tags', article.tags)
     article.cover = data.get('cover', article.cover)
     article.summary = data.get('summary', article.summary)
     article.content = data.get('content', article.content)
+    article.content_type = data.get('content_type', article.content_type)
+    article.pdf_filename = data.get('pdf_filename', article.pdf_filename)
     article.updated_at = datetime.utcnow()
     db.session.commit()
     socketio.emit('articles_updated', namespace='/articles')
@@ -67,6 +100,15 @@ def update_article(article_id):
 @jwt_required()
 def delete_article(article_id):
     article = Article.query.get_or_404(article_id)
+
+    # 如果文章是PDF类型，删除关联的PDF文件
+    if article.content_type == 'pdf' and article.pdf_filename:
+        try:
+            delete_pdf_file(article.pdf_filename)
+        except Exception as e:
+            # 记录错误但不影响文章删除
+            print(f"删除PDF文件失败: {e}")
+
     article.deleted_at = datetime.utcnow()
     db.session.commit()
     socketio.emit('articles_updated', namespace='/articles')
@@ -84,6 +126,8 @@ def get_article_detail(article_id):
         'cover': article.cover,
         'summary': article.summary,
         'content': article.content,
+        'content_type': article.content_type,
+        'pdf_filename': article.pdf_filename,
         'created_at': article.created_at,
         'updated_at': article.updated_at
     })
@@ -219,3 +263,55 @@ def batch_delete_articles():
     db.session.commit()
     socketio.emit('articles_updated', namespace='/articles')
     return jsonify({'code': 0, 'msg': f'已批量删除{len(articles)}篇文章'})
+
+# 5. PDF文件上传接口
+@article_bp.route('/articles/pdf/upload', methods=['POST'])
+@jwt_required()
+def upload_article_pdf():
+    """上传文章PDF文件"""
+    if 'file' not in request.files:
+        return jsonify({'code': 1, 'msg': '未上传文件'}), 400
+
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'code': 1, 'msg': '文件名为空'}), 400
+
+    try:
+        # 保存PDF文件
+        filename, save_path = save_pdf_file(file)
+
+        # 返回访问URL
+        url = f"/api/articles/pdf/{filename}"
+        return jsonify({'code': 0, 'msg': '上传成功', 'filename': filename, 'url': url})
+
+    except ValueError as e:
+        return jsonify({'code': 1, 'msg': str(e)}), 400
+    except Exception as e:
+        return jsonify({'code': 1, 'msg': f'上传失败: {str(e)}'}), 500
+
+# 6. PDF文件访问接口（公开访问）
+@article_bp.route('/articles/pdf/<filename>')
+def get_article_pdf(filename):
+    """访问文章PDF文件"""
+    return send_from_directory(os.path.join(UPLOAD_FOLDER, 'articles/pdf'), filename)
+
+# 7. PDF文件删除接口
+@article_bp.route('/articles/pdf/delete', methods=['POST'])
+@jwt_required()
+def delete_article_pdf():
+    """删除文章PDF文件"""
+    data = request.json
+    filename = data.get('filename')
+
+    if not filename:
+        return jsonify({'code': 1, 'msg': '未提供文件名'}), 400
+
+    try:
+        # 删除PDF文件
+        success = delete_pdf_file(filename)
+        if success:
+            return jsonify({'code': 0, 'msg': '删除成功'})
+        else:
+            return jsonify({'code': 1, 'msg': '文件不存在'}), 404
+    except Exception as e:
+        return jsonify({'code': 1, 'msg': f'删除失败: {str(e)}'}), 500
