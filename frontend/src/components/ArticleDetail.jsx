@@ -13,7 +13,8 @@ import {
   Alert,
   Skeleton,
   Paper,
-  Grid
+  Grid,
+  CircularProgress
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
@@ -32,79 +33,7 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import 'katex/dist/katex.min.css';
 import { getApiUrl } from '../config/api'; // 导入API配置
-
-// PDF查看器组件
-const PDFViewer = ({ filename }) => {
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [numPages, setNumPages] = useState(null);
-  const [pageNumber, setPageNumber] = useState(1);
-
-  const pdfUrl = getApiUrl.articlePdf(filename);
-
-  useEffect(() => {
-    // 动态加载PDF.js库
-    const loadPdfJs = async () => {
-      try {
-        // 检查是否支持PDF.js或浏览器原生PDF查看
-        setLoading(false);
-      } catch (err) {
-        setError('PDF加载失败: ' + err.message);
-        setLoading(false);
-      }
-    };
-
-    loadPdfJs();
-  }, [filename]);
-
-  if (loading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
-
-  if (error) {
-    return (
-      <Alert severity="error" sx={{ mb: 2 }}>
-        {error}
-      </Alert>
-    );
-  }
-
-  return (
-    <Box sx={{
-      border: '1px solid #ddd',
-      borderRadius: 2,
-      overflow: 'hidden',
-      backgroundColor: '#f5f5f5'
-    }}>
-      <Box sx={{ p: 2, borderBottom: '1px solid #ddd', backgroundColor: 'white' }}>
-        <Typography variant="body2" color="text.secondary">
-          PDF 文件 - {filename}
-        </Typography>
-        <Button
-          variant="outlined"
-          size="small"
-          sx={{ mt: 1 }}
-          onClick={() => window.open(pdfUrl, '_blank')}
-        >
-          在新窗口打开
-        </Button>
-      </Box>
-      <Box sx={{ height: 600, position: 'relative' }}>
-        <iframe
-          src={pdfUrl}
-          width="100%"
-          height="100%"
-          style={{ border: 'none' }}
-          title="PDF Viewer"
-        />
-      </Box>
-    </Box>
-  );
-};
+import PdfViewerOnCanvas from './PdfViewerOnCanvas';
 
 // Mermaid 组件 - 使用动态导入避免同步渲染问题
 const MermaidComponent = ({ code }) => {
@@ -581,7 +510,7 @@ flowchart TD
         >
           {article.content_type === 'pdf' ? (
             // PDF内容渲染
-            <PDFViewer filename={article.pdf_filename} />
+            <PdfViewerOnCanvas filename={article.pdf_filename} />
           ) : (
             // Markdown内容渲染
             <Box

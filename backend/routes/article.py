@@ -114,24 +114,6 @@ def delete_article(article_id):
     socketio.emit('articles_updated', namespace='/articles')
     return jsonify({'code': 0, 'msg': '删除成功'})
 
-@article_bp.route('/articles/<int:article_id>', methods=['GET'])
-@jwt_required()
-def get_article_detail(article_id):
-    article = Article.query.get_or_404(article_id)
-    return jsonify({
-        'id': article.id,
-        'title': article.title,
-        'category': article.category,
-        'tags': article.tags,
-        'cover': article.cover,
-        'summary': article.summary,
-        'content': article.content,
-        'content_type': article.content_type,
-        'pdf_filename': article.pdf_filename,
-        'created_at': article.created_at,
-        'updated_at': article.updated_at
-    })
-
 @article_bp.route('/articles/ai-analyze', methods=['POST'])
 @jwt_required()
 def ai_analyze_article():
@@ -289,13 +271,7 @@ def upload_article_pdf():
     except Exception as e:
         return jsonify({'code': 1, 'msg': f'上传失败: {str(e)}'}), 500
 
-# 6. PDF文件访问接口（公开访问）
-@article_bp.route('/articles/pdf/<filename>')
-def get_article_pdf(filename):
-    """访问文章PDF文件"""
-    return send_from_directory(os.path.join(UPLOAD_FOLDER, 'articles/pdf'), filename)
-
-# 7. PDF文件删除接口
+# 6. PDF文件删除接口
 @article_bp.route('/articles/pdf/delete', methods=['POST'])
 @jwt_required()
 def delete_article_pdf():

@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, send_from_directory, Response, send_file
 from extensions import db
 from models.article import Article
 from datetime import datetime
@@ -6,6 +6,8 @@ from models.skill import Skill
 from models.contact import Contact
 from models.avatar import Avatar
 from models.site_block import SiteBlock
+from config import Config
+import os
 
 public_bp = Blueprint('public', __name__)
 
@@ -61,15 +63,15 @@ def get_articles():
 def get_article_detail(article_id):
     """获取文章详情 - 公开接口"""
     article = Article.query.filter_by(id=article_id, deleted_at=None).first()
-    
+
     if not article:
         return jsonify({'code': 1, 'msg': '文章不存在'}), 404
-    
+
     # 处理标签字符串为数组
     tags = []
     if article.tags:
         tags = [tag.strip() for tag in article.tags.split(',') if tag.strip()]
-    
+
     return jsonify({
         'code': 0,
         'msg': 'success',
@@ -80,6 +82,8 @@ def get_article_detail(article_id):
         'cover_image': article.cover,
         'summary': article.summary,
         'content': article.content,
+        'content_type': article.content_type,
+        'pdf_filename': article.pdf_filename,
         'views': 0,  # 暂时设为0
         'comment_count': 0,  # 前端会计算实际评论数
         'created_at': article.created_at.isoformat() if article.created_at else None
@@ -148,3 +152,28 @@ def get_site_blocks():
     return jsonify({'code': 0, 'msg': 'success', 'data': [
         {'name': b.name, 'content': b.content, 'updated_at': b.updated_at} for b in blocks
     ]})
+
+@public_bp.route('/articles/pdf/<filename>')
+def get_article_pdf(filename):
+    """访问文章PDF文件 - 公开接口"""
+    config = Config()
+    pdf_dir = os.path.join(config.UPLOAD_FOLDER, 'articles/pdf')
+    pdf_path = os.path.join(pdf_dir, filename)
+
+    if not os.path.isfile(pdf_path):
+        return jsonify({'code': 1, 'msg': 'PDF文件不存在'}), 404
+
+    try:
+        response = send_file(
+            pdf_path,
+            mimetype='application/pdf',
+            as_attachment=False,
+            download_name=filename,
+            conditional=True,
+            max_age=3600
+        )
+        response.headers['Content-Disposition'] = f'inline; filename="{filename}"'
+        response.headers['Cache-Control'] = 'public, max-age=3600'
+        return response
+    except Exception as e:
+        return jsonify({'code': 1, 'msg': f'读取PDF文件失败: {str(e)}'}), 500
