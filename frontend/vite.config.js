@@ -12,12 +12,13 @@ export default defineConfig({
         entryFileNames: 'assets/[name]-[hash].js',
         assetFileNames: 'assets/[name]-[hash].[ext]',
         manualChunks: {
-          react: ['react', 'react-dom'],
+          react: ['react', 'react-dom', '@emotion/react', '@emotion/styled'],
           mui: ['@mui/material', '@mui/icons-material'],
           router: ['react-router-dom'],
           utils: ['axios', 'moment', 'xss', 'socket.io-client'],
           animation: ['framer-motion'],
-          markdown: ['marked', 'react-markdown', 'remark-gfm', 'rehype-katex']
+          markdown: ['react-markdown', 'marked', 'remark-gfm', 'remark-math', 'rehype-katex'],
+          pdf: ['react-pdf', 'pdfjs-dist']
         }
       }
     },
@@ -68,6 +69,14 @@ export default defineConfig({
     }
   },
   optimizeDeps: {
-    include: ['react', 'react-dom', 'react-router-dom']
+    include: [
+      'react',
+      'react-dom',
+      'react-router-dom',
+      '@emotion/react',
+      '@emotion/styled',
+      'react-pdf',
+      'pdfjs-dist'
+    ]
   }
 })

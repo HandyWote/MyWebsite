@@ -137,22 +137,35 @@ const ArticlesManager = () => {
 
   // 新增/编辑弹窗
   const openEdit = async (article = defaultArticle, id = null) => {
+    let targetArticle = { ...article };
+    let targetPreview = article.content || '';
+
     if (id) {
-      // 拉取详情
-      const token = localStorage.getItem('token');
-      const res = await fetch(getApiUrl.adminArticleDetail(id), {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
-      setEditArticle({
-        ...article,
-        ...data,
-      });
-      setPreviewContent(data.content || '');
-    } else {
-      setEditArticle(article);
-      setPreviewContent(article.content || '');
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(getApiUrl.adminArticleDetail(id), {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!res.ok) {
+          throw new Error(`获取文章详情失败 (HTTP ${res.status})`);
+        }
+
+        const data = await res.json();
+        if (data.code !== 0 || !data.data) {
+          throw new Error(data.msg || '获取文章详情失败');
+        }
+
+        targetArticle = { ...targetArticle, ...data.data };
+        targetPreview = data.data.content || '';
+      } catch (error) {
+        console.error('获取文章详情失败:', error);
+        setSnackbar({ open: true, message: error.message || '获取文章详情失败', severity: 'error' });
+      }
     }
+
+    setEditArticle(targetArticle);
+    setPreviewContent(targetPreview);
     setEditId(id);
     setOpenDialog(true);
   };
@@ -345,6 +358,8 @@ const ArticlesManager = () => {
   // 批量导入md
   const handleBatchImport = async e => {
     const files = Array.from(e.target.files);
+    // 允许重复选择同一批文件
+    e.target.value = '';
     if (!files.length) return;
     setLoading(true);
     setImportProgress({ total: files.length, success: 0, fail: 0, failFiles: [] });
@@ -359,7 +374,20 @@ const ArticlesManager = () => {
       });
       const data = await res.json();
       if (data.code === 0) {
-        setSnackbar({ open: true, message: data.msg, severity: 'success' });
+        const stats = data.data || {};
+        const successCount = (stats.markdown || 0) + (stats.pdf || 0);
+        const failFiles = stats.failed || [];
+        setImportProgress({
+          total: files.length,
+          success: successCount,
+          fail: failFiles.length,
+          failFiles
+        });
+        setSnackbar({
+          open: true,
+          message: data.msg || `成功导入${successCount}篇文章`,
+          severity: failFiles.length ? 'warning' : 'success'
+        });
       } else {
         setSnackbar({ open: true, message: data.msg || '导入失败', severity: 'error' });
       }
@@ -414,7 +442,11 @@ const ArticlesManager = () => {
           const articleRes = await fetch(getApiUrl.adminArticleDetail(articleId), {
             headers: { 'Authorization': `Bearer ${token}` }
           });
-          const articleData = await articleRes.json();
+          const articleResult = await articleRes.json();
+          if (!articleRes.ok || articleResult.code !== 0 || !articleResult.data) {
+            throw new Error(articleResult.msg || `获取文章详情失败 (HTTP ${articleRes.status})`);
+          }
+          const articleData = articleResult.data;
           
           if (!articleData.title || (articleData.content_type === 'markdown' && !articleData.content)) {
             failCount++;
@@ -612,8 +644,8 @@ const ArticlesManager = () => {
         >
           {batchAiAnalyzing ? '分析中...' : '批量AI分析'}
         </Button>
-        <Button variant="outlined" component="label" startIcon={<CloudUploadIcon />}>批量导入MD
-          <input type="file" accept=".md" multiple hidden onChange={handleBatchImport} />
+        <Button variant="outlined" component="label" startIcon={<CloudUploadIcon />}>批量导入MD/PDF
+          <input type="file" accept=".md,.markdown,.pdf" multiple hidden onChange={handleBatchImport} />
         </Button>
         <Button
           variant="outlined"

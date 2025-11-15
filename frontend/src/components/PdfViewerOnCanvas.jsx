@@ -3,7 +3,6 @@ import { Document, Page } from 'react-pdf';
 import {
   Box,
   Typography,
-  Button,
   Alert,
   CircularProgress,
   Paper,
@@ -13,41 +12,63 @@ import {
 import {
   ZoomIn as ZoomInIcon,
   ZoomOut as ZoomOutIcon,
-  FirstPage as FirstPageIcon,
-  LastPage as LastPageIcon,
-  ChevronLeft as ChevronLeftIcon,
-  ChevronRight as ChevronRightIcon,
   OpenInNew as OpenInNewIcon
 } from '@mui/icons-material';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
+import { getApiUrl } from '../config/api';
 
-// 配置PDF.js worker
+// 配置PDF.js worker - 使用本地worker文件（ES模块版本）
 import { pdfjs } from 'react-pdf';
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
+import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+pdfjs.GlobalWorkerOptions.workerSrc = pdfWorker;
 
 const PdfViewerOnCanvas = ({ filename, url }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [numPages, setNumPages] = useState(null);
-  const [pageNumber, setPageNumber] = useState(1);
   const [scale, setScale] = useState(1.0);
   const [pdfUrl, setPdfUrl] = useState(null);
+  const [sourceUrl, setSourceUrl] = useState(null);
 
-  // 验证PDF文件是否可以正常加载
+  const resolvePdfUrl = () => {
+    if (url) {
+      return url;
+    }
+    if (!filename) return '';
+    if (/^https?:\/\//.test(filename)) {
+      return filename;
+    }
+    if (filename.startsWith('/api/')) {
+      const base = getApiUrl.websocket();
+      const normalizedBase = base && base.endsWith('/') ? base.slice(0, -1) : base;
+      return `${normalizedBase || ''}${filename}`;
+    }
+    return getApiUrl.articlePdf(filename);
+  };
+
   useEffect(() => {
-    const validatePdfUrl = async () => {
+    let isMounted = true;
+    let objectUrl = null;
+    const controller = new AbortController();
+
+    const loadPdf = async () => {
       try {
-        if (!filename && !url) {
-          throw new Error('PDF文件名不能为空');
+        setLoading(true);
+        setError(null);
+        setNumPages(null);
+        setPdfUrl(null);
+
+        const finalUrl = resolvePdfUrl();
+        if (!finalUrl) {
+          throw new Error('无法解析PDF地址');
         }
+        setSourceUrl(finalUrl);
 
-        const finalUrl = url || `/api/articles/pdf/${filename}`;
-
-        // 使用HEAD请求验证PDF文件是否存在且可访问
         const response = await fetch(finalUrl, {
-          method: 'HEAD',
-          mode: 'cors'
+          method: 'GET',
+          signal: controller.signal,
+          credentials: 'include'
         });
 
         if (!response.ok) {
@@ -57,33 +78,42 @@ const PdfViewerOnCanvas = ({ filename, url }) => {
           throw new Error(`PDF文件加载失败 (状态码: ${response.status})`);
         }
 
-        // 检查内容类型是否为PDF
-        const contentType = response.headers.get('Content-Type');
-        if (contentType && !contentType.includes('pdf') && !contentType.includes('octet-stream')) {
-          console.warn('警告：响应的内容类型可能不是PDF:', contentType);
+        const blob = await response.blob();
+        objectUrl = URL.createObjectURL(blob);
+
+        if (!isMounted) {
+          URL.revokeObjectURL(objectUrl);
+          return;
         }
 
-        setPdfUrl(finalUrl);
+        setPdfUrl(objectUrl);
         setLoading(false);
       } catch (err) {
+        if (err.name === 'AbortError') {
+          return;
+        }
         console.error('PDF加载错误:', err);
-        setError(`PDF加载失败: ${err.message}`);
-        setLoading(false);
+        if (isMounted) {
+          setError(`PDF加载失败(可能被第三方下载器拦截): ${err.message}`);
+          setLoading(false);
+        }
       }
     };
 
-    // 添加短暂延迟，避免闪屏
-    const timer = setTimeout(() => {
-      validatePdfUrl();
-    }, 300);
+    loadPdf();
 
-    return () => clearTimeout(timer);
+    return () => {
+      isMounted = false;
+      controller.abort();
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
   }, [filename, url]);
 
   // PDF加载成功回调
   const onDocumentLoadSuccess = ({ numPages }) => {
     setNumPages(numPages);
-    setPageNumber(1);
   };
 
   // PDF加载失败回调
@@ -91,23 +121,6 @@ const PdfViewerOnCanvas = ({ filename, url }) => {
     console.error('PDF文档加载失败:', error);
     setError('PDF文档加载失败，请检查文件格式');
     setLoading(false);
-  };
-
-  // 导航控制
-  const goToPrevPage = () => {
-    setPageNumber((prev) => Math.max(1, prev - 1));
-  };
-
-  const goToNextPage = () => {
-    setPageNumber((prev) => Math.min(numPages, prev + 1));
-  };
-
-  const goToFirstPage = () => {
-    setPageNumber(1);
-  };
-
-  const goToLastPage = () => {
-    setPageNumber(numPages);
   };
 
   // 缩放控制
@@ -122,7 +135,9 @@ const PdfViewerOnCanvas = ({ filename, url }) => {
   // 在新窗口打开PDF
   const openInNewWindow = () => {
     if (pdfUrl) {
-      window.open(pdfUrl, '_blank');
+      window.open(pdfUrl, '_blank', 'noopener');
+    } else if (sourceUrl) {
+      window.open(sourceUrl, '_blank', 'noopener');
     }
   };
 
@@ -173,7 +188,7 @@ const PdfViewerOnCanvas = ({ filename, url }) => {
           </Typography>
           {numPages && (
             <Typography variant="body2" color="text.secondary">
-              第 {pageNumber} / {numPages} 页
+              共 {numPages} 页
             </Typography>
           )}
         </Box>
@@ -195,43 +210,6 @@ const PdfViewerOnCanvas = ({ filename, url }) => {
               <ZoomInIcon fontSize="small" />
             </IconButton>
           </Tooltip>
-
-          {/* 分页控制 */}
-          {numPages > 1 && (
-            <>
-              <Tooltip title="第一页">
-                <IconButton size="small" onClick={goToFirstPage} disabled={pageNumber === 1}>
-                  <FirstPageIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-
-              <Tooltip title="上一页">
-                <IconButton size="small" onClick={goToPrevPage} disabled={pageNumber === 1}>
-                  <ChevronLeftIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-
-              <Tooltip title="下一页">
-                <IconButton
-                  size="small"
-                  onClick={goToNextPage}
-                  disabled={pageNumber === numPages}
-                >
-                  <ChevronRightIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-
-              <Tooltip title="最后一页">
-                <IconButton
-                  size="small"
-                  onClick={goToLastPage}
-                  disabled={pageNumber === numPages}
-                >
-                  <LastPageIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-            </>
-          )}
 
           {/* 新窗口打开 */}
           <Tooltip title="在新窗口打开">
@@ -268,17 +246,23 @@ const PdfViewerOnCanvas = ({ filename, url }) => {
             <Alert severity="error">PDF加载失败，请检查文件是否存在或格式是否正确</Alert>
           }
         >
-          <Page
-            pageNumber={pageNumber}
-            scale={scale}
-            renderTextLayer={true}
-            renderAnnotationLayer={true}
-            loading={
-              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 400 }}>
-                <CircularProgress />
-              </Box>
-            }
-          />
+          {Array.from(new Array(numPages), (el, index) => (
+            <Page
+              key={`page_${index + 1}`}
+              pageNumber={index + 1}
+              scale={scale}
+              renderTextLayer={true}
+              renderAnnotationLayer={true}
+              loading={
+                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200, my: 2 }}>
+                  <CircularProgress />
+                </Box>
+              }
+              style={{
+                marginBottom: index < numPages - 1 ? '20px' : '0'
+              }}
+            />
+          ))}
         </Document>
       </Box>
     </Paper>

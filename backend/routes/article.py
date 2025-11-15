@@ -16,6 +16,21 @@ ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp'}
 
 article_bp = Blueprint('article', __name__)
 
+def serialize_article(article):
+    return {
+        'id': article.id,
+        'title': article.title,
+        'category': article.category,
+        'tags': article.tags,
+        'cover': article.cover,
+        'summary': article.summary,
+        'content': article.content,
+        'content_type': article.content_type,
+        'pdf_filename': article.pdf_filename,
+        'created_at': article.created_at.isoformat() if article.created_at else None,
+        'updated_at': article.updated_at.isoformat() if article.updated_at else None
+    }
+
 @article_bp.route('/articles', methods=['GET'])
 @jwt_required()
 def get_articles():
@@ -63,50 +78,54 @@ def add_article():
     socketio.emit('articles_updated', namespace='/articles')
     return jsonify({'code': 0, 'msg': '新增成功', 'id': article.id})
 
-@article_bp.route('/articles/<int:article_id>', methods=['PUT'])
+@article_bp.route('/articles/<int:article_id>', methods=['GET', 'PUT', 'DELETE'])
 @jwt_required()
-def update_article(article_id):
-    data = request.json
+def handle_admin_article(article_id):
+    """
+    管理后台文章详情/更新/删除接口
+    """
     article = Article.query.get_or_404(article_id)
 
-    # 如果修改了内容类型，需要验证
-    if 'content_type' in data:
-        new_content_type = data['content_type']
-        if new_content_type not in ['markdown', 'pdf']:
-            return jsonify({'code': 1, 'msg': '无效的内容类型'}), 400
+    if request.method == 'GET':
+        return jsonify({
+            'code': 0,
+            'msg': 'success',
+            'data': serialize_article(article)
+        })
 
-        # 验证新内容类型的必填字段
-        if new_content_type == 'markdown':
-            if 'content' in data and not data['content']:
-                return jsonify({'code': 1, 'msg': 'Markdown内容不能为空'}), 400
-        elif new_content_type == 'pdf':
-            if 'pdf_filename' in data and not data['pdf_filename']:
-                return jsonify({'code': 1, 'msg': 'PDF文件不能为空'}), 400
+    if request.method == 'PUT':
+        data = request.json or {}
 
-    article.title = data.get('title', article.title)
-    article.category = data.get('category', article.category)
-    article.tags = data.get('tags', article.tags)
-    article.cover = data.get('cover', article.cover)
-    article.summary = data.get('summary', article.summary)
-    article.content = data.get('content', article.content)
-    article.content_type = data.get('content_type', article.content_type)
-    article.pdf_filename = data.get('pdf_filename', article.pdf_filename)
-    article.updated_at = datetime.utcnow()
-    db.session.commit()
-    socketio.emit('articles_updated', namespace='/articles')
-    return jsonify({'code': 0, 'msg': '更新成功'})
+        if 'content_type' in data:
+            new_content_type = data['content_type']
+            if new_content_type not in ['markdown', 'pdf']:
+                return jsonify({'code': 1, 'msg': '无效的内容类型'}), 400
 
-@article_bp.route('/articles/<int:article_id>', methods=['DELETE'])
-@jwt_required()
-def delete_article(article_id):
-    article = Article.query.get_or_404(article_id)
+            if new_content_type == 'markdown':
+                if 'content' in data and not data['content']:
+                    return jsonify({'code': 1, 'msg': 'Markdown内容不能为空'}), 400
+            elif new_content_type == 'pdf':
+                if 'pdf_filename' in data and not data['pdf_filename']:
+                    return jsonify({'code': 1, 'msg': 'PDF文件不能为空'}), 400
 
-    # 如果文章是PDF类型，删除关联的PDF文件
+        article.title = data.get('title', article.title)
+        article.category = data.get('category', article.category)
+        article.tags = data.get('tags', article.tags)
+        article.cover = data.get('cover', article.cover)
+        article.summary = data.get('summary', article.summary)
+        article.content = data.get('content', article.content)
+        article.content_type = data.get('content_type', article.content_type)
+        article.pdf_filename = data.get('pdf_filename', article.pdf_filename)
+        article.updated_at = datetime.utcnow()
+        db.session.commit()
+        socketio.emit('articles_updated', namespace='/articles')
+        return jsonify({'code': 0, 'msg': '更新成功'})
+
+    # DELETE
     if article.content_type == 'pdf' and article.pdf_filename:
         try:
             delete_pdf_file(article.pdf_filename)
         except Exception as e:
-            # 记录错误但不影响文章删除
             print(f"删除PDF文件失败: {e}")
 
     article.deleted_at = datetime.utcnow()
@@ -206,31 +225,79 @@ def upload_article_cover():
 def get_article_cover(filename):
     return send_from_directory(UPLOAD_FOLDER, filename)
 
-# 3. 批量导入Markdown接口（支持上传多个md文件）
+# 3. 批量导入Markdown/PDF接口
 @article_bp.route('/articles/import-md', methods=['POST'])
 @jwt_required()
 def import_articles_md():
     files = request.files.getlist('files')
     if not files:
         return jsonify({'code': 1, 'msg': '未上传文件'}), 400
-    imported = 0
+    markdown_imported = 0
+    pdf_imported = 0
+    failed_files = []
     for file in files:
-        text = file.read().decode('utf-8')
-        lines = text.split('\n')
-        title = ''
-        content = text
-        for l in lines:
-            if l.startswith('# '):
-                title = l.replace('# ', '').strip()
-                content = '\n'.join(lines[1:]).strip()
-                break
-        if not title or not content:
-            continue
-        article = Article(title=title, content=content)
-        db.session.add(article)
-        imported += 1
+        filename = file.filename or ''
+        ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
+        try:
+            if ext in ['md', 'markdown']:
+                file.stream.seek(0)
+                raw_bytes = file.read()
+                try:
+                    text = raw_bytes.decode('utf-8')
+                except UnicodeDecodeError:
+                    text = raw_bytes.decode('utf-8', errors='ignore')
+                lines = text.split('\n')
+                title = ''
+                content = text
+                for l in lines:
+                    if l.startswith('# '):
+                        title = l.replace('# ', '').strip()
+                        content = '\n'.join(lines[1:]).strip()
+                        break
+                if not title:
+                    title = os.path.splitext(filename)[0] or '未命名文章'
+                if not content.strip():
+                    raise ValueError('Markdown内容为空')
+                article = Article(
+                    title=title,
+                    content=content,
+                    content_type='markdown'
+                )
+                db.session.add(article)
+                markdown_imported += 1
+            elif ext == 'pdf':
+                file.stream.seek(0)
+                saved_filename, _ = save_pdf_file(file)
+                title = os.path.splitext(filename)[0] or 'PDF文档'
+                article = Article(
+                    title=title,
+                    content='',
+                    content_type='pdf',
+                    pdf_filename=saved_filename
+                )
+                db.session.add(article)
+                pdf_imported += 1
+            else:
+                raise ValueError('仅支持导入 Markdown (.md/.markdown) 或 PDF 文件')
+        except Exception as exc:
+            failed_files.append({
+                'filename': filename or '未命名文件',
+                'reason': str(exc)
+            })
     db.session.commit()
-    return jsonify({'code': 0, 'msg': f'成功导入{imported}篇文章'})
+    total_imported = markdown_imported + pdf_imported
+    message = f'成功导入{total_imported}篇文章（Markdown: {markdown_imported}，PDF: {pdf_imported}）'
+    if failed_files:
+        message += f'，失败{len(failed_files)}个文件'
+    return jsonify({
+        'code': 0,
+        'msg': message,
+        'data': {
+            'markdown': markdown_imported,
+            'pdf': pdf_imported,
+            'failed': failed_files
+        }
+    })
 
 # 4. 文章批量删除接口
 @article_bp.route('/articles/batch-delete', methods=['POST'])
@@ -289,5 +356,7 @@ def delete_article_pdf():
             return jsonify({'code': 0, 'msg': '删除成功'})
         else:
             return jsonify({'code': 1, 'msg': '文件不存在'}), 404
+    except ValueError as exc:
+        return jsonify({'code': 1, 'msg': str(exc)}), 400
     except Exception as e:
         return jsonify({'code': 1, 'msg': f'删除失败: {str(e)}'}), 500

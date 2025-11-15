@@ -8,6 +8,7 @@ from models.avatar import Avatar
 from models.site_block import SiteBlock
 from config import Config
 import os
+from services.file import get_pdf_file_path
 
 public_bp = Blueprint('public', __name__)
 
@@ -156,16 +157,17 @@ def get_site_blocks():
 @public_bp.route('/articles/pdf/<filename>')
 def get_article_pdf(filename):
     """访问文章PDF文件 - 公开接口"""
-    config = Config()
-    pdf_dir = os.path.join(config.UPLOAD_FOLDER, 'articles/pdf')
-    pdf_path = os.path.join(pdf_dir, filename)
+    try:
+        pdf_path = get_pdf_file_path(filename)
+    except ValueError as exc:
+        return jsonify({'code': 1, 'msg': str(exc)}), 400
 
     if not os.path.isfile(pdf_path):
         return jsonify({'code': 1, 'msg': 'PDF文件不存在'}), 404
 
     try:
         response = send_file(
-            pdf_path,
+            str(pdf_path),
             mimetype='application/pdf',
             as_attachment=False,
             download_name=filename,

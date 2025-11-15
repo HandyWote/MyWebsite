@@ -1,11 +1,38 @@
-import { useRef, useState, useEffect } from 'react';
-import { Box, Button, Chip, Stack, Typography, Paper } from '@mui/material';
+import React, { useRef, useState, useEffect } from 'react';
+import { Box, Button, Chip, Stack, Typography, Paper, Alert } from '@mui/material';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
+
+class MarkdownPreviewBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, message: '' };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, message: error?.message || '未知错误' };
+  }
+
+  componentDidCatch(error) {
+    console.error('Markdown预览渲染失败:', error);
+    this.props.onError?.(`Markdown预览失败：${error.message || '未知错误'}`, 'error');
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <Alert severity="error" sx={{ mb: 1 }}>
+          Markdown 预览失败：{this.state.message}
+        </Alert>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 const MarkdownUploadPreview = ({
   content,
@@ -139,9 +166,11 @@ const MarkdownUploadPreview = ({
             }
           }}
         >
-          <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
-            {previewContent || '在上方上传 Markdown 文件后，这里将展示渲染效果...'}
-          </ReactMarkdown>
+          <MarkdownPreviewBoundary key={previewContent} onError={onError}>
+            <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>
+              {previewContent || '在上方上传 Markdown 文件后，这里将展示渲染效果...'}
+            </ReactMarkdown>
+          </MarkdownPreviewBoundary>
         </Paper>
       </Box>
     </Box>
