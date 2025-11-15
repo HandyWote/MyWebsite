@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from flask import Flask
+from flask import Flask, request, make_response
 from flask_cors import CORS
 from extensions import db, jwt, scheduler, socketio, cors
 from flask_socketio import SocketIO, emit
@@ -251,6 +251,51 @@ def create_app():
             'total_routes': len(routes),
             'routes': routes
         }
+
+    @app.route('/robots.txt')
+    def robots_txt():
+        base_url = request.host_url.rstrip('/')
+        content = [
+            'User-agent: *',
+            'Allow: /',
+            f'Sitemap: {base_url}/sitemap.xml'
+        ]
+        response = make_response('\n'.join(content), 200)
+        response.headers['Content-Type'] = 'text/plain'
+        return response
+
+    @app.route('/sitemap.xml')
+    def sitemap_xml():
+        base_url = request.host_url.rstrip('/')
+        urls = [
+            {'loc': f'{base_url}/', 'lastmod': datetime.utcnow().date().isoformat()},
+            {'loc': f'{base_url}/articles', 'lastmod': datetime.utcnow().date().isoformat()}
+        ]
+        try:
+            articles = Article.query.filter_by(deleted_at=None).order_by(Article.updated_at.desc()).all()
+            for article in articles:
+                lastmod = (article.updated_at or article.created_at or datetime.utcnow()).date().isoformat()
+                urls.append({
+                    'loc': f'{base_url}/articles/{article.id}',
+                    'lastmod': lastmod
+                })
+        except Exception as exc:
+            logger.warning(f'生成 sitemap 时读取文章失败: {exc}')
+
+        xml_items = [
+            '<?xml version="1.0" encoding="UTF-8"?>',
+            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+        ]
+        for item in urls:
+            xml_items.append('  <url>')
+            xml_items.append(f'    <loc>{item["loc"]}</loc>')
+            if item.get('lastmod'):
+                xml_items.append(f'    <lastmod>{item["lastmod"]}</lastmod>')
+            xml_items.append('  </url>')
+        xml_items.append('</urlset>')
+        response = make_response('\n'.join(xml_items), 200)
+        response.headers['Content-Type'] = 'application/xml'
+        return response
 
     # 输出环境变量信息
     logger.info("Environment variables:")
