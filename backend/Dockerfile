@@ -1,5 +1,5 @@
 # 使用uv提供的Python镜像作为基础镜像
-FROM ghcr.io/astral-sh/uv:python3.11-alpine
+FROM swr.cn-north-4.myhuaweicloud.com/ddn-k8s/ghcr.io/astral-sh/uv:python3.11-alpine
 
 # 设置工作目录
 WORKDIR /app
