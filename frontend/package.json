@@ -33,7 +33,7 @@
     "rehype-katex": "^7.0.1",
     "rehype-mermaid": "^3.0.0",
     "remark-gfm": "^3.0.1",
-    "remark-math": "^6.0.0",
+    "remark-math": "^5.1.1",
     "remark-mermaidjs": "^7.0.0",
     "socket.io-client": "^4.8.1",
     "xss": "^1.0.14"
