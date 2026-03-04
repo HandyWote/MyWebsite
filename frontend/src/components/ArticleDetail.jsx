@@ -34,6 +34,7 @@ import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import 'katex/dist/katex.min.css';
 import { getApiUrl } from '../config/api'; // 导入API配置
 import PdfViewerOnCanvas from './PdfViewerOnCanvas';
+import { normalizeDisplayMath } from '../utils/markdownMath';
 
 const DEFAULT_META = {
   title: 'HandyWote',
@@ -759,7 +760,7 @@ flowchart TD
                   code: CodeBlock
                 }}
               >
-                {article.content}
+                {normalizeDisplayMath(article.content)}
               </ReactMarkdown>
             </Box>
           )}

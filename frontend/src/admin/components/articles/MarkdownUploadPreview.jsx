@@ -6,6 +6,7 @@ import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
+import { normalizeDisplayMath } from '../../../utils/markdownMath';
 
 class MarkdownPreviewBoundary extends React.Component {
   constructor(props) {
@@ -168,7 +169,9 @@ const MarkdownUploadPreview = ({
         >
           <MarkdownPreviewBoundary key={previewContent} onError={onError}>
             <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>
-              {previewContent || '在上方上传 Markdown 文件后，这里将展示渲染效果...'}
+              {previewContent
+                ? normalizeDisplayMath(previewContent)
+                : '在上方上传 Markdown 文件后，这里将展示渲染效果...'}
             </ReactMarkdown>
           </MarkdownPreviewBoundary>
         </Paper>

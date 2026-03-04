@@ -1,7 +1,11 @@
 # CLAUDE.md
 
 !!!回复请使用中文!!!
-!!!尽量使用项目中已有的组件，除非必要，不要另起炉灶!!!
+!!!回复请使用中文!!!
+!!!使用项目中已有的组件，除非必要，不要另起炉灶!!!
+使用superpower skill
+采用TDD开发范式
+在探讨方案时需要给我提供多个方案提供灵感，推荐未来技术债最低的方案
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
