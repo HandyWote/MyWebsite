@@ -6,8 +6,53 @@ on:
       - "v*"
 
 jobs:
+  sync-to-github:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Configure Git
+        run: |
+          git config --global user.email "18666119673@163.com"
+          git config --global user.name "Handy_Wote"
+
+      - name: Get current branch
+        id: branch
+        run: |
+          BRANCH=$(git rev-parse --abbrev-ref HEAD)
+          echo "Current branch: $BRANCH"
+          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
+
+      - name: Add GitHub remote
+        run: |
+          echo "Adding GitHub remote for repo: $GH_REPO"
+          git remote add github "https://${GH_TOKEN}@github.com/${GH_REPO}.git"
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GH_REPO: ${{ secrets.GH_REPO }}
+
+      - name: Push to GitHub
+        run: |
+          BRANCH=${{ steps.branch.outputs.branch }}
+          echo "Pushing branch: $BRANCH"
+          # 推送当前分支
+          git push github $BRANCH
+          echo "已同步分支: $BRANCH"
+
+      - name: Push tag to GitHub
+        run: |
+          TAG_NAME=${GITEA_REF#refs/tags/}
+          echo "Pushing tag: $TAG_NAME"
+          git push github tag $TAG_NAME
+          echo "已同步 tag: $TAG_NAME"
+
   deploy:
     runs-on: ubuntu-latest
+    needs: sync-to-github
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
