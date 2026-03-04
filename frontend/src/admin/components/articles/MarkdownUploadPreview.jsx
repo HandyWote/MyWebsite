@@ -3,6 +3,7 @@ import { Box, Button, Chip, Stack, Typography, Paper, Alert } from '@mui/materia
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 
@@ -166,7 +167,7 @@ const MarkdownUploadPreview = ({
           }}
         >
           <MarkdownPreviewBoundary key={previewContent} onError={onError}>
-            <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeKatex]}>
+            <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>
               {previewContent || '在上方上传 Markdown 文件后，这里将展示渲染效果...'}
             </ReactMarkdown>
           </MarkdownPreviewBoundary>
