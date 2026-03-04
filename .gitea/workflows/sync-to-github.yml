@@ -15,21 +15,24 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: false
+
+      - name: Configure Git
+        run: |
+          git config --global user.email "18666119673@163.com"
+          git config --global user.name "Handy_Wote"
 
       - name: Add GitHub remote
         run: |
-          git remote add github https://${{ secrets.GH_TOKEN }}@github.com/${{ secrets.GH_REPO }}.git
-
-      - name: Get ref
-        id: get-ref
-        run: |
-          # 获取当前 ref
-          echo "ref=$GITEA_REF" >> $GITHUB_OUTPUT
-          # 获取仓库名
-          echo "repo=$GITEA_REPO" >> $GITHUB_OUTPUT
+          echo "Adding GitHub remote for repo: $GH_REPO"
+          git remote add github "https://${GH_TOKEN}@github.com/${GH_REPO}.git"
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GH_REPO: ${{ secrets.GH_REPO }}
 
       - name: Push to GitHub
         run: |
+          echo "GITEA_REF: $GITEA_REF"
           # 如果是 tag
           if [[ "$GITEA_REF" == refs/tags/* ]]; then
             TAG_NAME=${GITEA_REF#refs/tags/}
