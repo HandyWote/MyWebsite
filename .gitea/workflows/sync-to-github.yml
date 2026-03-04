@@ -1,0 +1,42 @@
+name: Sync to GitHub
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+
+jobs:
+  sync-to-github:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Add GitHub remote
+        run: |
+          git remote add github https://${{ secrets.GH_TOKEN }}@github.com/${{ secrets.GH_REPO }}.git
+
+      - name: Get ref
+        id: get-ref
+        run: |
+          # 获取当前 ref
+          echo "ref=$GITEA_REF" >> $GITHUB_OUTPUT
+          # 获取仓库名
+          echo "repo=$GITEA_REPO" >> $GITHUB_OUTPUT
+
+      - name: Push to GitHub
+        run: |
+          # 如果是 tag
+          if [[ "$GITEA_REF" == refs/tags/* ]]; then
+            TAG_NAME=${GITEA_REF#refs/tags/}
+            git push github tag $TAG_NAME
+            echo "已同步 tag: $TAG_NAME"
+          else
+            # 推送分支
+            git push github main
+            echo "已同步分支: main"
+          fi
