@@ -26,5 +26,5 @@ jobs:
           password: ${{ secrets.DEPLOY_PASSWORD }}
           script: |
             cd ${{ secrets.DEPLOY_PATH }}
-            git pull
+            git pull gitea main
             docker compose up -d --build
