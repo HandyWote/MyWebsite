@@ -4,6 +4,8 @@ on:
   push:
     tags:
       - "v*"
+    branches:
+      - main
     paths:
       - ".gitea/workflows/release.yml"
 
