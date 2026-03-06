@@ -2,7 +2,7 @@
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { useState, lazy, Suspense } from 'react';
-import { Box, CircularProgress } from '@mui/material';
+import { Box, CircularProgress, Link as MuiLink } from '@mui/material';
 
 // 路由级别懒加载
 const Navbar = lazy(() => import('./components/Navbar'));
@@ -21,12 +21,39 @@ const theme = createTheme({
   },
 });
 
+function FilingFooter() {
+  return (
+    <Box
+      component="footer"
+      sx={{
+        position: 'fixed',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        textAlign: 'center',
+        py: 1.25,
+        fontSize: 12,
+        backgroundColor: 'var(--background-color, #f5f5f7)',
+      }}
+    >
+      <MuiLink
+        href="https://beian.miit.gov.cn"
+        target="_blank"
+        rel="noopener noreferrer"
+        sx={{ color: '#888', textDecoration: 'none' }}
+      >
+        粤ICP备2025420529号
+      </MuiLink>
+    </Box>
+  );
+}
+
 function AppContent() {
   const location = useLocation();
   const isAdmin = location.pathname.startsWith('/admin');
   
   return (
-    <>
+    <Box sx={{ pb: isAdmin ? 0 : '40px' }}>
       {!isAdmin && (
         <Suspense fallback={
           <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80px' }}>
@@ -72,7 +99,8 @@ function AppContent() {
           </Suspense>
         } />
       </Routes>
-    </>
+      {!isAdmin && <FilingFooter />}
+    </Box>
   );
 }
 

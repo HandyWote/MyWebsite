@@ -50,29 +50,12 @@
   </head>
   <body>
     <div id="root"></div>
-
-    <!-- 网站底部 -->
-    <style>
-      .beian-footer {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        text-align: center;
-        padding: 10px;
-        font-size: 12px;
-        background-color: var(--background-color, #f5f5f7);
-      }
-      .beian-link {
-        color: #888;
-        text-decoration: none;
-      }
-    </style>
-    <footer class="beian-footer">
-      <a href="https://beian.miit.gov.cn" target="_blank" rel="noopener noreferrer" class="beian-link">
+    <div style="text-align: center; padding: 10px; font-size: 12px; background-color: #f5f5f7;">
+      <a href="https://beian.miit.gov.cn" target="_blank" rel="noopener noreferrer" style="color: #888; text-decoration: none;">
         粤ICP备2025420529号
       </a>
-    </footer>
+    </div>
+
     <script type="module" src="./src/main.jsx"></script>
     
     <!-- Service Worker注册脚本 -->
