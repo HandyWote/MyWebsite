@@ -479,9 +479,6 @@ def initialize_environment():
     logger.info("=" * 50)
     return True
 
-# 创建应用实例
-app = create_app()
-
 # WebSocket 路由
 @socketio.on('connect', namespace='/skills')
 def ws_skills_connect():
