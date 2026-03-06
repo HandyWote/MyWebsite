@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Box, Typography, Tooltip, Snackbar } from '@mui/material';
-import { iconMap } from './SocialIcons';
+import { iconMap } from '../utils/iconMap';
 
 /**
  * 联系方式展示组件

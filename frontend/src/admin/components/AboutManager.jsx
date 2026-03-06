@@ -4,7 +4,7 @@ import { styled } from '@mui/material/styles';
 import axios from 'axios';
 import { getApiUrl } from '../../config/api'; // 导入API配置
 
-const PreviewBox = styled(Paper)(({ theme }) => ({
+const PreviewBox = styled(Paper)(() => ({
   padding: '2rem',
   borderRadius: '1rem',
   maxWidth: '800px',
@@ -30,7 +30,6 @@ export default function AboutManager() {
   });
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [lastUpdated, setLastUpdated] = useState(null);
 
   // 拉取数据
   const fetchAbout = async () => {
@@ -46,7 +45,6 @@ export default function AboutManager() {
           hobbies: about.content.hobbies || '',
           personal_vision: about.content.personal_vision || '',
         });
-        setLastUpdated(about.updated_at);
       }
     } finally {
       setLoading(false);

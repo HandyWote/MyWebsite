@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { handleError, AppError, ErrorType } from '../utils/errorHandler';
 
 /**
@@ -254,7 +254,6 @@ export function useApiMutation({
   onError,
   onMutate,
   onSettled,
-  invalidateQueries = true,
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -269,12 +268,14 @@ export function useApiMutation({
     // 创建新的 AbortController
     abortControllerRef.current = new AbortController();
 
+    // 变更前回调上下文
+    let context = {};
+
     try {
       setLoading(true);
       setError(null);
 
       // 变更前回调
-      let context = {};
       if (onMutate) {
         context = await onMutate(variables);
       }
@@ -314,7 +315,7 @@ export function useApiMutation({
       });
 
       setError(appError);
-      
+
       // 错误回调
       if (onError) {
         await onError(appError, variables, context);
@@ -323,20 +324,13 @@ export function useApiMutation({
       throw appError;
     } finally {
       setLoading(false);
-      
+
       // 完成回调
       if (onSettled) {
         await onSettled(error, variables, context);
       }
     }
-  }, [
-    url,
-    method,
-    onMutate,
-    onSuccess,
-    onError,
-    onSettled,
-  ]);
+  }, [url, method, onMutate, onSuccess, onError, onSettled, error]);
 
   // 清理函数
   useEffect(() => {

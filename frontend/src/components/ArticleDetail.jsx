@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   Container,
@@ -24,7 +24,6 @@ import {
   CalendarToday as CalendarIcon,
   Send as SendIcon
 } from '@mui/icons-material';
-import { motion } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -46,7 +45,7 @@ const stripMarkdown = (text = '') => {
     .replace(/`[^`]*`/g, ' ')
     .replace(/!\[[^\]]*]\([^)]*\)/g, ' ')
     .replace(/\[[^\]]*]\([^)]*\)/g, ' ')
-    .replace(/[#>*_~\-]/g, ' ')
+    .replace(/[#>*_~-]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 };
@@ -214,7 +213,7 @@ const MermaidComponent = ({ code }) => {
 };
 
 // Markdown 代码块渲染组件
-const CodeBlock = ({ node, inline, className, children, ...props }) => {
+const CodeBlock = ({ inline, className, children, ...props }) => {
   const match = /language-(\w+)/.exec(className || '');
   const language = match ? match[1] : '';
   const code = String(children).replace(/\n$/, '');
@@ -348,8 +347,8 @@ const ArticleDetail = () => {
     };
   }, [article]);
 
-  // 演示文章详情数据
-  const DEMO_ARTICLES_DETAIL = [
+  // 演示文章详情数据 - 使用 useMemo 避免每次渲染重新创建
+  const DEMO_ARTICLES_DETAIL = useMemo(() => [
     {
       id: 1,
       title: 'React 18 新特性详解',
@@ -407,10 +406,10 @@ flowchart TD
         }
       ]
     }
-  ];
+  ], []);
 
   // 获取文章详情
-  const fetchArticle = async () => {
+  const fetchArticle = useCallback(async () => {
     try {
       setLoading(true);
       const response = await fetch(getApiUrl.articleDetail(id));
@@ -422,7 +421,7 @@ flowchart TD
       } else {
         throw new Error('API 请求失败');
       }
-    } catch (err) {
+    } catch {
       console.log('后端服务不可用，切换到演示模式');
       setDemoMode(true);
       
@@ -437,10 +436,10 @@ flowchart TD
     } finally {
       setLoading(false);
     }
-  };
+  }, [DEMO_ARTICLES_DETAIL, id]);
 
   // 获取文章评论
-  const fetchComments = async () => {
+  const fetchComments = useCallback(async () => {
     if (!article || demoMode) return;
     
     try {
@@ -459,7 +458,7 @@ flowchart TD
     } finally {
       setCommentsLoading(false);
     }
-  };
+  }, [article, demoMode]);
 
   // 提交评论
   const handleSubmitComment = async () => {
@@ -506,19 +505,18 @@ flowchart TD
 
   useEffect(() => {
     fetchArticle();
-  }, [id]);
+  }, [fetchArticle]);
 
   // 在文章加载完成后获取评论
   useEffect(() => {
     if (article && !demoMode) {
       fetchComments();
     }
-  }, [article, demoMode]);
+  }, [article, demoMode, fetchComments]);
 
   // 分享文章
   const handleShare = () => {
     const url = window.location.href;
-    const text = `${article.title} - ${article.summary}`;
     
     if (navigator.share) {
       navigator.share({
@@ -582,10 +580,7 @@ flowchart TD
   return (
     <section className="section">
       <Container>
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
+        <Box
           className="glass-effect"
           style={{
             padding: '2rem',
@@ -652,7 +647,7 @@ flowchart TD
               </Box>
             )}
             
-            <IconButton size="small" onClick={handleShare}>
+            <IconButton size="small" onClick={handleShare} aria-label="分享文章">
               <ShareIcon />
             </IconButton>
           </Box>
@@ -862,7 +857,7 @@ flowchart TD
             </Typography>
           )}
         </Paper>
-        </motion.div>
+        </Box>
       </Container>
     </section>
   );

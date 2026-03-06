@@ -5,7 +5,7 @@ import { getApiUrl } from '../../config/api';
 
 const SiteContentEditor = () => {
   const [siteBlocks, setSiteBlocks] = useState({});
-  const [socket, setSocket] = useState(null);
+  const [_socket, setSocket] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });

@@ -14,7 +14,6 @@ import {
   Stack,
   IconButton
 } from '@mui/material';
-import { motion } from 'framer-motion';
 import CloudDownloadIcon from '@mui/icons-material/CloudDownload';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import RefreshIcon from '@mui/icons-material/Refresh';

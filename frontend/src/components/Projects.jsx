@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 // 导入必要的组件和hooks
 import { motion } from 'framer-motion';  // 用于实现动画效果
 import { Box, Typography, Container, Card, CardContent, CardActions, Button, IconButton, Tooltip, Alert } from '@mui/material';  // Material-UI组件
@@ -48,20 +49,24 @@ const Projects = () => {
 
   // 从localStorage获取缓存数据
   const getCachedProjects = () => {
+    const cachedData = localStorage.getItem('githubProjects');
+    if (!cachedData) {
+      return null;
+    }
+
     try {
-      const cachedData = localStorage.getItem('githubProjects');
-      if (cachedData) {
-        const { timestamp, data } = JSON.parse(cachedData);
-        if (isCacheValid(timestamp)) {
-          setLastUpdated(timestamp);
-          setIsCacheData(true);
-          return data;
-        }
+      const { timestamp, data } = JSON.parse(cachedData);
+      if (isCacheValid(timestamp)) {
+        setLastUpdated(timestamp);
+        setIsCacheData(true);
+        return data;
       }
+      return null;
     } catch (error) {
       console.error('Error reading cached data:', error);
+      localStorage.removeItem('githubProjects');
+      return null;
     }
-    return null;
   };
 
   // 将数据保存到localStorage
@@ -139,13 +144,12 @@ const Projects = () => {
   const fetchProjects = async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
       // 首先检查是否有有效的缓存数据
       const cachedProjects = getCachedProjects();
       if (cachedProjects) {
         setProjects(cachedProjects);
-        setLoading(false);
         return;
       }
 
@@ -155,8 +159,7 @@ const Projects = () => {
     } catch (error) {
       console.error('Error fetching projects:', error);
       setError(error.message);
-      
-      // 如果API请求失败，使用默认项目数据
+
       const defaultProjects = [
         {
           title: 'WechatAutoRobort',
@@ -175,8 +178,7 @@ const Projects = () => {
         },
       ];
       setProjects(defaultProjects);
-      // 即使使用默认数据，也缓存以防网络问题
-      cacheProjects(defaultProjects);
+      setIsCacheData(false);
     } finally {
       setLoading(false);
     }
@@ -200,8 +202,10 @@ const Projects = () => {
   };
 
   // 在组件挂载时获取GitHub项目数据
+  // 故意只在挂载时执行，不添加 fetchProjects 到依赖以避免无限循环
   useEffect(() => {
     fetchProjects();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // 格式化更新时间显示

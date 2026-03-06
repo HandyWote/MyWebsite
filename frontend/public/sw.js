@@ -17,7 +17,7 @@ self.addEventListener('install', event => {
           try {
             new URL(url, self.location.origin);
             return true;
-          } catch (e) {
+          } catch {
             console.warn('Invalid URL in cache list:', url);
             return false;
           }

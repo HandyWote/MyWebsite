@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   Box,
   Button,
@@ -32,7 +32,6 @@ import {
   Pagination,
   CircularProgress
 } from '@mui/material';
-import { motion } from 'framer-motion';
 import {
   Search as SearchIcon,
   Delete as DeleteIcon,
@@ -290,7 +289,7 @@ const CommentsManager = () => {
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(10);
+  const [perPage, _setPerPage] = useState(10);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [selectedComment, setSelectedComment] = useState(null);
@@ -299,11 +298,10 @@ const CommentsManager = () => {
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
-  const [selectedComments, setSelectedComments] = useState([]);
-  const [socket, setSocket] = useState(null);
-  
+  const [_socket, setSocket] = useState(null);
+
   // 获取评论列表
-  const fetchComments = async () => {
+  const fetchComments = useCallback(async () => {
     setLoading(true);
     const token = localStorage.getItem('token');
     try {
@@ -311,21 +309,21 @@ const CommentsManager = () => {
         page: page.toString(),
         per_page: perPage.toString()
       });
-      
+
       if (searchTerm) {
         params.append('search', searchTerm);
       }
-      
+
       if (statusFilter) {
         params.append('status', statusFilter);
       }
-      
+
       const response = await fetch(`${getApiUrl.adminComments()}?${params}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
-      
+
       const data = await response.json();
       if (data.code === 0) {
         // 确保评论数据有正确的结构
@@ -346,8 +344,8 @@ const CommentsManager = () => {
     } finally {
       setLoading(false);
     }
-  };
-  
+  }, [page, perPage, searchTerm, statusFilter]);
+
   useEffect(() => {
     fetchComments();
     
@@ -383,7 +381,7 @@ const CommentsManager = () => {
         newSocket.disconnect();
       }
     };
-  }, [page, perPage, searchTerm, statusFilter]);
+  }, [fetchComments, page, perPage, searchTerm, statusFilter]);
   
   // 删除评论
   const handleDeleteComment = async () => {

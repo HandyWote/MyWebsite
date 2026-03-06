@@ -9,7 +9,7 @@ import LazyImage from './LazyImage';
  */
 const LazyGitHubCalendar = ({ src, alt, ...props }) => {
   const [isLoaded, setIsLoaded] = useState(false);
-  const [hasError, setHasError] = useState(false);
+  const [_hasError, setHasError] = useState(false);
   const calendarRef = useRef();
 
   useEffect(() => {

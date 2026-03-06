@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 // 导入必要的组件和图标
 import { motion } from 'framer-motion';  // 用于实现动画效果
 import { Box, Typography, Container, Button } from '@mui/material';  // Material-UI组件
@@ -34,23 +35,23 @@ const Home = () => {
       const data = await res.json();
       setSiteBlock(data.data.find(b => b.name === 'home'));
       setAboutBlock(data.data.find(b => b.name === 'about'));
-    } catch {}
+    } catch { /* 静默忽略错误 */ }
   };
-  
+
   const fetchSkills = async () => {
     try {
       const res = await fetch(getApiUrl.skills());
       const data = await res.json();
       setSkills(data.data || []);
-    } catch {}
+    } catch { /* 静默忽略错误 */ }
   };
-  
+
   const fetchContacts = async () => {
     try {
       const res = await fetch(getApiUrl.contacts());
       const data = await res.json();
       setContacts(data.data || []);
-    } catch {}
+    } catch { /* 静默忽略错误 */ }
   };
   
   const fetchAvatar = async () => {
@@ -70,36 +71,42 @@ const Home = () => {
     fetchContacts();
     fetchAvatar();
     
-    let socket = null;
+    let sockets = [];
     let reconnectTimeout = null;
     let ioModule = null;
+    const websocketConfigs = [
+      { namespace: '/site_blocks', event: 'site_block_updated', handler: fetchSiteBlock },
+      { namespace: '/skills', event: 'skills_updated', handler: fetchSkills },
+      { namespace: '/contacts', event: 'contacts_updated', handler: fetchContacts },
+      { namespace: '/avatars', event: 'avatars_updated', handler: fetchAvatar },
+    ];
     
     // 延迟建立WebSocket连接，避免阻塞页面加载
     const connectWebSocket = async () => {
-      if (socket) return; // 避免重复连接
+      if (sockets.length > 0) return; // 避免重复连接
       
       try {
         // 动态导入socket.io-client，避免在初始bundle中包含
         if (!ioModule) {
           ioModule = await import('socket.io-client');
         }
-        
-        socket = ioModule.default(getApiUrl.websocket(), { 
-          path: '/socket.io/',
-          transports: ['websocket', 'polling'],
-          reconnection: true,
-          reconnectionAttempts: 3,
-          reconnectionDelay: 2000,
-          timeout: 5000
-        });
-        
-        socket.on('site_block_updated', fetchSiteBlock);
-        socket.on('skills_updated', fetchSkills);
-        socket.on('contacts_updated', fetchContacts);
-        socket.on('avatars_updated', fetchAvatar);
-        
-        socket.on('connect_error', (error) => {
-          console.log('WebSocket连接错误:', error);
+
+        sockets = websocketConfigs.map(({ namespace, event, handler }) => {
+          const socket = ioModule.default(`${getApiUrl.websocket()}${namespace}`, {
+            path: '/socket.io/',
+            transports: ['websocket', 'polling'],
+            reconnection: true,
+            reconnectionAttempts: 3,
+            reconnectionDelay: 2000,
+            timeout: 5000
+          });
+
+          socket.on(event, handler);
+          socket.on('connect_error', (error) => {
+            console.log(`WebSocket连接错误 (${namespace}):`, error);
+          });
+
+          return socket;
         });
       } catch (error) {
         console.log('WebSocket模块加载失败:', error);
@@ -113,9 +120,9 @@ const Home = () => {
     const handleVisibilityChange = () => {
       if (document.hidden) {
         // 页面隐藏时断开连接
-        if (socket) {
-          socket.disconnect();
-          socket = null;
+        if (sockets.length > 0) {
+          sockets.forEach((socket) => socket.disconnect());
+          sockets = [];
         }
         if (reconnectTimeout) {
           clearTimeout(reconnectTimeout);
@@ -123,7 +130,7 @@ const Home = () => {
         }
       } else {
         // 页面显示时重新连接
-        if (!socket) {
+        if (sockets.length === 0) {
           reconnectTimeout = setTimeout(connectWebSocket, 1000);
         }
       }
@@ -136,8 +143,8 @@ const Home = () => {
       if (reconnectTimeout) {
         clearTimeout(reconnectTimeout);
       }
-      if (socket) {
-        socket.disconnect();
+      if (sockets.length > 0) {
+        sockets.forEach((socket) => socket.disconnect());
       }
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };

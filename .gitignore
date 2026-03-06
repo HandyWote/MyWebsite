@@ -71,3 +71,6 @@ build/
 # Others
 logs/
 *.log
+
+.coverage
+.pytest_cache

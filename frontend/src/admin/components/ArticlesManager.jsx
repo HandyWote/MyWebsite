@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   Box, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, TablePagination,
   TextField, Stack, Checkbox, IconButton, Typography,
@@ -15,21 +15,6 @@ import { io } from 'socket.io-client';
 import { getApiUrl } from '../../config/api'; // 导入API配置
 import ArticleEditDialog from './articles/ArticleEditDialog';
 import AiSettingsDialog from './articles/AiSettingsDialog';
-
-function parseMarkdown(md) {
-  // 简单提取标题和正文
-  const lines = md.split('\n');
-  let title = '';
-  let content = md;
-  for (let l of lines) {
-    if (l.startsWith('# ')) {
-      title = l.replace(/^# /, '').trim();
-      content = lines.slice(1).join('\n').trim();
-      break;
-    }
-  }
-  return { title, content };
-}
 
 const defaultArticle = {
   title: '',
@@ -58,7 +43,7 @@ const ArticlesManager = () => {
   const [fileUploading, setFileUploading] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [previewContent, setPreviewContent] = useState('');
-  const [socket, setSocket] = useState(null);
+  const [_socket, setSocket] = useState(null);
   const [aiSettingsOpen, setAiSettingsOpen] = useState(false);
   const [aiSettings, setAiSettings] = useState({ prompt: '', model: '', base_url: '', api_key: '' });
   const [aiSettingsLoading, setAiSettingsLoading] = useState(false);
@@ -69,27 +54,36 @@ const ArticlesManager = () => {
   // AI分析相关状态
   const [aiAnalyzing, setAiAnalyzing] = useState(false);
   const [aiSuggestions, setAiSuggestions] = useState(null);
-  const [importProgress, setImportProgress] = useState({ total: 0, success: 0, fail: 0, failFiles: [] });
   
   // 批量AI分析相关状态
   const [batchAiAnalyzing, setBatchAiAnalyzing] = useState(false);
   const [batchAiProgress, setBatchAiProgress] = useState({ current: 0, total: 0, success: 0, fail: 0, failedArticles: [] });
   const [batchAiCancelled, setBatchAiCancelled] = useState(false);
+  const articleQueryRef = useRef({ page: 1, perPage: 10, search: '' });
+
+  useEffect(() => {
+    articleQueryRef.current = {
+      page: page + 1,
+      perPage: rowsPerPage,
+      search,
+    };
+  }, [page, rowsPerPage, search]);
 
   // 拉取文章
-  const fetchArticles = async (params = {}) => {
+  const fetchArticles = useCallback(async (params = {}) => {
+    const query = { ...articleQueryRef.current, ...params };
     setLoading(true);
     const token = localStorage.getItem('token');
-    const res = await fetch(`${getApiUrl.adminArticles()}?page=${params.page ?? page + 1}&per_page=${params.perPage ?? rowsPerPage}&search=${params.search ?? search}`,
+    const res = await fetch(`${getApiUrl.adminArticles()}?page=${query.page}&per_page=${query.perPage}&search=${query.search}`,
       { headers: { 'Authorization': `Bearer ${token}` } });
     const data = await res.json();
     setArticles(data.data || []);
     setTotal(data.total || 0);
     setLoading(false);
-  };
+  }, []);
 
   useEffect(() => {
-    fetchArticles({ page: 1 });
+    fetchArticles();
     
     // 初始化WebSocket连接
     const newSocket = io(`${getApiUrl.websocket()}/articles`, {
@@ -103,7 +97,7 @@ const ArticlesManager = () => {
     // 监听文章更新事件
     newSocket.on('articles_updated', () => {
       console.log('收到文章更新通知，刷新数据...');
-      fetchArticles({ page: page + 1 });
+      fetchArticles();
     });
     
     // 监听连接事件
@@ -123,7 +117,7 @@ const ArticlesManager = () => {
         newSocket.disconnect();
       }
     };
-  }, []);
+  }, [fetchArticles]);
 
   // 分页、搜索
   const handleChangePage = (e, newPage) => { setPage(newPage); fetchArticles({ page: newPage + 1 }); };
@@ -280,7 +274,7 @@ const ArticlesManager = () => {
       closeEdit();
       fetchArticles({ page: page + 1 });
       setSnackbar({ open: true, message: '保存成功', severity: 'success' });
-    } catch (e) {
+    } catch {
       setSnackbar({ open: true, message: '保存失败', severity: 'error' });
     }
     setLoading(false);
@@ -305,7 +299,7 @@ const ArticlesManager = () => {
       setSelected([]);
       fetchArticles({ page: page + 1 });
       setSnackbar({ open: true, message: '删除成功', severity: 'success' });
-    } catch (e) {
+    } catch {
       setSnackbar({ open: true, message: '删除失败', severity: 'error' });
     }
     setLoading(false);
@@ -349,7 +343,7 @@ const ArticlesManager = () => {
       } else {
         setSnackbar({ open: true, message: data.msg || 'PDF上传失败', severity: 'error' });
       }
-    } catch (e) {
+    } catch {
       setSnackbar({ open: true, message: 'PDF上传失败', severity: 'error' });
     }
     setPdfUploading(false);
@@ -362,7 +356,6 @@ const ArticlesManager = () => {
     e.target.value = '';
     if (!files.length) return;
     setLoading(true);
-    setImportProgress({ total: files.length, success: 0, fail: 0, failFiles: [] });
     const token = localStorage.getItem('token');
     const formData = new FormData();
     files.forEach(f => formData.append('files', f));
@@ -377,12 +370,6 @@ const ArticlesManager = () => {
         const stats = data.data || {};
         const successCount = (stats.markdown || 0) + (stats.pdf || 0);
         const failFiles = stats.failed || [];
-        setImportProgress({
-          total: files.length,
-          success: successCount,
-          fail: failFiles.length,
-          failFiles
-        });
         setSnackbar({
           open: true,
           message: data.msg || `成功导入${successCount}篇文章`,
@@ -391,7 +378,7 @@ const ArticlesManager = () => {
       } else {
         setSnackbar({ open: true, message: data.msg || '导入失败', severity: 'error' });
       }
-    } catch (e) {
+    } catch {
       setSnackbar({ open: true, message: '导入失败', severity: 'error' });
     }
     setLoading(false);

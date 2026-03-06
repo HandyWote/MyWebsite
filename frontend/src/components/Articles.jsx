@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import { useState, useEffect, useCallback } from 'react';
 import {
   Container,
@@ -104,7 +105,7 @@ const Articles = () => {
   const [demoMode, setDemoMode] = useState(false);
 
   // 获取文章列表
-  const fetchArticles = async () => {
+  const fetchArticles = useCallback(async () => {
     try {
       setLoading(true);
       const params = new URLSearchParams({
@@ -117,7 +118,7 @@ const Articles = () => {
       if (selectedTag) params.append('tag', selectedTag);
 
       const response = await fetch(`${getApiUrl.articles()}?${params}`);
-      
+
       if (response.ok) {
         const data = await response.json();
         setArticles(data.articles);
@@ -126,37 +127,37 @@ const Articles = () => {
       } else {
         throw new Error('API 请求失败');
       }
-    } catch (err) {
+    } catch {
       console.log('后端服务不可用，切换到演示模式');
       setDemoMode(true);
       // 使用演示数据
       let filteredArticles = [...DEMO_ARTICLES];
-      
+
       if (searchTerm) {
         filteredArticles = filteredArticles.filter(article =>
           article.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
           article.summary.toLowerCase().includes(searchTerm.toLowerCase())
         );
       }
-      
+
       if (selectedCategory) {
         filteredArticles = filteredArticles.filter(article =>
           article.category === selectedCategory
         );
       }
-      
+
       if (selectedTag) {
         filteredArticles = filteredArticles.filter(article =>
           article.tags.includes(selectedTag)
         );
       }
-      
+
       setArticles(filteredArticles);
       setTotalPages(Math.ceil(filteredArticles.length / 9));
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, searchTerm, selectedCategory, selectedTag]);
 
   // 获取分类和标签
   const fetchCategoriesAndTags = async () => {
@@ -175,7 +176,7 @@ const Articles = () => {
       } else {
         throw new Error('API 请求失败');
       }
-    } catch (err) {
+    } catch {
       console.log('使用演示分类和标签数据');
       setCategories(DEMO_CATEGORIES);
       setTags(DEMO_TAGS);
@@ -189,7 +190,7 @@ const Articles = () => {
 
   useEffect(() => {
     fetchArticles();
-  }, [currentPage, searchTerm, selectedCategory, selectedTag]);
+  }, [fetchArticles, currentPage, searchTerm, selectedCategory, selectedTag]);
 
   // 处理搜索
   const handleSearch = useCallback((event) => {

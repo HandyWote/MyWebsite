@@ -84,7 +84,7 @@ const ContactsManager = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deleteIndex, setDeleteIndex] = useState(null);
-  const [socket, setSocket] = useState(null);
+  const [_socket, setSocket] = useState(null);
   const sensors = useSensors(useSensor(PointerSensor));
 
   // 拉取联系方式数据

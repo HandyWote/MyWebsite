@@ -87,7 +87,7 @@ const AvatarsManager = () => {
   const [snackbarMsg, setSnackbarMsg] = useState('');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [avatarToDelete, setAvatarToDelete] = useState(null);
-  const [socket, setSocket] = useState(null);
+  const [_socket, setSocket] = useState(null);
   const sensors = useSensors(useSensor(PointerSensor));
 
   // 拉取头像数据

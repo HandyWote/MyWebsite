@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Document, Page } from 'react-pdf';
 import {
   Box,
@@ -31,7 +31,7 @@ const PdfViewerOnCanvas = ({ filename, url }) => {
   const [pdfUrl, setPdfUrl] = useState(null);
   const [sourceUrl, setSourceUrl] = useState(null);
 
-  const resolvePdfUrl = () => {
+  const resolvePdfUrl = useCallback(() => {
     if (url) {
       return url;
     }
@@ -45,7 +45,7 @@ const PdfViewerOnCanvas = ({ filename, url }) => {
       return `${normalizedBase || ''}${filename}`;
     }
     return getApiUrl.articlePdf(filename);
-  };
+  }, [url, filename]);
 
   useEffect(() => {
     let isMounted = true;
@@ -109,7 +109,7 @@ const PdfViewerOnCanvas = ({ filename, url }) => {
         URL.revokeObjectURL(objectUrl);
       }
     };
-  }, [filename, url]);
+  }, [resolvePdfUrl, filename, url]);
 
   // PDF加载成功回调
   const onDocumentLoadSuccess = ({ numPages }) => {

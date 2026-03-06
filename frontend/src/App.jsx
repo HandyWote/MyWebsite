@@ -105,7 +105,8 @@ function AppContent() {
 }
 
 function App() {
-  const [darkMode, setDarkMode] = useState(false); // 添加暗模式状态
+  // 添加暗模式状态（暂未使用，保留以备将来功能扩展）
+  const [_darkMode, _setDarkMode] = useState(false);
 
   return (
     <ThemeProvider theme={theme}>

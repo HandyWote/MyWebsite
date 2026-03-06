@@ -1,8 +1,7 @@
-import React from 'react';
-import { SvgIcon } from '@mui/material';
 import EmailIcon from '@mui/icons-material/Email';
 import PhoneIcon from '@mui/icons-material/Phone';
 import FileCopyIcon from '@mui/icons-material/FileCopy';
+import { SvgIcon } from '@mui/material';
 
 /**
  * 微信图标组件
@@ -26,16 +25,5 @@ function QQIcon(props) {
     </SvgIcon>
   );
 }
-
-/**
- * 社交图标映射表
- */
-export const iconMap = {
-  email: <EmailIcon sx={{ color: '#213547' }} />,
-  phone: <PhoneIcon sx={{ color: '#213547' }} />,
-  wechat: <WechatIcon sx={{ color: '#213547' }} />,
-  qq: <QQIcon sx={{ color: '#213547' }} />,
-  other: <FileCopyIcon sx={{ color: '#213547' }} />
-};
 
 export { WechatIcon, QQIcon };

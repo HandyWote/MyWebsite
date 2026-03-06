@@ -53,7 +53,7 @@ const Login = () => {
       } else {
         setError(data.msg || '登录失败');
       }
-    } catch (err) {
+    } catch {
       setError('网络错误，请检查连接');
     } finally {
       setLoading(false);

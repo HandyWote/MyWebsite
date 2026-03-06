@@ -23,7 +23,7 @@ export const verifyToken = async () => {
     } else {
       return { valid: false, error: 'Token已过期或无效' };
     }
-  } catch (error) {
+  } catch {
     return { valid: false, error: '网络错误' };
   }
 };

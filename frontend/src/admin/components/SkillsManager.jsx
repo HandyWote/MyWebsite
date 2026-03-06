@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { Box, Button, Typography, Container, LinearProgress, TextField, Slider, Paper, Stack, IconButton, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } from '@mui/material';
-import { motion } from 'framer-motion';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -113,7 +112,7 @@ const SkillsManager = () => {
   const [saving, setSaving] = useState(false);
   const [deleteIndex, setDeleteIndex] = useState(null);
   const sensors = useSensors(useSensor(PointerSensor));
-  const [socket, setSocket] = useState(null);
+  const [_socket, setSocket] = useState(null);
 
   // 拉取技能数据
   const fetchSkills = async () => {
