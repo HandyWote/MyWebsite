@@ -41,7 +41,7 @@ const SiteContentEditor = () => {
     
     // 初始化WebSocket连接
     const newSocket = io(`${getApiUrl.websocket()}/site_blocks`, {
-      transports: ['websocket'],
+      transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,

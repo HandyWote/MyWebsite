@@ -120,7 +120,7 @@ const AvatarsManager = () => {
     
     // 初始化WebSocket连接
     const newSocket = io(`${getApiUrl.websocket()}/avatars`, {
-      transports: ['websocket'],
+      transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,

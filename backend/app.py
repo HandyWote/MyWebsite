@@ -188,17 +188,8 @@ def create_app():
     jwt.init_app(app)
     scheduler.init_app(app)
     
-    # 检测运行环境并配置SocketIO
-    is_gunicorn = "gunicorn" in os.environ.get("SERVER_SOFTWARE", "")
-    
-    if is_gunicorn:
-        # Gunicorn环境下使用threading模式
-        socketio.init_app(app, cors_allowed_origins="*", async_mode='threading', path='/socket.io/')
-        logger.info("SocketIO initialized with threading mode for Gunicorn")
-    else:
-        # 开发环境下使用完整WebSocket支持
-        socketio.init_app(app, cors_allowed_origins="*", path='/socket.io/')
-        logger.info("SocketIO initialized with full WebSocket support")
+    socketio.init_app(app, cors_allowed_origins="*", path='/socket.io/')
+    logger.info("SocketIO initialized with auto-selected async mode")
 
     # 注册路由
     from routes import register_all_blueprints
