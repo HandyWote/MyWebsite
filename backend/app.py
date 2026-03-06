@@ -188,8 +188,15 @@ def create_app():
     jwt.init_app(app)
     scheduler.init_app(app)
     
-    socketio.init_app(app, cors_allowed_origins="*", path='/socket.io/')
-    logger.info("SocketIO initialized with auto-selected async mode")
+    socketio_debug = os.environ.get("SOCKETIO_DEBUG", "").lower() in {"1", "true", "yes", "on"}
+    socketio.init_app(
+        app,
+        cors_allowed_origins="*",
+        path='/socket.io/',
+        logger=socketio_debug,
+        engineio_logger=socketio_debug,
+    )
+    logger.info(f"SocketIO initialized with auto-selected async mode (debug={socketio_debug})")
 
     # 注册路由
     from routes import register_all_blueprints

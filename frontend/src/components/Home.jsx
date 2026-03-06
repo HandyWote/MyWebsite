@@ -103,6 +103,14 @@ const Home = () => {
 
           socket.on(event, handler);
           socket.on('connect_error', (error) => {
+            console.log('WebSocket连接错误详情:', {
+              namespace,
+              message: error?.message,
+              description: error?.description,
+              context: error?.context,
+              transport: socket.io?.engine?.transport?.name,
+              configuredTransports: socket.io?.opts?.transports,
+            });
             console.log(`WebSocket连接错误 (${namespace}):`, error);
           });
 

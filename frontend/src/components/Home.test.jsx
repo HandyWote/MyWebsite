@@ -3,6 +3,7 @@ import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import Home from './Home';
 
 const ioMock = vi.fn();
+const socketInstances = [];
 
 vi.mock('framer-motion', () => ({
   motion: {
@@ -56,10 +57,29 @@ describe('Home', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     ioMock.mockReset();
-    ioMock.mockImplementation(() => ({
-      on: vi.fn(),
-      disconnect: vi.fn(),
-    }));
+    socketInstances.length = 0;
+    ioMock.mockImplementation(() => {
+      const handlers = {};
+      const socket = {
+        on: vi.fn((event, handler) => {
+          handlers[event] = handler;
+        }),
+        disconnect: vi.fn(),
+        io: {
+          opts: {
+            transports: ['websocket', 'polling'],
+          },
+          engine: {
+            transport: {
+              name: 'websocket',
+            },
+          },
+        },
+        _handlers: handlers,
+      };
+      socketInstances.push(socket);
+      return socket;
+    });
 
     globalThis.fetch = vi.fn().mockResolvedValue({
       json: async () => ({ data: [], avatars: [] }),
@@ -85,5 +105,35 @@ describe('Home', () => {
     expect(ioMock).toHaveBeenNthCalledWith(2, 'https://example.com/skills', expect.any(Object));
     expect(ioMock).toHaveBeenNthCalledWith(3, 'https://example.com/contacts', expect.any(Object));
     expect(ioMock).toHaveBeenNthCalledWith(4, 'https://example.com/avatars', expect.any(Object));
+  });
+
+  it('logs structured details when websocket connect_error occurs', async () => {
+    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    render(<Home />);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(3000);
+    });
+
+    const error = new Error('timeout');
+    error.description = 'websocket closed early';
+    error.context = { stage: 'transport' };
+
+    act(() => {
+      socketInstances[0]._handlers.connect_error(error);
+    });
+
+    expect(consoleSpy).toHaveBeenCalledWith(
+      'WebSocket连接错误详情:',
+      expect.objectContaining({
+        namespace: '/site_blocks',
+        message: 'timeout',
+        description: 'websocket closed early',
+        transport: 'websocket',
+        configuredTransports: ['websocket', 'polling'],
+        context: { stage: 'transport' },
+      }),
+    );
   });
 });

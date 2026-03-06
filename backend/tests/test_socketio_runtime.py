@@ -7,3 +7,12 @@ def test_gunicorn_runtime_branch_does_not_force_threading():
 
     assert 'async_mode=\'threading\'' not in content
     assert 'async_mode="threading"' not in content
+
+
+def test_socketio_supports_debug_logging_flags():
+    app_source = Path(__file__).resolve().parents[1] / "app.py"
+    content = app_source.read_text(encoding="utf-8")
+
+    assert "SOCKETIO_DEBUG" in content
+    assert "engineio_logger" in content
+    assert "logger=socketio_debug" in content
