@@ -40,7 +40,7 @@ const PdfViewerOnCanvas = ({ filename, url }) => {
       return filename;
     }
     if (filename.startsWith('/api/')) {
-      const base = getApiUrl.websocket();
+      const base = getApiUrl.baseUrl();
       const normalizedBase = base && base.endsWith('/') ? base.slice(0, -1) : base;
       return `${normalizedBase || ''}${filename}`;
     }

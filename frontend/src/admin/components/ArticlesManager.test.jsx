@@ -3,14 +3,6 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import ArticlesManager from './ArticlesManager';
 
-const { ioMock } = vi.hoisted(() => ({
-  ioMock: vi.fn(),
-}));
-
-vi.mock('socket.io-client', () => ({
-  io: ioMock,
-}));
-
 vi.mock('./articles/ArticleEditDialog', () => ({
   default: () => null,
 }));
@@ -21,12 +13,6 @@ vi.mock('./articles/AiSettingsDialog', () => ({
 
 describe('ArticlesManager', () => {
   beforeEach(() => {
-    ioMock.mockReset();
-    ioMock.mockReturnValue({
-      on: vi.fn(),
-      disconnect: vi.fn(),
-    });
-
     window.localStorage.getItem.mockImplementation((key) => {
       if (key === 'token') return 'test-token';
       return null;

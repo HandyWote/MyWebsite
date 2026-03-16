@@ -6,7 +6,6 @@ import { CSS } from '@dnd-kit/utilities';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
-import { io } from 'socket.io-client';
 import { getApiUrl } from '../../config/api'; // 导入API配置
 const CONTACT_TYPES = [
   { value: 'email', label: '邮箱' },
@@ -84,7 +83,6 @@ const ContactsManager = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deleteIndex, setDeleteIndex] = useState(null);
-  const [_socket, setSocket] = useState(null);
   const sensors = useSensors(useSensor(PointerSensor));
 
   // 拉取联系方式数据
@@ -104,39 +102,6 @@ const ContactsManager = () => {
 
   useEffect(() => {
     fetchContacts();
-    
-    // 初始化WebSocket连接
-    const newSocket = io(`${getApiUrl.websocket()}/contacts`, {
-      transports: ['websocket', 'polling'],
-      reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
-      path: '/socket.io/',
-    });
-    
-    // 监听联系方式更新事件
-    newSocket.on('contacts_updated', () => {
-      console.log('收到联系方式更新通知，刷新数据...');
-      fetchContacts();
-    });
-    
-    // 监听连接事件
-    newSocket.on('connect', () => {
-      console.log('WebSocket连接已建立');
-    });
-    
-    newSocket.on('disconnect', () => {
-      console.log('WebSocket连接已断开');
-    });
-    
-    setSocket(newSocket);
-    
-    // 清理函数
-    return () => {
-      if (newSocket) {
-        newSocket.disconnect();
-      }
-    };
   }, []);
 
   // 编辑本地副本

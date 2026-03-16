@@ -5,7 +5,6 @@ import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { io } from 'socket.io-client';
 import { getApiUrl } from '../../config/api'; // 导入API配置
 
 function SortableAvatarCard({ avatar, index, onDelete, ...props }) {
@@ -87,7 +86,6 @@ const AvatarsManager = () => {
   const [snackbarMsg, setSnackbarMsg] = useState('');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [avatarToDelete, setAvatarToDelete] = useState(null);
-  const [_socket, setSocket] = useState(null);
   const sensors = useSensors(useSensor(PointerSensor));
 
   // 拉取头像数据
@@ -117,39 +115,6 @@ const AvatarsManager = () => {
 
   useEffect(() => {
     fetchAvatars();
-    
-    // 初始化WebSocket连接
-    const newSocket = io(`${getApiUrl.websocket()}/avatars`, {
-      transports: ['websocket', 'polling'],
-      reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
-      path: '/socket.io/',
-    });
-    
-    // 监听头像更新事件
-    newSocket.on('avatars_updated', () => {
-      console.log('收到头像更新通知，刷新数据...');
-      fetchAvatars();
-    });
-    
-    // 监听连接事件
-    newSocket.on('connect', () => {
-      console.log('WebSocket连接已建立');
-    });
-    
-    newSocket.on('disconnect', () => {
-      console.log('WebSocket连接已断开');
-    });
-    
-    setSocket(newSocket);
-    
-    // 清理函数
-    return () => {
-      if (newSocket) {
-        newSocket.disconnect();
-      }
-    };
   }, []);
 
   // 拖拽排序

@@ -63,10 +63,9 @@ export const API_CONFIG = {
 /**
  * API端点配置
  * 
- * 分为三个部分：
+ * 分为两个部分：
  * 1. PUBLIC: 公共API，无需认证
  * 2. ADMIN: 管理后台API，需要JWT认证
- * 3. WEBSOCKET: WebSocket连接配置
  */
 export const API_ENDPOINTS = {
   // 公共API - 无需认证，所有用户可访问
@@ -109,12 +108,6 @@ export const API_ENDPOINTS = {
     COMMENT_LIMITS: '/api/admin/comments/limits',             // 获取评论限制配置
     EXPORT: '/api/admin/export',               // 导出数据
     IMPORT: '/api/admin/import',               // 导入数据
-  },
-  
-  // WebSocket配置 - 实时通信
-  WEBSOCKET: {
-    // 处理URL末尾的斜杠，避免双斜杠问题
-    URL: getApiBaseUrl().endsWith('/') ? getApiBaseUrl().slice(0, -1) : getApiBaseUrl(),
   },
 };
 
@@ -192,8 +185,8 @@ export const getApiUrl = {
   adminExport: () => buildApiUrl(API_ENDPOINTS.ADMIN.EXPORT),
   adminImport: () => buildApiUrl(API_ENDPOINTS.ADMIN.IMPORT),
   
-  // WebSocket
-  websocket: () => API_CONFIG.BASE_URL,
+  // 基础地址（用于拼接上传文件等静态资源路径）
+  baseUrl: () => API_CONFIG.BASE_URL,
 };
 
 // 默认导出配置对象

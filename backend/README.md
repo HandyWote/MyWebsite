@@ -1,100 +1,42 @@
-# 网站后端
+# 网站后端（Go）
 
-## 🚀 快速启动
-
-### 第一次运行（完整设置）：
-```bash
-cd backend
-python setup.py
-```
-
-### 后续启动（仅启动服务）：
-```bash
-cd backend
-python setup.py
-```
-
-## 🐳 Docker 部署
-
-### 使用 Docker Compose 启动：
-```bash
-cd backend
-docker-compose up -d
-```
-
-### 构建并启动：
-```bash
-cd backend
-docker-compose up --build
-```
-
-## 📋 功能说明
-
-`setup.py` 会自动完成：
-- ✅ 创建配置文件 (.env) - 如果不存在
-- ✅ 设置 PostgreSQL 数据库连接
-- ✅ 创建数据库表结构
-- ✅ 插入示例数据
-- ✅ 启动后端服务
-
-## 🔧 配置说明
-
-如需修改配置，编辑 `backend/.env` 文件：
-
-```env
-# 数据库配置
-DB_HOST=localhost
-DB_PORT=5432
-DB_USER=postgres
-DB_PASSWORD=password
-DB_NAME=mywebsite
-
-# 安全配置
-SECRET_KEY=dev-secret-key-change-in-production
-JWT_SECRET_KEY=dev-jwt-secret-change-in-production
-
-# 管理员账号
-ADMIN_USERNAME=admin
-ADMIN_PASSWORD=admin123
-
-# 上传配置
-UPLOAD_FOLDER=uploads
-MAX_CONTENT_LENGTH=5242880
-ALLOWED_IMAGE_EXTENSIONS=jpg,jpeg,png,webp
-
-# OpenAI 配置（可选）
-OPENAI_API_KEY=sk-xxxx
-OPENAI_MODEL=gpt-3.5-turbo
-
-# JWT 有效期
-JWT_ACCESS_TOKEN_EXPIRES=86400
-JWT_REMEMBER_TOKEN_EXPIRES=604800
-```
-
-在 Docker 环境中，应将 `DB_HOST` 设置为 `host.docker.internal` 以连接宿主机上的数据库。
-
-## 📡 API 接口
-
-- **前端 API**: http://localhost:5000/api
-- **管理后台**: http://localhost:5000/admin
-- **服务地址**: http://localhost:5000
-
-## 🛠️ 依赖安装
+## 🚀 本地启动
 
 ```bash
 cd backend
-pip install -r requirements.txt
+go run main.go
 ```
 
-## 📝 注意事项
+默认端口 `5000`，可通过环境变量 `PORT` 覆盖。
 
-1. 确保 PostgreSQL 已安装并运行
-2. 确保 PostgreSQL 用户和密码正确
-3. 首次运行会自动创建数据库表结构
-4. 在 Docker 环境中使用时，需要特殊配置以确保与 Flask-SocketIO 兼容
+## 🧪 测试
 
-## 🔒 安全提醒
+```bash
+cd backend
+go test ./...
+```
 
-1. 生产环境中请务必修改默认的 SECRET_KEY 和 JWT_SECRET_KEY
-2. 修改默认的管理员账号密码
-3. 不要将敏感信息提交到版本控制系统中
+## 🐳 Docker
+
+```bash
+cd backend
+docker build -t mywebsite-backend .
+```
+
+## 🔧 环境变量
+
+核心变量（读取 `backend/.env`）：
+
+- `DB_HOST`
+- `DB_PORT`
+- `DB_USER`
+- `DB_PASSWORD`
+- `DB_NAME`
+- `JWT_SECRET_KEY`
+- `SECRET_KEY`
+
+## 📡 接口
+
+- 健康检查: `GET /health`
+- 公共 API: `GET /api/*`
+- 管理 API: `GET/POST/PUT/DELETE /api/admin/*`

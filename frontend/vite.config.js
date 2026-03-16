@@ -16,7 +16,7 @@ export default defineConfig({
           react: ['react', 'react-dom', '@emotion/react', '@emotion/styled'],
           mui: ['@mui/material', '@mui/icons-material'],
           router: ['react-router-dom'],
-          utils: ['axios', 'moment', 'xss', 'socket.io-client'],
+          utils: ['axios', 'moment', 'xss'],
           animation: ['framer-motion'],
           markdown: ['react-markdown', 'marked', 'remark-gfm', 'remark-math', 'rehype-katex'],
           pdf: ['react-pdf', 'pdfjs-dist']
@@ -45,14 +45,6 @@ export default defineConfig({
             console.log('Received Response from the Target:', proxyRes.statusCode, req.url);
           });
         },
-      },
-      // WebSocket代理配置 - 支持Flask-SocketIO
-      '/socket.io': {
-        target: process.env.VITE_API_BASE_URL || 'http://localhost:5000',
-        changeOrigin: true,
-        ws: true,
-        secure: false,
-        rewrite: (path) => path,
       },
       // 文件上传代理配置
       '/uploads': {

@@ -11,7 +11,6 @@ import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import SettingsSuggestIcon from '@mui/icons-material/SettingsSuggest';
 import Snackbar from '@mui/material/Snackbar';
-import { io } from 'socket.io-client';
 import { getApiUrl } from '../../config/api'; // 导入API配置
 import ArticleEditDialog from './articles/ArticleEditDialog';
 import AiSettingsDialog from './articles/AiSettingsDialog';
@@ -43,7 +42,6 @@ const ArticlesManager = () => {
   const [fileUploading, setFileUploading] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [previewContent, setPreviewContent] = useState('');
-  const [_socket, setSocket] = useState(null);
   const [aiSettingsOpen, setAiSettingsOpen] = useState(false);
   const [aiSettings, setAiSettings] = useState({ prompt: '', model: '', base_url: '', api_key: '' });
   const [aiSettingsLoading, setAiSettingsLoading] = useState(false);
@@ -84,39 +82,6 @@ const ArticlesManager = () => {
 
   useEffect(() => {
     fetchArticles();
-    
-    // 初始化WebSocket连接
-    const newSocket = io(`${getApiUrl.websocket()}/articles`, {
-      transports: ['websocket'],
-      reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
-      path: '/socket.io/',
-    });
-    
-    // 监听文章更新事件
-    newSocket.on('articles_updated', () => {
-      console.log('收到文章更新通知，刷新数据...');
-      fetchArticles();
-    });
-    
-    // 监听连接事件
-    newSocket.on('connect', () => {
-      console.log('WebSocket连接已建立');
-    });
-    
-    newSocket.on('disconnect', () => {
-      console.log('WebSocket连接已断开');
-    });
-    
-    setSocket(newSocket);
-    
-    // 清理函数
-    return () => {
-      if (newSocket) {
-        newSocket.disconnect();
-      }
-    };
   }, [fetchArticles]);
 
   // 分页、搜索
@@ -401,7 +366,7 @@ const ArticlesManager = () => {
   const getCoverUrl = cover => {
     if (!cover) return DEFAULT_COVER;
     if (/^https?:\/\//.test(cover)) return cover;
-            return `${getApiUrl.websocket()}${cover}`;
+            return `${getApiUrl.baseUrl()}${cover}`;
   };
 
   // 批量AI分析功能

@@ -5,17 +5,9 @@ import SkillsManager from './SkillsManager';
 import ContactsManager from './ContactsManager';
 import AvatarsManager from './AvatarsManager';
 
-const { ioMock } = vi.hoisted(() => ({
-  ioMock: vi.fn(),
-}));
-
-vi.mock('socket.io-client', () => ({
-  io: ioMock,
-}));
-
 vi.mock('../../config/api', () => ({
   getApiUrl: {
-    websocket: () => 'https://example.com',
+    baseUrl: () => 'https://example.com',
     adminSiteBlocks: () => '/api/admin/site_blocks',
     adminSkills: () => '/api/admin/skills',
     adminContacts: () => '/api/admin/contacts',
@@ -92,14 +84,8 @@ vi.mock('@dnd-kit/utilities', () => ({
   },
 }));
 
-describe('Admin realtime sockets', () => {
+describe('Admin pages without sockets', () => {
   beforeEach(() => {
-    ioMock.mockReset();
-    ioMock.mockReturnValue({
-      on: vi.fn(),
-      disconnect: vi.fn(),
-    });
-
     window.localStorage.getItem.mockImplementation((key) => {
       if (key === 'token') return 'test-token';
       return null;
@@ -140,35 +126,14 @@ describe('Admin realtime sockets', () => {
     vi.restoreAllMocks();
   });
 
-  it('uses websocket and polling transports for admin realtime sockets', async () => {
+  it('does not initialize socket.io connections', async () => {
     render(<SiteContentEditor />);
     render(<SkillsManager />);
     render(<ContactsManager />);
     render(<AvatarsManager />);
 
     await waitFor(() => {
-      expect(ioMock).toHaveBeenCalledTimes(4);
+      expect(globalThis.fetch).toHaveBeenCalled();
     });
-
-    expect(ioMock).toHaveBeenNthCalledWith(
-      1,
-      'https://example.com/site_blocks',
-      expect.objectContaining({ transports: ['websocket', 'polling'] }),
-    );
-    expect(ioMock).toHaveBeenNthCalledWith(
-      2,
-      'https://example.com/skills',
-      expect.objectContaining({ transports: ['websocket', 'polling'] }),
-    );
-    expect(ioMock).toHaveBeenNthCalledWith(
-      3,
-      'https://example.com/contacts',
-      expect.objectContaining({ transports: ['websocket', 'polling'] }),
-    );
-    expect(ioMock).toHaveBeenNthCalledWith(
-      4,
-      'https://example.com/avatars',
-      expect.objectContaining({ transports: ['websocket', 'polling'] }),
-    );
   });
 });

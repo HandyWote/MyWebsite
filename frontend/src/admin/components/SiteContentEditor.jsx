@@ -1,11 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Box, Typography, Paper, TextField, Button, Divider, CircularProgress, Alert, Snackbar } from '@mui/material';
-import { io } from 'socket.io-client';
 import { getApiUrl } from '../../config/api';
 
 const SiteContentEditor = () => {
   const [siteBlocks, setSiteBlocks] = useState({});
-  const [_socket, setSocket] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
@@ -38,39 +36,6 @@ const SiteContentEditor = () => {
 
   useEffect(() => {
     fetchSiteBlocks();
-    
-    // 初始化WebSocket连接
-    const newSocket = io(`${getApiUrl.websocket()}/site_blocks`, {
-      transports: ['websocket', 'polling'],
-      reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
-      path: '/socket.io/',
-    });
-    
-    // 监听网站内容块更新事件
-    newSocket.on('site_block_updated', () => {
-      console.log('收到网站内容块更新通知，刷新数据...');
-      fetchSiteBlocks();
-    });
-    
-    // 监听连接事件
-    newSocket.on('connect', () => {
-      console.log('WebSocket连接已建立');
-    });
-    
-    newSocket.on('disconnect', () => {
-      console.log('WebSocket连接已断开');
-    });
-    
-    setSocket(newSocket);
-    
-    // 清理函数
-    return () => {
-      if (newSocket) {
-        newSocket.disconnect();
-      }
-    };
   }, []);
 
   // 保存网站内容块

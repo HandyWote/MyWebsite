@@ -12,7 +12,7 @@ if (import.meta.env.DEV) {
 
   console.log('API_CONFIG.BASE_URL:', API_CONFIG.BASE_URL);
   console.log('getApiUrl.siteBlocks():', getApiUrl.siteBlocks());
-  console.log('getApiUrl.websocket():', getApiUrl.websocket());
+  console.log('getApiUrl.baseUrl():', getApiUrl.baseUrl());
   console.log('getApiUrl.articles():', getApiUrl.articles());
   console.log('getApiUrl.articleDetail(1):', getApiUrl.articleDetail(1));
   console.log('getApiUrl.categories():', getApiUrl.categories());

@@ -23,9 +23,6 @@ describe('API Configuration', () => {
       expect(API_ENDPOINTS.ADMIN.LOGIN).toBe('/api/admin/login');
     });
 
-    it('should have WEBSOCKET config', () => {
-      expect(API_ENDPOINTS.WEBSOCKET).toBeDefined();
-    });
   });
 
   describe('buildApiUrl', () => {
@@ -47,6 +44,10 @@ describe('API Configuration', () => {
 
     it('should generate correct admin login URL', () => {
       expect(getApiUrl.adminLogin()).toContain('login');
+    });
+
+    it('should expose base URL helper', () => {
+      expect(getApiUrl.baseUrl()).toBeDefined();
     });
   });
 });

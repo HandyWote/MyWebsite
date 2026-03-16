@@ -112,7 +112,7 @@ const resolveAssetUrl = (path) => {
   if (typeof window !== 'undefined' && path.startsWith('/')) {
     return `${window.location.origin}${path}`;
   }
-  const base = getApiUrl.websocket();
+  const base = getApiUrl.baseUrl();
   const normalizedBase = base && base.endsWith('/') ? base.slice(0, -1) : base || '';
   if (path.startsWith('/')) {
     return `${normalizedBase}${path}`;

@@ -58,7 +58,7 @@ const ArticleCard = ({ article, index, onShare }) => {
           <CardMedia
             component="img"
             sx={articleCardMedia}
-            image={article.cover_image ? `${getApiUrl.websocket()}${article.cover_image}` : undefined}
+            image={article.cover_image ? `${getApiUrl.baseUrl()}${article.cover_image}` : undefined}
             alt={article.title}
           />
         )}

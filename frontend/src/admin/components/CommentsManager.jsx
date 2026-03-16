@@ -49,7 +49,6 @@ import {
   Download as DownloadIcon,
   Refresh as RefreshIcon
 } from '@mui/icons-material';
-import { io } from 'socket.io-client';
 import { getApiUrl } from '../../config/api';
 
 // 评论状态枚举
@@ -298,7 +297,6 @@ const CommentsManager = () => {
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
-  const [_socket, setSocket] = useState(null);
 
   // 获取评论列表
   const fetchComments = useCallback(async () => {
@@ -348,39 +346,6 @@ const CommentsManager = () => {
 
   useEffect(() => {
     fetchComments();
-    
-    // 初始化WebSocket连接
-    const newSocket = io(`${getApiUrl.websocket()}/comments`, {
-      transports: ['websocket'],
-      reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
-      path: '/socket.io/',
-    });
-    
-    // 监听评论更新事件
-    newSocket.on('comments_updated', () => {
-      console.log('收到评论更新通知，刷新数据...');
-      fetchComments();
-    });
-    
-    // 监听连接事件
-    newSocket.on('connect', () => {
-      console.log('WebSocket连接已建立');
-    });
-    
-    newSocket.on('disconnect', () => {
-      console.log('WebSocket连接已断开');
-    });
-    
-    setSocket(newSocket);
-    
-    // 清理函数
-    return () => {
-      if (newSocket) {
-        newSocket.disconnect();
-      }
-    };
   }, [fetchComments, page, perPage, searchTerm, statusFilter]);
   
   // 删除评论
