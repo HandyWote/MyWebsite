@@ -3,8 +3,90 @@ package main
 import (
 	"log"
 	"os"
+
+	"github.com/gin-gonic/gin"
+	"github.com/handywote/website/config"
+	"github.com/handywote/website/database"
+	"github.com/handywote/website/models"
+	"github.com/handywote/website/routes"
 )
 
 func main() {
-	log.Println("Starting Go Gin Backend...")
+	// Load configuration
+	cfg := config.LoadConfig()
+
+	// Connect to database (fail fast if DB unavailable)
+	if err := database.Connect(cfg); err != nil {
+		log.Fatalf("Database connection failed: %v", err)
+	}
+
+	// Auto migrate
+	database.GetDB().AutoMigrate(
+		&models.Article{},
+		&models.Comment{},
+		&models.Skill{},
+		&models.Contact{},
+		&models.Avatar{},
+		&models.SiteBlock{},
+		&models.AISetting{},
+	)
+
+	// Seed initial data
+	seedData()
+
+	// Create Gin router
+	r := gin.Default()
+
+	// Setup routes
+	routes.SetupRoutes(r, cfg)
+
+	// Get port from environment or use default
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "5000"
+	}
+
+	log.Printf("Starting server on port %s", port)
+	if err := r.Run(":" + port); err != nil {
+		log.Fatalf("Failed to start server: %v", err)
+	}
+}
+
+// seedData 初始化数据
+func seedData() {
+	db := database.GetDB()
+
+	// Seed SiteBlocks
+	var count int64
+	db.Model(&models.SiteBlock{}).Count(&count)
+	if count == 0 {
+		blocks := []models.SiteBlock{
+			{Name: "home", Content: `{"title":"HandyWote","desc":"少年侠气交结五都雄！"}`},
+			{Name: "about", Content: `{"desc":"汕头大学 | 黄应辉"}`},
+		}
+		db.Create(&blocks)
+		log.Println("Seeded site blocks")
+	}
+
+	// Seed Skills
+	db.Model(&models.Skill{}).Count(&count)
+	if count == 0 {
+		skills := []models.Skill{
+			{Name: "Python", Description: "熟练掌握 Python 编程", Level: 90},
+			{Name: "React", Description: "熟悉 React 前端开发", Level: 85},
+		}
+		db.Create(&skills)
+		log.Println("Seeded skills")
+	}
+
+	// Seed Contacts
+	db.Model(&models.Contact{}).Count(&count)
+	if count == 0 {
+		contacts := []models.Contact{
+			{Type: "email", Value: "handywote@example.com"},
+			{Type: "github", Value: "https://github.com/handywote"},
+		}
+		db.Create(&contacts)
+		log.Println("Seeded contacts")
+	}
 }

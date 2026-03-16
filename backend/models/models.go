@@ -52,7 +52,7 @@ type Skill struct {
 }
 
 func (Skill) TableName() string {
-	return "skills"
+	return "skill"
 }
 
 type Contact struct {
@@ -64,7 +64,7 @@ type Contact struct {
 }
 
 func (Contact) TableName() string {
-	return "contacts"
+	return "contact"
 }
 
 type Avatar struct {
@@ -89,7 +89,7 @@ type SiteBlock struct {
 }
 
 func (SiteBlock) TableName() string {
-	return "site_blocks"
+	return "site_block"
 }
 
 type AISetting struct {

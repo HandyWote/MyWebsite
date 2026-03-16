@@ -28,6 +28,6 @@ func TestCORS(t *testing.T) {
 
 	// 验证CORS头
 	assert.Equal(t, "*", w.Header().Get("Access-Control-Allow-Origin"))
-	assert.Equal(t, "Content-Type,Content-Length,Accept-Encoding,X-Requested-With", w.Header().Get("Access-Control-Allow-Headers"))
+	assert.Equal(t, "Content-Type,Content-Length,Accept-Encoding,X-Requested-With,Authorization", w.Header().Get("Access-Control-Allow-Headers"))
 	assert.Equal(t, "GET,POST,PUT,DELETE,OPTIONS", w.Header().Get("Access-Control-Allow-Methods"))
 }
