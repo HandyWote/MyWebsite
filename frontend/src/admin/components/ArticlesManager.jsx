@@ -83,11 +83,20 @@ const ArticlesManager = () => {
         navigate('/admin/login', { state: { message: '登录已过期，请重新登录' } });
         return;
       }
+      console.error('获取文章失败:', res.status, res.statusText);
       setLoading(false);
       return;
     }
-    const data = await res.json();
+    let data;
+    try {
+      data = await res.json();
+    } catch (e) {
+      console.error('解析响应失败:', e);
+      setLoading(false);
+      return;
+    }
     if (data.code !== 0) {
+      console.error('获取文章失败:', data.message);
       setLoading(false);
       return;
     }

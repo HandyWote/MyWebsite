@@ -54,7 +54,7 @@ const Home = () => {
       setContacts(unwrapApiPayload(data) || []);
     } catch { /* 静默忽略错误 */ }
   };
-  
+
   const fetchAvatar = async () => {
     try {
       const res = await fetch(getApiUrl.avatars());

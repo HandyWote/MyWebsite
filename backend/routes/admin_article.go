@@ -21,7 +21,7 @@ func AdminGetArticles(c *gin.Context) {
 		pageSize, _ = strconv.Atoi(c.DefaultQuery("page_size", "10"))
 	}
 
-	query := database.GetDB().Order("created_at DESC")
+	query := database.GetDB().Model(&models.Article{}).Order("created_at DESC")
 
 	// 添加search过滤
 	if search := strings.TrimSpace(c.Query("search")); search != "" {
@@ -30,7 +30,10 @@ func AdminGetArticles(c *gin.Context) {
 	}
 
 	var total int64
-	query.Count(&total)
+	if err := query.Count(&total).Error; err != nil {
+		utils.ErrorInternal(c, "Failed to count articles: " + err.Error())
+		return
+	}
 
 	query.Offset((page - 1) * pageSize).Limit(pageSize)
 
@@ -205,7 +208,10 @@ func AdminGetComments(c *gin.Context) {
 	}
 
 	var total int64
-	query.Count(&total)
+	if err := query.Count(&total).Error; err != nil {
+		utils.ErrorInternal(c, "Failed to count comments: " + err.Error())
+		return
+	}
 
 	query = query.Order("created_at DESC").Offset((page - 1) * pageSize).Limit(pageSize)
 

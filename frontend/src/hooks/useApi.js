@@ -23,8 +23,8 @@ export function useApi({
   url,
   options = {},
   enabled = true,
-  cache = true,
-  cacheTime = 5 * 60 * 1000, // 5分钟缓存
+  cache = false,
+  cacheTime = 0,
   retryCount = 3,
   retryDelay = 1000,
   onSuccess,
