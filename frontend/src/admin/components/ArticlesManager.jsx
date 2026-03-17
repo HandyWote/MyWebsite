@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, TablePagination,
   TextField, Stack, Checkbox, IconButton, Typography,
@@ -11,7 +12,8 @@ import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import SettingsSuggestIcon from '@mui/icons-material/SettingsSuggest';
 import Snackbar from '@mui/material/Snackbar';
-import { getApiMessage, getApiUrl, unwrapApiPayload } from '../../config/api'; // 导入API配置
+import { getApiMessage, getApiUrl, unwrapApiPayload } from '../../config/api';
+import { clearAuth } from '../utils/auth';
 import ArticleEditDialog from './articles/ArticleEditDialog';
 import AiSettingsDialog from './articles/AiSettingsDialog';
 
@@ -29,6 +31,7 @@ const defaultArticle = {
 const DEFAULT_COVER = '/default-cover.svg'; 
 
 const ArticlesManager = () => {
+  const navigate = useNavigate();
   const [articles, setArticles] = useState([]);
   const [selected, setSelected] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -74,7 +77,20 @@ const ArticlesManager = () => {
     const token = localStorage.getItem('token');
     const res = await fetch(`${getApiUrl.adminArticles()}?page=${query.page}&per_page=${query.perPage}&search=${query.search}`,
       { headers: { 'Authorization': `Bearer ${token}` } });
+    if (!res.ok) {
+      if (res.status === 401) {
+        clearAuth();
+        navigate('/admin/login', { state: { message: '登录已过期，请重新登录' } });
+        return;
+      }
+      setLoading(false);
+      return;
+    }
     const data = await res.json();
+    if (data.code !== 0) {
+      setLoading(false);
+      return;
+    }
     const payload = unwrapApiPayload(data) || {};
     // 将 Tags 字符串转换为数组
     const processedArticles = (payload.articles || []).map(article => ({
@@ -86,7 +102,7 @@ const ArticlesManager = () => {
     setArticles(processedArticles);
     setTotal(payload.total || 0);
     setLoading(false);
-  }, []);
+  }, [navigate]);
 
   useEffect(() => {
     fetchArticles();
@@ -239,16 +255,28 @@ const ArticlesManager = () => {
       const token = localStorage.getItem('token');
       const method = editId ? 'PUT' : 'POST';
       const url = editId ? getApiUrl.adminArticleDetail(editId) : getApiUrl.adminArticles();
-      await fetch(url, {
+      const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify(editArticle)
       });
+      if (!res.ok) {
+        if (res.status === 401) {
+          clearAuth();
+          navigate('/admin/login', { state: { message: '登录已过期，请重新登录' } });
+          return;
+        }
+        throw new Error('保存失败');
+      }
+      const data = await res.json();
+      if (data.code !== 0) {
+        throw new Error(data.msg || '保存失败');
+      }
       closeEdit();
-      fetchArticles({ page: page + 1 });
+      fetchArticles({ page: 1 });
       setSnackbar({ open: true, message: '保存成功', severity: 'success' });
-    } catch {
-      setSnackbar({ open: true, message: '保存失败', severity: 'error' });
+    } catch (error) {
+      setSnackbar({ open: true, message: error.message || '保存失败', severity: 'error' });
     }
     setLoading(false);
   };

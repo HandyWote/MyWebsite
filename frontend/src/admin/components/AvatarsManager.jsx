@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Box, Button, Avatar, Paper, IconButton, Stack, Snackbar, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions, Typography } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { getApiUrl } from '../../config/api'; // 导入API配置
+import { getApiUrl } from '../../config/api';
+import { clearAuth } from '../utils/auth';
 
 function SortableAvatarCard({ avatar, index, onDelete, ...props }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: avatar.id });
@@ -80,6 +82,7 @@ function SortableAvatarCard({ avatar, index, onDelete, ...props }) {
 }
 
 const AvatarsManager = () => {
+  const navigate = useNavigate();
   const [avatars, setAvatars] = useState([]);
   const [loading, setLoading] = useState(true);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
@@ -98,7 +101,18 @@ const AvatarsManager = () => {
           'Authorization': `Bearer ${token}`
         }
       });
+      if (!res.ok) {
+        if (res.status === 401) {
+          clearAuth();
+          navigate('/admin/login', { state: { message: '登录已过期，请重新登录' } });
+          return;
+        }
+        throw new Error(`HTTP ${res.status}`);
+      }
       const data = await res.json();
+      if (data.code !== 0) {
+        throw new Error(data.msg || '获取头像列表失败');
+      }
       // 兼容 data.data 和 data.avatars
       const arr = (data.data || data.avatars || []).map(a => {
         const url = a.filename ? getApiUrl.adminAvatarFile(a.filename) : undefined;

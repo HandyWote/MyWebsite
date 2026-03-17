@@ -1,8 +1,11 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Box, Typography, Paper, TextField, Button, Divider, CircularProgress, Alert, Snackbar } from '@mui/material';
 import { getApiUrl } from '../../config/api';
+import { clearAuth } from '../utils/auth';
 
 const SiteContentEditor = () => {
+  const navigate = useNavigate();
   const [siteBlocks, setSiteBlocks] = useState({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -18,6 +21,14 @@ const SiteContentEditor = () => {
           'Authorization': `Bearer ${token}`
         }
       });
+      if (!res.ok) {
+        if (res.status === 401) {
+          clearAuth();
+          navigate('/admin/login', { state: { message: '登录已过期，请重新登录' } });
+          return;
+        }
+        throw new Error(`HTTP ${res.status}`);
+      }
       const data = await res.json();
       if (data.code === 0) {
         const blocks = {};

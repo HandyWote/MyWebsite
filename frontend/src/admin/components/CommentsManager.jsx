@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Button,
@@ -50,6 +51,7 @@ import {
   Refresh as RefreshIcon
 } from '@mui/icons-material';
 import { getApiUrl } from '../../config/api';
+import { clearAuth } from '../utils/auth';
 
 // 评论状态枚举
 const COMMENT_STATUS = {
@@ -284,6 +286,7 @@ function CommentDetailDialog({ comment, open, onClose }) {
 }
 
 const CommentsManager = () => {
+  const navigate = useNavigate();
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
@@ -322,6 +325,15 @@ const CommentsManager = () => {
         }
       });
 
+      if (!response.ok) {
+        if (response.status === 401) {
+          clearAuth();
+          navigate('/admin/login', { state: { message: '登录已过期，请重新登录' } });
+          return;
+        }
+        throw new Error(`HTTP ${response.status}`);
+      }
+
       const data = await response.json();
       if (data.code === 0) {
         // 确保评论数据有正确的结构
@@ -342,7 +354,7 @@ const CommentsManager = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, perPage, searchTerm, statusFilter]);
+  }, [navigate, page, perPage, searchTerm, statusFilter]);
 
   useEffect(() => {
     fetchComments();

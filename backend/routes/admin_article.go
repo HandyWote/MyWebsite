@@ -23,6 +23,12 @@ func AdminGetArticles(c *gin.Context) {
 
 	query := database.GetDB().Order("created_at DESC")
 
+	// 添加search过滤
+	if search := strings.TrimSpace(c.Query("search")); search != "" {
+		like := "%" + search + "%"
+		query = query.Where("title ILIKE ? OR summary ILIKE ? OR content ILIKE ?", like, like, like)
+	}
+
 	var total int64
 	query.Count(&total)
 

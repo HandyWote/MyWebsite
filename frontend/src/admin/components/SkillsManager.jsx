@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Box, Button, Typography, Container, LinearProgress, TextField, Slider, Paper, Stack, IconButton, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } from '@mui/material';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -6,7 +7,8 @@ import { CSS } from '@dnd-kit/utilities';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
-import { getApiUrl } from '../../config/api'; // 导入API配置
+import { getApiUrl } from '../../config/api';
+import { clearAuth } from '../utils/auth';
 
 function SortableSkillCard({ skill, index, onEdit, onAdd, onDelete, ...props }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: skill.id });
@@ -105,6 +107,7 @@ function SortableSkillCard({ skill, index, onEdit, onAdd, onDelete, ...props }) 
 }
 
 const SkillsManager = () => {
+  const navigate = useNavigate();
   const [skills, setSkills] = useState([]);
   const [editedSkills, setEditedSkills] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -121,7 +124,20 @@ const SkillsManager = () => {
         'Authorization': `Bearer ${token}`
       }
     });
+    if (!res.ok) {
+      if (res.status === 401) {
+        clearAuth();
+        navigate('/admin/login', { state: { message: '登录已过期，请重新登录' } });
+        return;
+      }
+      setLoading(false);
+      return;
+    }
     const data = await res.json();
+    if (data.code !== 0) {
+      setLoading(false);
+      return;
+    }
     setSkills(data.data || []);
     setEditedSkills(data.data ? JSON.parse(JSON.stringify(data.data)) : []);
     setLoading(false);
