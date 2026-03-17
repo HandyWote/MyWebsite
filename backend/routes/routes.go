@@ -23,6 +23,7 @@ func SetupRoutes(r *gin.Engine, cfg *config.Config) {
 
 	// Admin login (without JWT middleware)
 	r.POST("/api/admin/login", Login)
+	r.POST("/api/admin/logout", Logout)
 
 	// Public API
 	api := r.Group("/api")
@@ -62,7 +63,7 @@ func SetupRoutes(r *gin.Engine, cfg *config.Config) {
 		// Site Blocks
 		admin.GET("/site-blocks", AdminGetSiteBlocks)
 		admin.POST("/site-blocks", AdminCreateSiteBlock)
-		admin.PUT("/site-blocks/:name", AdminUpdateSiteBlock)
+		admin.PUT("/site-blocks", AdminUpdateSiteBlocks) // 批量更新
 		admin.DELETE("/site-blocks/:id", AdminDeleteSiteBlock)
 
 		// Skills
@@ -92,17 +93,23 @@ func SetupRoutes(r *gin.Engine, cfg *config.Config) {
 		admin.DELETE("/articles/:id", AdminDeleteArticle)
 		admin.POST("/articles/batch-delete", AdminBatchDeleteArticles)
 		admin.POST("/articles/cover", AdminUploadCover)
+		admin.POST("/articles/pdf/upload", AdminUploadPdf)
+		admin.POST("/articles/import-md", AdminImportMarkdown)
 
 		// Comments
 		admin.GET("/comments", AdminGetComments)
+		admin.GET("/comments/export", AdminExportComments)
+		admin.GET("/comments/limits", AdminGetCommentLimits)
 		admin.DELETE("/comments/:id", AdminDeleteComment)
 		admin.PUT("/comments/:id", AdminUpdateCommentStatus)
 		admin.PUT("/comments/:id/status", AdminUpdateCommentStatus)
 
 		// AI
+		admin.POST("/articles/ai-analyze", AnalyzeArticleByContent)
 		admin.POST("/articles/:id/analyze", AnalyzeArticle)
 		admin.GET("/ai-settings", GetAISetting)
 		admin.PUT("/ai-settings", UpdateAISetting)
+		admin.POST("/ai-settings/test", TestAISetting)
 
 		// Export/Import
 		admin.GET("/export", ExportData)

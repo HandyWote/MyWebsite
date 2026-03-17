@@ -77,6 +77,25 @@ describe('ArticleDetail', () => {
     expect(globalThis.fetch).toHaveBeenCalledWith(expect.stringContaining('/api/articles/42'));
   });
 
+  it('支持后端 code/data 包装格式的文章详情响应', async () => {
+    globalThis.fetch = vi.fn().mockImplementation((url) => {
+      if (String(url).includes('/comments')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ data: { comments: [] } })
+        });
+      }
+
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ code: 0, data: mockArticle })
+      });
+    });
+
+    render(<ArticleDetail />);
+    expect(await screen.findByText('测试文章标题')).toBeInTheDocument();
+  });
+
   it('在不支持原生分享时回退为复制链接', async () => {
     render(<ArticleDetail />);
 

@@ -1,4 +1,4 @@
-import { getApiUrl } from '../../config/api'; // 导入API配置
+import { getApiUrl, unwrapApiPayload } from '../../config/api'; // 导入API配置
 
 export const verifyToken = async () => {
   const token = localStorage.getItem('token');
@@ -19,7 +19,8 @@ export const verifyToken = async () => {
 
     if (response.ok) {
       const data = await response.json();
-      return { valid: data.code === 0 };
+      const payload = unwrapApiPayload(data);
+      return { valid: data.code === 0 && !!payload?.valid };
     } else {
       return { valid: false, error: 'Token已过期或无效' };
     }

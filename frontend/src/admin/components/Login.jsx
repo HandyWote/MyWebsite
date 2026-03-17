@@ -5,7 +5,7 @@ import {
   Alert, CircularProgress, Checkbox, FormControlLabel, Paper 
 } from '@mui/material';
 import { getAndClearRedirectPath } from '../utils/auth';
-import { getApiUrl } from '../../config/api'; // 导入API配置
+import { getApiMessage, getApiUrl, unwrapApiPayload } from '../../config/api'; // 导入API配置
 
 const Login = () => {
   const [username, setUsername] = useState('');
@@ -43,15 +43,16 @@ const Login = () => {
       });
       
       const data = await res.json();
+      const payload = unwrapApiPayload(data);
       
-      if (res.ok && data.code === 0 && data.token) {
-        localStorage.setItem('token', data.token);
+      if (res.ok && data.code === 0 && payload?.token) {
+        localStorage.setItem('token', payload.token);
         
         // 登录成功后跳转到原本想访问的页面
         const redirectPath = getAndClearRedirectPath();
         navigate(redirectPath, { replace: true });
       } else {
-        setError(data.msg || '登录失败');
+        setError(getApiMessage(data, '登录失败'));
       }
     } catch {
       setError('网络错误，请检查连接');

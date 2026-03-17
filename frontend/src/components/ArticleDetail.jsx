@@ -31,7 +31,7 @@ import rehypeKatex from 'rehype-katex';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import 'katex/dist/katex.min.css';
-import { getApiUrl } from '../config/api'; // 导入API配置
+import { getApiUrl, getApiMessage, unwrapApiPayload } from '../config/api'; // 导入API配置
 import PdfViewerOnCanvas from './PdfViewerOnCanvas';
 
 const DEFAULT_META = {
@@ -416,7 +416,15 @@ flowchart TD
       
       if (response.ok) {
         const data = await response.json();
-        setArticle(data);
+        const rawArticle = unwrapApiPayload(data);
+        // 将 Tags 字符串转换为数组
+        const processedArticle = rawArticle ? {
+          ...rawArticle,
+          tags: typeof rawArticle.tags === 'string'
+            ? rawArticle.tags.split(',').filter(t => t.trim())
+            : rawArticle.tags || []
+        } : null;
+        setArticle(processedArticle);
         setDemoMode(false);
       } else {
         throw new Error('API 请求失败');
@@ -449,7 +457,8 @@ flowchart TD
       if (response.ok) {
         const data = await response.json();
         console.log('获取到的评论数据:', data); // 添加调试日志
-        setComments(data.data.comments || []); // 修复：应该是 data.data.comments
+        const payload = unwrapApiPayload(data);
+        setComments(payload?.comments || []);
       } else {
         console.error('获取评论失败，状态码:', response.status);
       }
@@ -491,7 +500,7 @@ flowchart TD
       } else if (response.status === 429) {
         // 处理评论限制错误
         const errorData = await response.json();
-        alert(errorData.msg || '评论发布频率过高，请稍后再试');
+        alert(getApiMessage(errorData, '评论发布频率过高，请稍后再试'));
       } else {
         throw new Error('评论发布失败');
       }

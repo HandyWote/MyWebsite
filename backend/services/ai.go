@@ -36,7 +36,17 @@ func AnalyzeWithAI(articleID uint, cfg *config.Config) (string, error) {
 		return "", err
 	}
 
-	prompt := fmt.Sprintf("请分析以下文章，提取关键信息和标签：\n\n标题：%s\n内容：%s", article.Title, article.Content)
+	return AnalyzeTextWithAI(article.Title, article.Content, article.Summary, cfg)
+}
+
+// AnalyzeTextWithAI 使用 AI 直接分析传入文本
+func AnalyzeTextWithAI(title, content, summary string, cfg *config.Config) (string, error) {
+	prompt := fmt.Sprintf(
+		"请分析以下文章，返回 JSON：{\"category\":\"分类\",\"tags\":[\"标签1\",\"标签2\"],\"suggested_summary\":\"50-120字摘要\"}。\n\n标题：%s\n已有摘要：%s\n内容：%s",
+		title,
+		summary,
+		content,
+	)
 
 	reqBody := AIRequest{
 		Model: cfg.OpenAIModel,
@@ -102,4 +112,41 @@ func UpdateAISetting(input models.AISetting) (models.AISetting, error) {
 		return setting, err
 	}
 	return setting, nil
+}
+
+// TestAIConnection 测试 AI 连接
+func TestAIConnection(cfg config.Config) error {
+	// 构建测试请求
+	reqBody := AIRequest{
+		Model: cfg.OpenAIModel,
+		Messages: []Message{
+			{Role: "user", Content: "Hello"},
+		},
+	}
+
+	jsonData, err := json.Marshal(reqBody)
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequest("POST", cfg.OpenAIAPIURL+"/chat/completions", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+cfg.OpenAIAPIKey)
+
+	client := &http.Client{Timeout: 10 * 1000000000} // 10秒超时
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("API returned status code: %d", resp.StatusCode)
+	}
+
+	return nil
 }

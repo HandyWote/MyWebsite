@@ -1,7 +1,9 @@
 package routes
 
 import (
+	"encoding/json"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/handywote/website/database"
@@ -13,7 +15,11 @@ import (
 func AdminGetArticles(c *gin.Context) {
 	var articles []models.Article
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "10"))
+	// 兼容前端 per_page 参数
+	pageSize, _ := strconv.Atoi(c.Query("per_page"))
+	if pageSize == 0 {
+		pageSize, _ = strconv.Atoi(c.DefaultQuery("page_size", "10"))
+	}
 
 	query := database.GetDB().Order("created_at DESC")
 
@@ -169,22 +175,82 @@ func AdminDeleteArticle(c *gin.Context) {
 func AdminGetComments(c *gin.Context) {
 	var comments []models.Comment
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "10"))
+	// 兼容前端 per_page 参数
+	pageSize, _ := strconv.Atoi(c.Query("per_page"))
+	if pageSize == 0 {
+		pageSize, _ = strconv.Atoi(c.DefaultQuery("page_size", "10"))
+	}
 
-	query := database.GetDB().Order("created_at DESC")
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = 10
+	}
+
+	query := database.GetDB().Model(&models.Comment{})
+
+	if status := strings.TrimSpace(c.Query("status")); status != "" {
+		query = query.Where("status = ?", status)
+	}
+	if search := strings.TrimSpace(c.Query("search")); search != "" {
+		like := "%" + search + "%"
+		query = query.Where("content ILIKE ? OR author ILIKE ? OR ip_address ILIKE ?", like, like, like)
+	}
 
 	var total int64
 	query.Count(&total)
 
-	query.Offset((page - 1) * pageSize).Limit(pageSize)
+	query = query.Order("created_at DESC").Offset((page - 1) * pageSize).Limit(pageSize)
 
 	if err := query.Find(&comments).Error; err != nil {
 		utils.ErrorInternal(c, "Failed to fetch comments")
 		return
 	}
 
+	articleIDs := make([]uint, 0)
+	articleIDSet := make(map[uint]struct{})
+	for _, cmt := range comments {
+		if _, exists := articleIDSet[cmt.ArticleID]; !exists {
+			articleIDSet[cmt.ArticleID] = struct{}{}
+			articleIDs = append(articleIDs, cmt.ArticleID)
+		}
+	}
+
+	articleTitleByID := make(map[uint]string)
+	if len(articleIDs) > 0 {
+		var articles []models.Article
+		if err := database.GetDB().Select("id,title").Where("id IN ?", articleIDs).Find(&articles).Error; err == nil {
+			for _, article := range articles {
+				articleTitleByID[article.ID] = article.Title
+			}
+		}
+	}
+
+	commentItems := make([]gin.H, 0, len(comments))
+	for _, cmt := range comments {
+		commentItems = append(commentItems, gin.H{
+			"id":         cmt.ID,
+			"article_id": cmt.ArticleID,
+			"article_title": func() string {
+				if t, ok := articleTitleByID[cmt.ArticleID]; ok {
+					return t
+				}
+				return "未知文章"
+			}(),
+			"author":     cmt.Author,
+			"email":      cmt.Email,
+			"content":    cmt.Content,
+			"ip_address": cmt.IPAddress,
+			"user_agent": cmt.UserAgent,
+			"status":     cmt.Status,
+			"created_at": cmt.CreatedAt,
+			"updated_at": cmt.UpdatedAt,
+		})
+	}
+
 	utils.Success(c, gin.H{
-		"comments": comments,
+		"comments": commentItems,
 		"total":    total,
 		"page":     page,
 	})
@@ -411,44 +477,81 @@ func AdminGetSiteBlocks(c *gin.Context) {
 		return
 	}
 
-	utils.Success(c, blocks)
+	// 将每个 block 的 content 从 JSON 字符串解析为对象
+	result := make([]map[string]interface{}, 0, len(blocks))
+	for _, block := range blocks {
+		var contentObj interface{}
+		if block.Content != "" {
+			if err := json.Unmarshal([]byte(block.Content), &contentObj); err != nil {
+				// 如果解析失败，直接返回原始字符串
+				contentObj = block.Content
+			}
+		}
+		result = append(result, map[string]interface{}{
+			"id":      block.ID,
+			"name":    block.Name,
+			"content": contentObj,
+		})
+	}
+
+	utils.Success(c, result)
 }
 
-// AdminUpdateSiteBlock 更新内容块
-func AdminUpdateSiteBlock(c *gin.Context) {
-	name := c.Param("name")
-
+// AdminUpdateSiteBlocks 批量更新内容块（匹配前端API）
+func AdminUpdateSiteBlocks(c *gin.Context) {
 	var input struct {
-		Content string `json:"content" binding:"required"`
+		Blocks []struct {
+			Name    string      `json:"name"`
+			Content interface{} `json:"content"`
+		} `json:"blocks" binding:"required"`
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
-		utils.ErrorBadRequest(c, "Invalid request body")
+		utils.ErrorBadRequest(c, "Invalid request body: "+err.Error())
 		return
 	}
 
-	var block models.SiteBlock
-	result := database.GetDB().Where("name = ?", name).First(&block)
+	updatedBlocks := make([]models.SiteBlock, 0, len(input.Blocks))
 
-	if result.Error != nil {
-		// 不存在则创建
-		block = models.SiteBlock{
-			Name:    name,
-			Content: input.Content,
+	for _, block := range input.Blocks {
+		if block.Name == "" {
+			continue
 		}
-		if err := database.GetDB().Create(&block).Error; err != nil {
-			utils.ErrorInternal(c, "Failed to create site block")
+
+		// 将 content 对象序列化为 JSON 字符串
+		contentBytes, err := json.Marshal(block.Content)
+		if err != nil {
+			utils.ErrorInternal(c, "Failed to serialize content for: "+block.Name)
 			return
 		}
-	} else {
-		// 存在则更新
-		if err := database.GetDB().Model(&block).Update("content", input.Content).Error; err != nil {
-			utils.ErrorInternal(c, "Failed to update site block")
-			return
+		contentStr := string(contentBytes)
+
+		var existingBlock models.SiteBlock
+		result := database.GetDB().Where("name = ?", block.Name).First(&existingBlock)
+
+		if result.Error != nil {
+			// 不存在则创建
+			newBlock := models.SiteBlock{
+				Name:    block.Name,
+				Content: contentStr,
+			}
+			if err := database.GetDB().Create(&newBlock).Error; err != nil {
+				utils.ErrorInternal(c, "Failed to create site block: "+block.Name)
+				return
+			}
+			updatedBlocks = append(updatedBlocks, newBlock)
+		} else {
+			// 存在则更新
+			if err := database.GetDB().Model(&existingBlock).Update("content", contentStr).Error; err != nil {
+				utils.ErrorInternal(c, "Failed to update site block: "+block.Name)
+				return
+			}
+			existingBlock.Content = contentStr
+			updatedBlocks = append(updatedBlocks, existingBlock)
 		}
 	}
 
-	utils.Success(c, block)
+	utils.Success(c, updatedBlocks)
 }
 
 // AdminDeleteSiteBlock 删除内容块

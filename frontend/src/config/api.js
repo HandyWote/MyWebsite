@@ -9,11 +9,11 @@
  * 
  * 环境变量优先级：
  * 1. VITE_API_BASE_URL (最高优先级)
- * 2. 开发环境: http://localhost:5000
+ * 2. 开发环境: 相对路径（通过Vite代理）
  * 3. 生产环境: window.location.origin
  * 
  * 使用示例：
- * - 开发环境: VITE_API_BASE_URL=http://localhost:5000/
+ * - 开发环境: VITE_API_BASE_URL=http://localhost:5000/（可选，不设置时走代理）
  * - 生产环境: VITE_API_BASE_URL=https://webbackend.handywote.site/
  */
 
@@ -23,7 +23,7 @@
  * 
  * 逻辑说明：
  * 1. 优先使用环境变量 VITE_API_BASE_URL
- * 2. 开发环境使用 localhost:5000
+ * 2. 开发环境默认使用相对路径，交给Vite代理
  * 3. 生产环境使用当前域名（如果未设置环境变量）
  */
 const getApiBaseUrl = () => {
@@ -34,7 +34,7 @@ const getApiBaseUrl = () => {
   
   // 开发环境默认值
   if (import.meta.env.DEV) {
-    return 'http://localhost:5000';
+    return '';
   }
   
   // 生产环境默认值 - 在同一容器内使用相对路径
@@ -135,6 +135,31 @@ export const buildApiUrl = (endpoint) => {
 };
 
 /**
+ * 解包后端统一响应格式：
+ * - 标准：{ code, data, message }
+ * - 兼容：非包装结构直接返回原始对象
+ */
+export const unwrapApiPayload = (response) => {
+  if (!response || typeof response !== 'object' || Array.isArray(response)) {
+    return response;
+  }
+  if (Object.prototype.hasOwnProperty.call(response, 'data')) {
+    return response.data;
+  }
+  return response;
+};
+
+/**
+ * 读取错误消息，兼容 msg / message 字段
+ */
+export const getApiMessage = (response, fallback = '') => {
+  if (!response || typeof response !== 'object') {
+    return fallback;
+  }
+  return response.msg || response.message || fallback;
+};
+
+/**
  * 获取完整API URL的便捷方法集合
  * 
  * 这个对象提供了所有API端点的便捷访问方法，
@@ -195,4 +220,6 @@ export default {
   API_ENDPOINTS,
   getApiUrl,
   buildApiUrl,
+  unwrapApiPayload,
+  getApiMessage,
 };

@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';  // 用于实现动画效果
 import { Box, Typography, Container, Button } from '@mui/material';  // Material-UI组件
 import GitHubIcon from '@mui/icons-material/GitHub';  // GitHub图标
 import { useState, useEffect } from 'react';
-import { getApiUrl } from '../config/api'; // 导入API配置
+import { getApiUrl, unwrapApiPayload } from '../config/api'; // 导入API配置
 
 // 导入子组件
 import LazyImage from './LazyImage';
@@ -33,8 +33,9 @@ const Home = () => {
     try {
       const res = await fetch(getApiUrl.siteBlocks());
       const data = await res.json();
-      setSiteBlock(data.data.find(b => b.name === 'home'));
-      setAboutBlock(data.data.find(b => b.name === 'about'));
+      const blocks = unwrapApiPayload(data) || [];
+      setSiteBlock(blocks.find(b => b.name === 'home'));
+      setAboutBlock(blocks.find(b => b.name === 'about'));
     } catch { /* 静默忽略错误 */ }
   };
 
@@ -42,7 +43,7 @@ const Home = () => {
     try {
       const res = await fetch(getApiUrl.skills());
       const data = await res.json();
-      setSkills(data.data || []);
+      setSkills(unwrapApiPayload(data) || []);
     } catch { /* 静默忽略错误 */ }
   };
 
@@ -50,7 +51,7 @@ const Home = () => {
     try {
       const res = await fetch(getApiUrl.contacts());
       const data = await res.json();
-      setContacts(data.data || []);
+      setContacts(unwrapApiPayload(data) || []);
     } catch { /* 静默忽略错误 */ }
   };
   
@@ -58,7 +59,8 @@ const Home = () => {
     try {
       const res = await fetch(getApiUrl.avatars());
       const data = await res.json();
-      const current = (data.avatars || data.data || []).find(a => a.is_current);
+      const avatars = unwrapApiPayload(data) || data.avatars || [];
+      const current = avatars.find(a => a.is_current);
       setAvatarUrl(current ? getApiUrl.avatarFile(current.filename) : '/avatar.webp');
     } catch {
       setAvatarUrl('/avatar.webp');

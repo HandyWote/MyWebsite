@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { API_CONFIG, API_ENDPOINTS, getApiUrl, buildApiUrl } from './api.js';
+import {
+  API_CONFIG,
+  API_ENDPOINTS,
+  getApiUrl,
+  buildApiUrl,
+  unwrapApiPayload,
+  getApiMessage,
+} from './api.js';
 
 describe('API Configuration', () => {
   describe('API_CONFIG', () => {
@@ -30,6 +37,11 @@ describe('API Configuration', () => {
       const result = buildApiUrl('/api/articles');
       expect(result).toContain('/api/articles');
     });
+
+    it('should use relative path in dev when base url is empty', () => {
+      const result = buildApiUrl('/api/site-blocks');
+      expect(result).toBe('/api/site-blocks');
+    });
   });
 
   describe('getApiUrl', () => {
@@ -48,6 +60,22 @@ describe('API Configuration', () => {
 
     it('should expose base URL helper', () => {
       expect(getApiUrl.baseUrl()).toBeDefined();
+    });
+  });
+
+  describe('api response helpers', () => {
+    it('should unwrap code/data response payload', () => {
+      const payload = unwrapApiPayload({ code: 0, data: { id: 1 } });
+      expect(payload).toEqual({ id: 1 });
+    });
+
+    it('should keep raw response when payload wrapper is absent', () => {
+      const payload = unwrapApiPayload({ id: 2 });
+      expect(payload).toEqual({ id: 2 });
+    });
+
+    it('should resolve message from msg first', () => {
+      expect(getApiMessage({ msg: '失败' })).toBe('失败');
     });
   });
 });

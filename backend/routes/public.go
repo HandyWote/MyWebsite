@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -20,8 +21,32 @@ func GetSiteBlocks(c *gin.Context) {
 		return
 	}
 
-	// 返回数组格式以兼容前端
-	utils.Success(c, blocks)
+	result := make([]map[string]interface{}, 0, len(blocks))
+	for _, block := range blocks {
+		result = append(result, buildPublicSiteBlockPayload(block))
+	}
+
+	utils.Success(c, result)
+}
+
+func buildPublicSiteBlockPayload(block models.SiteBlock) map[string]interface{} {
+	payload := map[string]interface{}{
+		"id":   block.ID,
+		"name": block.Name,
+	}
+
+	var contentObj map[string]interface{}
+	if block.Content != "" && json.Unmarshal([]byte(block.Content), &contentObj) == nil {
+		payload["content"] = contentObj
+		for k, v := range contentObj {
+			// 兼容前端历史读取方式：siteBlock.title / siteBlock.subtitle
+			payload[k] = v
+		}
+	} else {
+		payload["content"] = block.Content
+	}
+
+	return payload
 }
 
 // GetSkills 获取技能列表

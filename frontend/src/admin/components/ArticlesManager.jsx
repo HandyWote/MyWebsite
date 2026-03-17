@@ -11,7 +11,7 @@ import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import SettingsSuggestIcon from '@mui/icons-material/SettingsSuggest';
 import Snackbar from '@mui/material/Snackbar';
-import { getApiUrl } from '../../config/api'; // 导入API配置
+import { getApiMessage, getApiUrl, unwrapApiPayload } from '../../config/api'; // 导入API配置
 import ArticleEditDialog from './articles/ArticleEditDialog';
 import AiSettingsDialog from './articles/AiSettingsDialog';
 
@@ -75,8 +75,16 @@ const ArticlesManager = () => {
     const res = await fetch(`${getApiUrl.adminArticles()}?page=${query.page}&per_page=${query.perPage}&search=${query.search}`,
       { headers: { 'Authorization': `Bearer ${token}` } });
     const data = await res.json();
-    setArticles(data.data || []);
-    setTotal(data.total || 0);
+    const payload = unwrapApiPayload(data) || {};
+    // 将 Tags 字符串转换为数组
+    const processedArticles = (payload.articles || []).map(article => ({
+      ...article,
+      tags: typeof article.tags === 'string'
+        ? article.tags.split(',').filter(t => t.trim())
+        : article.tags || []
+    }));
+    setArticles(processedArticles);
+    setTotal(payload.total || 0);
     setLoading(false);
   }, []);
 
@@ -278,13 +286,21 @@ const ArticlesManager = () => {
     const token = localStorage.getItem('token');
     const formData = new FormData();
     formData.append('file', file);
-          const res = await fetch(getApiUrl.adminArticleCover(), {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${token}` },
-      body: formData
-    });
-    const data = await res.json();
-    setEditArticle(a => ({ ...a, cover: data.url }));
+    try {
+      const res = await fetch(getApiUrl.adminArticleCover(), {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData
+      });
+      const data = await res.json();
+      const payload = unwrapApiPayload(data);
+      if (!res.ok || data.code !== 0 || !payload?.url) {
+        throw new Error(getApiMessage(data, '封面上传失败'));
+      }
+      setEditArticle(a => ({ ...a, cover: payload.url }));
+    } catch (error) {
+      setSnackbar({ open: true, message: error.message || '封面上传失败', severity: 'error' });
+    }
     setFileUploading(false);
   };
 
@@ -302,11 +318,12 @@ const ArticlesManager = () => {
         body: formData
       });
       const data = await res.json();
+      const payload = unwrapApiPayload(data);
       if (data.code === 0) {
-        setEditArticle(a => ({ ...a, pdf_filename: data.filename }));
+        setEditArticle(a => ({ ...a, pdf_filename: payload?.filename || '' }));
         setSnackbar({ open: true, message: 'PDF上传成功', severity: 'success' });
       } else {
-        setSnackbar({ open: true, message: data.msg || 'PDF上传失败', severity: 'error' });
+        setSnackbar({ open: true, message: getApiMessage(data, 'PDF上传失败'), severity: 'error' });
       }
     } catch {
       setSnackbar({ open: true, message: 'PDF上传失败', severity: 'error' });

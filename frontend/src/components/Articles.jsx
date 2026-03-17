@@ -11,7 +11,7 @@ import {
 import { motion } from 'framer-motion';
 import { Link as RouterLink } from 'react-router-dom';
 import { ArrowBack as ArrowBackIcon } from '@mui/icons-material';
-import { getApiUrl } from '../config/api'; // 导入API配置
+import { getApiUrl, unwrapApiPayload } from '../config/api'; // 导入API配置
 
 // 导入子组件
 import ArticleCard from './ArticleCard';
@@ -121,8 +121,16 @@ const Articles = () => {
 
       if (response.ok) {
         const data = await response.json();
-        setArticles(data.articles);
-        setTotalPages(data.pages);
+        const payload = unwrapApiPayload(data);
+        // 将 Tags 字符串转换为数组
+        const processedArticles = (payload?.articles || []).map(article => ({
+          ...article,
+          tags: typeof article.tags === 'string'
+            ? article.tags.split(',').filter(t => t.trim())
+            : article.tags || []
+        }));
+        setArticles(processedArticles);
+        setTotalPages(payload?.pages || 1);
         setDemoMode(false);
       } else {
         throw new Error('API 请求失败');
@@ -170,8 +178,10 @@ const Articles = () => {
       if (categoriesResponse.ok && tagsResponse.ok) {
         const categoriesData = await categoriesResponse.json();
         const tagsData = await tagsResponse.json();
-        setCategories(Array.isArray(categoriesData.categories) ? categoriesData.categories : []);
-        setTags(tagsData.tags || {});
+        const categoriesPayload = unwrapApiPayload(categoriesData);
+        const tagsPayload = unwrapApiPayload(tagsData);
+        setCategories(Array.isArray(categoriesPayload) ? categoriesPayload : (categoriesPayload?.categories || []));
+        setTags(tagsPayload?.tags || tagsPayload || {});
         setDemoMode(false);
       } else {
         throw new Error('API 请求失败');

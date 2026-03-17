@@ -1,7 +1,9 @@
 package routes
 
 import (
+	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -52,24 +54,30 @@ func CreateComment(c *gin.Context) {
 	}
 
 	cfg := config.LoadConfig()
+	identityEmail := strings.TrimSpace(input.Email)
+	identityIP := strings.TrimSpace(c.ClientIP())
+	identifier := buildCommentLimiterIdentity(identityEmail, identityIP)
 
 	// 评论限制检查 - 按小时且按用户维度
 	if cfg.CommentLimitEnabled {
 		var count int64
 		// 按小时计算时间窗口
 		hoursAgo := time.Now().Add(-time.Duration(cfg.CommentLimitTimeWindow) * time.Hour)
-		// 获取用户邮箱
-		email := input.Email
-		if email == "" {
-			utils.ErrorBadRequest(c, "Email is required for comment")
-			return
+		limitQuery := database.GetDB().Model(&models.Comment{})
+		if identityEmail != "" {
+			limitQuery = limitQuery.Where("email = ? AND created_at > ?", identityEmail, hoursAgo)
+		} else if identityIP != "" {
+			limitQuery = limitQuery.Where("ip_address = ? AND created_at > ?", identityIP, hoursAgo)
+		} else {
+			limitQuery = limitQuery.Where("author = ? AND created_at > ?", identifier, hoursAgo)
 		}
-		database.GetDB().Model(&models.Comment{}).
-			Where("email = ? AND created_at > ?", email, hoursAgo).
-			Count(&count)
+		limitQuery.Count(&count)
 
 		if count >= int64(cfg.CommentLimitMaxCount) {
-			utils.ErrorForbidden(c, "评论次数已达上限，请稍后再试")
+			c.JSON(http.StatusTooManyRequests, utils.Response{
+				Code:    http.StatusTooManyRequests,
+				Message: "评论次数已达上限，请稍后再试",
+			})
 			return
 		}
 	}
@@ -79,6 +87,8 @@ func CreateComment(c *gin.Context) {
 		Author:    input.Author,
 		Email:     input.Email,
 		Content:   input.Content,
+		IPAddress: identityIP,
+		UserAgent: c.GetHeader("User-Agent"),
 		Status:    "pending",
 	}
 
@@ -88,4 +98,14 @@ func CreateComment(c *gin.Context) {
 	}
 
 	utils.Success(c, comment)
+}
+
+func buildCommentLimiterIdentity(email, ip string) string {
+	if email != "" {
+		return email
+	}
+	if ip != "" {
+		return ip
+	}
+	return "anonymous"
 }
