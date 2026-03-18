@@ -1,14 +1,14 @@
-FROM golang:1.21-alpine AS builder
+FROM docker.1ms.run/golang:1.25-alpine AS builder
 
 WORKDIR /app
 
 COPY go.mod go.sum ./
-RUN go mod download
+RUN go env -w GOPROXY=https://goproxy.cn,direct && go mod download
 
 COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -o server .
 
-FROM alpine:latest
+FROM docker.1ms.run/alpine:latest
 
 WORKDIR /app
 
