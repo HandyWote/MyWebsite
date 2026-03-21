@@ -75,3 +75,4 @@ logs/
 .coverage
 .pytest_cache
 coverage.xml
+.claude
