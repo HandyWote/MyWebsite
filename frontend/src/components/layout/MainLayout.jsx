@@ -74,7 +74,7 @@ function MainLayout() {
             width: sidebarWidth,
             flexShrink: 0,
             position: 'fixed',
-            top: 12,
+            top: 36,
             bottom: 12,
             height: 'auto',
             overflow: 'auto',

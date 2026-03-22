@@ -1,37 +1,48 @@
-import { Box } from '@mui/material';
+import { Box, Link as MuiLink } from '@mui/material';
+import { GitHubCalendar } from 'react-github-calendar';
 
-const ACTIVITY_DATA = [
-  [4, 3, 4, 2, 1, 3, 4],
-  [2, 4, 1, 3, 4, 2, 3],
-  [1, 2, 3, 4, 1, 2, 4],
-  [3, 1, 4, 2, 3, 4, 1],
-];
+const RECENT_WEEKS = 18;
+const RECENT_DAYS = RECENT_WEEKS * 7;
 
-const LEVELS = ['#161b22', '#0e4429', '#006d32', '#26a641', '#39d353'];
+function GitHubActivity({ username = 'HandyWote' }) {
+  const fullCalendarUrl = `https://github.com/${username}`;
+  const transformData = (data) => data.slice(-RECENT_DAYS);
 
-function GitHubActivity() {
   return (
     <Box>
       <SectionTitle>GitHub Activity</SectionTitle>
       <Box
+        data-testid="github-calendar-scroll"
         sx={{
-          display: 'flex',
-          gap: '2px',
-          flexWrap: 'wrap',
-          maxWidth: 200,
+          width: '100%',
+          overflowX: 'auto',
+          overflowY: 'hidden',
+          '& ::-webkit-scrollbar': {
+            height: '6px',
+          },
+          '& ::-webkit-scrollbar-track': {
+            background: 'var(--bg-secondary)',
+          },
+          '& ::-webkit-scrollbar-thumb': {
+            background: 'var(--border-default)',
+            borderRadius: '3px',
+          },
         }}
       >
-        {ACTIVITY_DATA.flat().map((level, i) => (
-          <Box
-            key={i}
-            sx={{
-              width: 12,
-              height: 12,
-              bgcolor: LEVELS[level],
-              borderRadius: 0,
-            }}
-          />
-        ))}
+        <GitHubCalendar
+          username={username}
+          transformData={transformData}
+          blockSize={10}
+          blockMargin={2}
+          showWeekdayLabels={false}
+          showMonthLabels={false}
+          showColorLegend={false}
+          showTotalCount={false}
+          style={{
+            minWidth: '214px',
+            fontFamily: 'var(--font-mono)',
+          }}
+        />
       </Box>
     </Box>
   );

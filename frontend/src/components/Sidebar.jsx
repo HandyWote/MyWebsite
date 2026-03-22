@@ -119,7 +119,7 @@ function Sidebar() {
 
         {/* GitHub Activity 区域 */}
         <MotionDiv variants={itemVariants}>
-          <GitHubActivity />
+          <GitHubActivity username={siteBlock?.github_calendar_url || 'HandyWote'} />
         </MotionDiv>
       </MotionDiv>
     </PixelContainer>
