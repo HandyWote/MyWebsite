@@ -6,11 +6,9 @@ import { colors, typography, spacing, animations } from '../tokens';
  * PixelButton - 终端风格按钮组件
  *
  * 变体:
- * - primary: 蓝色填充
+ * - primary: 蓝色填充（带荧光效果）
  * - outline: 透明边框
  * - ghost: 无边框
- * - destructive: 红色填充
- * - secondary: 绿色填充
  */
 export function PixelButton({
   children,
@@ -24,42 +22,23 @@ export function PixelButton({
       case 'outline':
         return {
           bgcolor: 'transparent',
-          color: colors.accent.blue,
-          border: `${colors.border.default}`,
-          borderStyle: 'dashed',
+          color: colors.accent.blueBright,
+          border: `1px dashed ${colors.border.default}`,
           '&:hover': {
             bgcolor: 'transparent',
             borderStyle: 'solid',
-            borderColor: colors.accent.blue,
+            borderColor: colors.accent.blueBright,
+            boxShadow: `0 0 12px ${colors.accent.blueGlow}`,
           },
         };
       case 'ghost':
         return {
           bgcolor: 'transparent',
-          color: colors.accent.blue,
+          color: colors.text.secondary,
           border: 'none',
           '&:hover': {
             bgcolor: colors.interactive.hover,
-            border: 'none',
-          },
-        };
-      case 'destructive':
-        return {
-          bgcolor: colors.accent.red,
-          color: colors.text.primary,
-          border: 'none',
-          '&:hover': {
-            bgcolor: '#da3633',
-            border: 'none',
-          },
-        };
-      case 'secondary':
-        return {
-          bgcolor: colors.accent.green,
-          color: colors.bg.primary,
-          border: 'none',
-          '&:hover': {
-            bgcolor: '#2ea043',
+            color: colors.accent.blueBright,
             border: 'none',
           },
         };
@@ -70,8 +49,9 @@ export function PixelButton({
           color: colors.bg.primary,
           border: 'none',
           '&:hover': {
-            bgcolor: '#1f6feb',
+            bgcolor: colors.accent.blueBright,
             border: 'none',
+            boxShadow: `0 0 20px ${colors.accent.blueGlow}, 0 0 40px ${colors.accent.blueGlow}`,
           },
         };
     }
@@ -83,10 +63,10 @@ export function PixelButton({
       sx={{
         fontFamily: typography.fontFamily.mono,
         fontSize: typography.fontSize.sm,
-        fontWeight: 500,
+        fontWeight: 600,
         borderRadius: 0,
         padding: `${spacing.sm} ${spacing.md}`,
-        transition: animations.normal,
+        transition: `all ${animations.normal}`,
         textTransform: 'none',
         display: 'inline-flex',
         alignItems: 'center',

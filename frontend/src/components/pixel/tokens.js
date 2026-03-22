@@ -8,18 +8,18 @@ export const colors = {
     secondary: '#161b22',
     tertiary: '#21262d',
   },
-  // 强调色
+  // 强调色 - 白黑蓝体系
   accent: {
     blue: '#58a6ff',
-    green: '#3fb950',
-    purple: '#a371f7',
-    red: '#f85149',
+    blueBright: '#79b8ff',
+    blueDim: '#388bfd',
+    blueGlow: 'rgba(88, 166, 255, 0.4)',
   },
-  // 文字色 - 白蓝黑比例 6:3:1
+  // 文字色
   text: {
-    primary: '#f0f6fc',    // 白色 60%
-    secondary: '#8b949e',  // 蓝色系 30%
-    muted: '#484f58',      // 黑色系 10%
+    primary: '#f0f6fc',
+    secondary: '#8b949e',
+    muted: '#484f58',
   },
   // 边框
   border: {

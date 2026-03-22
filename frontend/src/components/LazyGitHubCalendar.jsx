@@ -9,7 +9,7 @@ import LazyImage from './LazyImage';
  */
 const LazyGitHubCalendar = ({ src, alt, ...props }) => {
   const [isLoaded, setIsLoaded] = useState(false);
-  const [_hasError, setHasError] = useState(false);
+  const [hasError, setHasError] = useState(false);
   const calendarRef = useRef();
 
   useEffect(() => {
@@ -50,16 +50,33 @@ const LazyGitHubCalendar = ({ src, alt, ...props }) => {
           </Typography>
         </Box>
       )}
-      {isLoaded && (
+      {isLoaded && hasError && (
+        <Box
+          sx={{
+            height: '200px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            border: '1px dashed',
+            borderColor: 'divider',
+          }}
+        >
+          <Typography variant="body2" color="text.secondary">
+            GitHub日历加载失败
+          </Typography>
+        </Box>
+      )}
+      {isLoaded && !hasError && (
         <LazyImage
           src={src}
           alt={alt}
           onError={() => setHasError(true)}
           sx={{
-            filter: 'opacity(0.9)',
+            width: '100%',
+            display: 'block',
             transition: 'filter 0.3s ease',
             '&:hover': {
-              filter: 'opacity(1)'
+              filter: 'brightness(1.02)'
             },
             ...props.sx
           }}

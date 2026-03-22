@@ -27,7 +27,7 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import oneDark from 'react-syntax-highlighter/dist/esm/styles/prism/one-dark';
 import 'katex/dist/katex.min.css';
 import { getApiUrl, getApiMessage, unwrapApiPayload } from '../config/api'; // 导入API配置
-import { PixelContainer, PixelCard, PixelButton, PixelChip, PixelTypography, TerminalLine } from './pixel';
+import { PixelContainer, PixelCard, PixelButton, PixelChip, PixelTypography, TerminalLine, PixelSidebar } from './pixel';
 import PdfViewerOnCanvas from './PdfViewerOnCanvas';
 
 const DEFAULT_META = {
@@ -590,229 +590,241 @@ flowchart TD
     <PixelContainer section>
       <TerminalLine>cat article/{id}.md</TerminalLine>
 
-      {/* 返回按钮 */}
-      <PixelButton variant="ghost" startIcon={<ArrowBack />} component={Link} to="/articles">
-        返回文章列表
-      </PixelButton>
+      {/* 文章 */}
+      <Box
+        sx={{
+          width: '100%',
+          display: 'grid',
+          gridTemplateColumns: { xs: '1fr', md: '1fr' },
+          gap: 'clamp(12px, 2vw, 24px)',
+          alignItems: 'start',
+        }}
+      >
 
-      {/* 演示模式提示 */}
-      {demoMode && (
-        <Alert severity="info" sx={{ mb: 4 }}>
-          当前处于演示模式，显示的是示例文章内容。评论功能在演示模式下不可用。
-        </Alert>
-      )}
+        {/* 右侧内容区 */}
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 'clamp(12px, 2vw, 24px)' }}>
+          {/* 返回按钮 */}
+          <PixelButton variant="ghost" startIcon={<ArrowBack />} component={Link} to="/articles">
+            返回文章列表
+          </PixelButton>
 
-      <PixelCard>
-        {/* 文章头部信息 */}
-        <Box sx={{ mb: 4 }}>
-          <PixelTypography variant="h1" className="cursor-blink" sx={{ mb: 2 }}>
-            {article.title}
-          </PixelTypography>
-
-          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 3 }}>
-            {article.category && <PixelChip label={article.category} color="primary" />}
-            {article.tags && article.tags.map((tag, index) => (
-              <PixelChip key={index} label={tag} variant="outline" />
-            ))}
-          </Box>
-
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 3 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <CalendarIcon fontSize="small" />
-              <Typography variant="body2" color="text.secondary">
-                {formatDate(article.created_at)}
-              </Typography>
-            </Box>
-
-            {article.views && (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <VisibilityIcon fontSize="small" />
-                <Typography variant="body2" color="text.secondary">
-                  {article.views} 次阅读
-                </Typography>
-              </Box>
-            )}
-
-            <IconButton size="small" onClick={handleShare} aria-label="分享文章">
-              <ShareIcon />
-            </IconButton>
-          </Box>
-
-          {article.summary && (
-            <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-              {article.summary}
-            </Typography>
-          )}
-        </Box>
-
-        {/* 文章内容 */}
-        <Box
-          sx={{
-            minHeight: { xs: '300px', sm: '400px', md: '500px' },
-            height: { xs: 'auto', sm: '100%' },
-            overflow: 'auto',
-            '& h1, & h2, & h3, & h4, & h5, & h6': {
-              mt: 4,
-              mb: 2,
-              fontWeight: 'bold'
-            },
-            '& p': {
-              mb: 2,
-              lineHeight: 1.8
-            },
-            '& ul, & ol': {
-              mb: 2,
-              pl: 3
-            },
-            '& li': {
-              mb: 1
-            },
-            '& blockquote': {
-              borderLeft: '4px solid #2196F3',
-              pl: 2,
-              ml: 0,
-              fontStyle: 'italic',
-              color: 'text.secondary'
-            },
-            '& code': {
-              backgroundColor: 'rgba(88, 166, 255, 0.15)',
-              color: '#58a6ff',
-              px: 1,
-              py: 0.5,
-              borderRadius: 0,
-              fontSize: '0.9em',
-              fontFamily: "'JetBrains Mono', monospace",
-            },
-            '& pre': {
-              mb: 3
-            },
-            '& img': {
-              maxWidth: '100%',
-              height: 'auto',
-              borderRadius: 1,
-              my: 2
-            },
-            '& table': {
-              width: '100%',
-              borderCollapse: 'collapse',
-              mb: 3
-            },
-            '& th, & td': {
-              border: '1px solid #ddd',
-              p: 1,
-              textAlign: 'left'
-            },
-            '& th': {
-              backgroundColor: 'grey.100',
-              '@media (prefersColorScheme: dark)': {
-                backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                color: '#e5e5e5'
-              }
-            }
-          }}
-        >
-          {article.content_type === 'pdf' ? (
-            // PDF内容渲染
-            <PdfViewerOnCanvas filename={article.pdf_filename} />
-          ) : (
-            // Markdown内容渲染
-            <ReactMarkdown
-              remarkPlugins={[remarkMath, remarkGfm]}
-              rehypePlugins={[rehypeKatex]}
-              components={{
-                code: CodeBlock
-              }}
-            >
-              {article.content}
-            </ReactMarkdown>
-          )}
-        </Box>
-      </PixelCard>
-
-      {/* 评论区 */}
-      <PixelCard>
-        <Typography variant="h5" gutterBottom sx={{ fontFamily: 'monospace' }}>
-          $ comments --list ({comments.length})
-        </Typography>
-
-        {/* 发表评论 */}
-        <Box sx={{ mb: 4 }}>
+          {/* 演示模式提示 */}
           {demoMode && (
-            <Alert severity="warning" sx={{ mb: 2 }}>
-              演示模式下评论功能不可用，请启动后端服务后重试。
+            <Alert severity="info" sx={{ mb: 0 }}>
+              当前处于演示模式，显示的是示例文章内容。评论功能在演示模式下不可用。
             </Alert>
           )}
 
-          <Grid container spacing={2} sx={{ mb: 2 }}>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                size="small"
-                label="$ name"
-                value={commentAuthor}
-                onChange={(e) => setCommentAuthor(e.target.value)}
-                disabled={demoMode}
-              />
-            </Grid>
-          </Grid>
+          <PixelCard>
+            {/* 文章头部信息 */}
+            <Box sx={{ mb: 4 }}>
+              <PixelTypography variant="h1" className="cursor-blink" sx={{ mb: 2 }}>
+                {article.title}
+              </PixelTypography>
 
-          <TextField
-            fullWidth
-            multiline
-            rows={3}
-            label="$ message"
-            value={newComment}
-            onChange={(e) => setNewComment(e.target.value)}
-            disabled={demoMode}
-            sx={{ mb: 2 }}
-          />
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 3 }}>
+                {article.category && <PixelChip label={article.category} color="primary" />}
+                {article.tags && article.tags.map((tag, index) => (
+                  <PixelChip key={index} label={tag} variant="outline" />
+                ))}
+              </Box>
 
-          <PixelButton
-            variant="primary"
-            startIcon={<SendIcon />}
-            disabled={demoMode || !newComment.trim() || !commentAuthor.trim() || submittingComment}
-            onClick={handleSubmitComment}
-          >
-            {submittingComment ? '> submitting...' : '> submit'}
-          </PixelButton>
-        </Box>
-
-        <Divider sx={{ mb: 3, borderColor: 'rgba(255,255,255,0.1)' }} />
-
-        {/* 评论列表 */}
-        {commentsLoading ? (
-          <Box textAlign="center" sx={{ py: 2 }}>
-            <Typography color="text.secondary">loading...</Typography>
-          </Box>
-        ) : comments.length > 0 ? (
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-            {comments.map((comment) => (
-              <Box key={comment.id} sx={{ display: 'flex', gap: 2 }}>
-                <Avatar sx={{ width: 40, height: 40, bgcolor: 'primary.main' }}>
-                  {comment.author.charAt(0)}
-                </Avatar>
-                <Box sx={{ flex: 1 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
-                    <Typography variant="subtitle2" fontWeight="bold" sx={{ fontFamily: 'monospace' }}>
-                      {comment.author}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {formatDate(comment.created_at)}
-                    </Typography>
-                  </Box>
-                  <Typography variant="body2" sx={{ lineHeight: 1.6, fontFamily: 'monospace' }}>
-                    {comment.content}
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 3 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <CalendarIcon fontSize="small" />
+                  <Typography variant="body2" color="text.secondary">
+                    {formatDate(article.created_at)}
                   </Typography>
                 </Box>
+
+                {article.views && (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <VisibilityIcon fontSize="small" />
+                    <Typography variant="body2" color="text.secondary">
+                      {article.views} 次阅读
+                    </Typography>
+                  </Box>
+                )}
+
+                <IconButton size="small" onClick={handleShare} aria-label="分享文章">
+                  <ShareIcon />
+                </IconButton>
               </Box>
-            ))}
-          </Box>
-        ) : (
-          <Typography variant="body2" color="text.secondary" textAlign="center" sx={{ fontFamily: 'monospace' }}>
-            // no comments yet
-          </Typography>
-        )}
-      </PixelCard>
+
+              {article.summary && (
+                <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+                  {article.summary}
+                </Typography>
+              )}
+            </Box>
+
+            {/* 文章内容 */}
+            <Box
+              sx={{
+                minHeight: { xs: '300px', sm: '400px', md: '500px' },
+                height: { xs: 'auto', sm: '100%' },
+                overflow: 'auto',
+                '& h1, & h2, & h3, & h4, & h5, & h6': {
+                  mt: 4,
+                  mb: 2,
+                  fontWeight: 'bold'
+                },
+                '& p': {
+                  mb: 2,
+                  lineHeight: 1.8
+                },
+                '& ul, & ol': {
+                  mb: 2,
+                  pl: 3
+                },
+                '& li': {
+                  mb: 1
+                },
+                '& blockquote': {
+                  borderLeft: '4px solid #2196F3',
+                  pl: 2,
+                  ml: 0,
+                  fontStyle: 'italic',
+                  color: 'text.secondary'
+                },
+                '& code': {
+                  backgroundColor: 'rgba(88, 166, 255, 0.15)',
+                  color: '#58a6ff',
+                  px: 1,
+                  py: 0.5,
+                  borderRadius: 0,
+                  fontSize: '0.9em',
+                  fontFamily: "'JetBrains Mono', monospace",
+                },
+                '& pre': {
+                  mb: 3
+                },
+                '& img': {
+                  maxWidth: '100%',
+                  height: 'auto',
+                  borderRadius: 1,
+                  my: 2
+                },
+                '& table': {
+                  width: '100%',
+                  borderCollapse: 'collapse',
+                  mb: 3
+                },
+                '& th, & td': {
+                  border: '1px solid #30363d',
+                  p: 1,
+                  textAlign: 'left'
+                },
+                '& th': {
+                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                  color: '#e5e5e5'
+                }
+              }}
+            >
+              {article.content_type === 'pdf' ? (
+                // PDF内容渲染
+                <PdfViewerOnCanvas filename={article.pdf_filename} />
+              ) : (
+                // Markdown内容渲染
+                <ReactMarkdown
+                  remarkPlugins={[remarkMath, remarkGfm]}
+                  rehypePlugins={[rehypeKatex]}
+                  components={{
+                    code: CodeBlock
+                  }}
+                >
+                  {article.content}
+                </ReactMarkdown>
+              )}
+            </Box>
+          </PixelCard>
+
+          {/* 评论区 */}
+          <PixelCard>
+            <Typography variant="h5" gutterBottom sx={{ fontFamily: 'monospace' }}>
+              $ comments --list ({comments.length})
+            </Typography>
+
+            {/* 发表评论 */}
+            <Box sx={{ mb: 4 }}>
+              {demoMode && (
+                <Alert severity="warning" sx={{ mb: 2 }}>
+                  演示模式下评论功能不可用，请启动后端服务后重试。
+                </Alert>
+              )}
+
+              <Grid container spacing={2} sx={{ mb: 2 }}>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="$ name"
+                    value={commentAuthor}
+                    onChange={(e) => setCommentAuthor(e.target.value)}
+                    disabled={demoMode}
+                  />
+                </Grid>
+              </Grid>
+
+              <TextField
+                fullWidth
+                multiline
+                rows={3}
+                label="$ message"
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                disabled={demoMode}
+                sx={{ mb: 2 }}
+              />
+
+              <PixelButton
+                variant="primary"
+                startIcon={<SendIcon />}
+                disabled={demoMode || !newComment.trim() || !commentAuthor.trim() || submittingComment}
+                onClick={handleSubmitComment}
+              >
+                {submittingComment ? '> submitting...' : '> submit'}
+              </PixelButton>
+            </Box>
+
+            <Divider sx={{ mb: 3, borderColor: 'rgba(255,255,255,0.1)' }} />
+
+            {/* 评论列表 */}
+            {commentsLoading ? (
+              <Box textAlign="center" sx={{ py: 2 }}>
+                <Typography color="text.secondary">loading...</Typography>
+              </Box>
+            ) : comments.length > 0 ? (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                {comments.map((comment) => (
+                  <Box key={comment.id} sx={{ display: 'flex', gap: 2 }}>
+                    <Avatar sx={{ width: 40, height: 40, bgcolor: 'primary.main' }}>
+                      {comment.author.charAt(0)}
+                    </Avatar>
+                    <Box sx={{ flex: 1 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
+                        <Typography variant="subtitle2" fontWeight="bold" sx={{ fontFamily: 'monospace' }}>
+                          {comment.author}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {formatDate(comment.created_at)}
+                        </Typography>
+                      </Box>
+                      <Typography variant="body2" sx={{ lineHeight: 1.6, fontFamily: 'monospace' }}>
+                        {comment.content}
+                      </Typography>
+                    </Box>
+                  </Box>
+                ))}
+              </Box>
+            ) : (
+              <Typography variant="body2" color="text.secondary" textAlign="center" sx={{ fontFamily: 'monospace' }}>
+                // no comments yet
+              </Typography>
+            )}
+          </PixelCard>
+        </Box>
+      </Box>
     </PixelContainer>
   );
 };

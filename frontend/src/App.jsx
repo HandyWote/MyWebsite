@@ -1,71 +1,49 @@
 // 导入所需的组件
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
-import { useState, lazy, Suspense } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { lazy, Suspense } from 'react';
 import { Box, CircularProgress } from '@mui/material';
 import { PixelProvider } from './components/pixel';
 
 // 路由级别懒加载
-const PixelNavbar = lazy(() => import('./components/pixel/layout/PixelNavbar'));
-const PixelFooter = lazy(() => import('./components/pixel/layout/PixelFooter'));
-const Home = lazy(() => import('./components/Home'));
-const Projects = lazy(() => import('./components/Projects'));
-const Articles = lazy(() => import('./components/Articles'));
+const MainLayout = lazy(() => import('./components/layout/MainLayout'));
+const ContentTabs = lazy(() => import('./components/ContentTabs'));
+const ArticleList = lazy(() => import('./components/ArticleList'));
+const ProjectList = lazy(() => import('./components/ProjectList'));
 const ArticleDetail = lazy(() => import('./components/ArticleDetail'));
 const AdminRoutes = lazy(() => import('./admin/routes'));
 
 function AppContent() {
-  const location = useLocation();
-  const isAdmin = location.pathname.startsWith('/admin');
-
   return (
-    <Box sx={{ pb: isAdmin ? 0 : '48px' }}>
-      {!isAdmin && (
+    <Routes>
+      {/* 使用 MainLayout 的嵌套路由 */}
+      <Route path="/*" element={
         <Suspense fallback={
-          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '56px', bgcolor: 'background.paper' }}>
-            <CircularProgress size={20} sx={{ color: 'primary.main' }} />
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+            <CircularProgress sx={{ color: 'primary.main' }} />
           </Box>
         }>
-          <PixelNavbar />
+          <MainLayout />
         </Suspense>
-      )}
-      <Routes>
-        {/* 文章详情页面路由 */}
-        <Route path="/articles/:id" element={
-          <Suspense fallback={
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-              <CircularProgress sx={{ color: 'primary.main' }} />
-            </Box>
-          }>
-            <ArticleDetail />
-          </Suspense>
-        } />
-        {/* 主页面路由 */}
-        <Route path="/" element={
-          <Suspense fallback={
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-              <CircularProgress sx={{ color: 'primary.main' }} />
-            </Box>
-          }>
-            <>
-              <Home />
-              <Projects />
-            </>
-          </Suspense>
-        } />
+      }>
+        <Route element={<ContentTabs />}>
+          <Route index element={<Navigate to="articles" replace />} />
+          <Route path="articles" element={<ArticleList />} />
+          <Route path="projects" element={<ProjectList />} />
+        </Route>
+        <Route path="articles/:id" element={<ArticleDetail />} />
+      </Route>
 
-        {/* 独立文章页面路由 */}
-        <Route path="/articles" element={
-          <Suspense fallback={
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-              <CircularProgress sx={{ color: 'primary.main' }} />
-            </Box>
-          }>
-            <Articles />
-          </Suspense>
-        } />
-      </Routes>
-      {!isAdmin && <PixelFooter />}
-    </Box>
+      {/* 后台管理 */}
+      <Route path="/admin/*" element={
+        <Suspense fallback={
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+            <CircularProgress sx={{ color: 'primary.main' }} />
+          </Box>
+        }>
+          <AdminRoutes />
+        </Suspense>
+      } />
+    </Routes>
   );
 }
 
@@ -74,25 +52,12 @@ function App() {
     <PixelProvider>
       <Router>
         <Box sx={{
-          minHeight: '100vh',
+          minHeight: 'calc(100vh - 24px)',
           backgroundColor: 'background.default',
-          color: 'text.primary'
+          color: 'text.primary',
+          boxSizing: 'border-box',
         }}>
-          <Routes>
-            {/* 前台页面 */}
-            <Route path="/*" element={<AppContent />} />
-
-            {/* 后台管理 */}
-            <Route path="/admin/*" element={
-              <Suspense fallback={
-                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-                  <CircularProgress sx={{ color: 'primary.main' }} />
-                </Box>
-              }>
-                <AdminRoutes />
-              </Suspense>
-            } />
-          </Routes>
+          <AppContent />
         </Box>
       </Router>
     </PixelProvider>

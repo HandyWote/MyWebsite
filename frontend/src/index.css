@@ -53,6 +53,22 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* 网页边界边框 */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 8px;
+  border: 1px solid var(--accent-blue);
+  border-radius: 0;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+#root {
+  min-height: 100vh;
+  padding: 12px;
+}
+
 /* 点阵背景纹理 */
 .pixel-grid-bg {
   background-image: radial-gradient(circle, var(--border-muted) 1px, transparent 1px);
@@ -175,7 +191,16 @@ a:hover {
     --content-max-width: 720px;
     --section-gap: 24px;
   }
+  #root {
+    padding: 10px;
+  }
   .container {
     padding: 0 clamp(12px, 4vw, 24px);
   }
+}
+
+/* 链接悬停效果 */
+.tui-link:hover::before {
+  content: '▸ ';
+  color: var(--accent-blue);
 }

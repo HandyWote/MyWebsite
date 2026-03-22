@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TUI BBS TERMINAL</title>
+    <style>
+        /* --- 全局与 TUI 变量设定 --- */
+        :root {
+            --bg-color: #000000;        /* 纯黑背景 */
+            --fg-color: #33ff33;        /* 经典终端绿 */
+            --fg-dim: #1a801a;          /* 暗绿色，用于边框和次要文本 */
+            --fg-alert: #ff3333;        /* 红色，用于警告或新消息 */
+            --font-main: "Courier New", Courier, "Consolas", monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--fg-color);
+            font-family: var(--font-main);
+            font-size: 16px;
+            line-height: 1.5;
+            padding: 20px;
+            /* CRT 荧光微光效果 */
+            text-shadow: 0 0 3px rgba(51, 255, 51, 0.4);
+            display: flex;
+            justify-content: center;
+        }
+
+        /* 模拟扫描线效果 (可选) */
+        body::before {
+            content: " ";
+            display: block;
+            position: fixed;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 2;
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1000px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            position: relative;
+            z-index: 10;
+        }
+
+        /* --- TUI 窗口边框样式 --- */
+        .tui-panel {
+            border: 2px solid var(--fg-dim);
+            padding: 15px;
+            position: relative;
+        }
+
+        .tui-panel-title {
+            position: absolute;
+            top: -12px;
+            left: 15px;
+            background-color: var(--bg-color);
+            padding: 0 5px;
+            font-weight: bold;
+        }
+
+        /* --- 布局结构 --- */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            padding-bottom: 10px;
+            border-bottom: 2px dashed var(--fg-dim);
+            margin-bottom: 15px;
+        }
+
+        .logo pre {
+            font-size: 12px;
+            line-height: 1.1;
+            font-weight: bold;
+        }
+
+        .user-info {
+            text-align: right;
+        }
+
+        .main-content {
+            display: flex;
+            gap: 15px;
+            align-items: stretch;
+        }
+
+        /* 左侧菜单 */
+        aside {
+            flex: 0 0 200px;
+        }
+
+        .menu-list {
+            list-style: none;
+        }
+
+        .menu-item {
+            padding: 5px;
+            cursor: pointer;
+            display: block;
+        }
+
+        .menu-item:hover, .menu-item.active {
+            background-color: var(--fg-color);
+            color: var(--bg-color);
+            font-weight: bold;
+        }
+
+        .menu-item::before {
+            content: "> ";
+        }
+
+        /* 右侧帖子列表 */
+        main {
+            flex: 1;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th {
+            background-color: var(--fg-color);
+            color: var(--bg-color);
+            padding: 5px;
+            font-weight: normal;
+        }
+
+        td {
+            padding: 8px 5px;
+            border-bottom: 1px dashed var(--fg-dim);
+            cursor: pointer;
+        }
+
+        tr:hover td {
+            background-color: var(--fg-color);
+            color: var(--bg-color);
+        }
+
+        .new-tag {
+            color: var(--fg-alert);
+            animation: blink 1s step-end infinite;
+        }
+        
+        tr:hover .new-tag {
+            color: var(--bg-color); /* 反色时调整高亮颜色 */
+        }
+
+        /* --- 底部状态栏与终端输入 --- */
+        footer {
+            margin-top: 5px;
+        }
+
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            background-color: var(--fg-dim);
+            color: var(--bg-color);
+            padding: 2px 10px;
+            margin-bottom: 10px;
+        }
+
+        .prompt {
+            display: flex;
+            align-items: center;
+        }
+
+        .cursor {
+            display: inline-block;
+            width: 10px;
+            height: 18px;
+            background-color: var(--fg-color);
+            margin-left: 5px;
+            animation: blink 1s step-end infinite;
+        }
+
+        /* 闪烁动画 */
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        /* 响应式调整 */
+        @media (max-width: 768px) {
+            .main-content {
+                flex-direction: column;
+            }
+            aside {
+                flex: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- 顶部 Header区 -->
+    <header>
+        <div class="logo">
+<pre>
+ ____  ____  ____    ____  ____  ____  __  __ 
+(_  _)(  __)(  _ \  (  __)(  _ \(  _ \(  \/  )
+  )(   ) _)  )   /   ) _)  )   / )   / )    ( 
+ (__) (____)(_)\_)  (__)  (_)\_)(_)\_)(_/\/\_)
+</pre>
+            <span>Welcome to the Underground.</span>
+        </div>
+        <div class="user-info">
+            <div>NODE: 192.168.1.104</div>
+            <div>USER: root_guest</div>
+            <div>MSG: <span class="new-tag">[1 NEW]</span></div>
+        </div>
+    </header>
+
+    <!-- 主体内容区 -->
+    <div class="main-content">
+        <!-- 左侧板块导航 -->
+        <aside class="tui-panel">
+            <span class="tui-panel-title">[ BOARDS ]</span>
+            <ul class="menu-list">
+                <li class="menu-item active">General_Chat</li>
+                <li class="menu-item">Tech_Support</li>
+                <li class="menu-item">Code_Review</li>
+                <li class="menu-item">Cyber_Sec</li>
+                <li class="menu-item">Off_Topic</li>
+            </ul>
+        </aside>
+
+        <!-- 右侧帖子列表 -->
+        <main class="tui-panel">
+            <span class="tui-panel-title">[ /General_Chat/Threads ]</span>
+            <table>
+                <thead>
+                    <tr>
+                        <th width="10%">ID</th>
+                        <th width="50%">TITLE</th>
+                        <th width="20%">AUTHOR</th>
+                        <th width="20%">LAST_POST</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>0x00A1</td>
+                        <td><span class="new-tag">*</span> 欢迎来到纯文本世界 (置顶)</td>
+                        <td>sysadmin</td>
+                        <td>10:42_AM</td>
+                    </tr>
+                    <tr>
+                        <td>0x00A2</td>
+                        <td>Vim 和 Emacs 哪个更好？</td>
+                        <td>coder_99</td>
+                        <td>09:15_AM</td>
+                    </tr>
+                    <tr>
+                        <td>0x00A3</td>
+                        <td>分享一个很酷的Bash脚本</td>
+                        <td>linux_fan</td>
+                        <td>YESTERDAY</td>
+                    </tr>
+                    <tr>
+                        <td>0x00A4</td>
+                        <td>[求助] 无法退出终端怎么回事...</td>
+                        <td>newbie_1</td>
+                        <td>YESTERDAY</td>
+                    </tr>
+                    <tr>
+                        <td>0x00A5</td>
+                        <td>讨论：未来的 TUI 会是什么样</td>
+                        <td>retro_guy</td>
+                        <td>2_DAYS_AGO</td>
+                    </tr>
+                    <tr>
+                        <td>0x00A6</td>
+                        <td>有没有人在用机械键盘打字？</td>
+                        <td>click_clack</td>
+                        <td>3_DAYS_AGO</td>
+                    </tr>
+                </tbody>
+            </table>
+        </main>
+    </div>
+
+    <!-- 底部状态栏与命令输入区 -->
+    <footer>
+        <div class="status-bar">
+            <span>[F1] Help | [N] New Thread | [R] Reply | [Q] Quit</span>
+            <span>MEM: 640K OK</span>
+        </div>
+        <div class="prompt">
+            <span>guest@bbs:~/General_Chat$</span>
+            <span class="cursor"></span>
+        </div>
+    </footer>
+</div>
+
+</body>
+</html>

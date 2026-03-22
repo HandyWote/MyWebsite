@@ -29,8 +29,11 @@ const LazyImage = ({ src, alt, fallbackSrc, ...props }) => {
     return () => observer.disconnect();
   }, []);
 
-  const handleImageError = () => {
+  const handleImageError = (event) => {
     setHasError(true);
+    if (typeof props.onError === 'function') {
+      props.onError(event);
+    }
     if (fallbackSrc) {
       // 如果有备用图片，尝试加载备用图片
       const fallbackImg = new Image();
