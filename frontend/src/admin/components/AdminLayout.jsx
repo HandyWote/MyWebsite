@@ -2,13 +2,13 @@
 import React, { useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { Box, AppBar, Toolbar, Typography, Tabs, Tab, Button, useMediaQuery, Divider } from '@mui/material';
-import { Article, MessageSquare, User, Settings, Image, FileText, LayoutDashboard, LogOut } from 'lucide-react';
+import { FileText, MessageSquare, User, Settings, Image, LayoutDashboard, LogOut } from 'lucide-react';
 import { verifyToken, clearAuth, saveRedirectPath } from '../utils/auth';
 import { colors, typography, spacing } from '../../components/pixel/tokens';
 
 const tabList = [
   { label: 'Dashboard', path: '/admin', icon: LayoutDashboard },
-  { label: 'Articles', path: '/admin/articles', icon: Article },
+  { label: 'Articles', path: '/admin/articles', icon: FileText },
   { label: 'Comments', path: '/admin/comments', icon: MessageSquare },
   { label: 'Contacts', path: '/admin/contacts', icon: User },
   { label: 'Skills', path: '/admin/skills', icon: Settings },

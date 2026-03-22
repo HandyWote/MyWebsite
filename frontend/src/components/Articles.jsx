@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Box, Typography, TextField, InputAdornment } from '@mui/material';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { ArrowBack, Search } from 'lucide-react';
+import { ArrowLeft, Search } from 'lucide-react';
 import { PixelContainer, PixelCard, PixelButton, PixelTypography, TerminalLine } from './pixel';
 import ArticleCard from './ArticleCard';
 import ArticlePagination from './ArticlePagination';
@@ -63,7 +63,7 @@ const Articles = () => {
           <Box sx={{ mb: 3 }}>
             <PixelButton
               variant="ghost"
-              startIcon={<ArrowBack size={16} />}
+              startIcon={<ArrowLeft size={16} />}
               component={Link}
               to="/"
             >
