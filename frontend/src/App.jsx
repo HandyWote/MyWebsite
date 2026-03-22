@@ -1,66 +1,31 @@
 // 导入所需的组件
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
-import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { useState, lazy, Suspense } from 'react';
-import { Box, CircularProgress, Link as MuiLink } from '@mui/material';
+import { Box, CircularProgress } from '@mui/material';
+import { PixelProvider } from './components/pixel';
 
 // 路由级别懒加载
-const Navbar = lazy(() => import('./components/Navbar'));
+const PixelNavbar = lazy(() => import('./components/pixel/layout/PixelNavbar'));
+const PixelFooter = lazy(() => import('./components/pixel/layout/PixelFooter'));
 const Home = lazy(() => import('./components/Home'));
 const Projects = lazy(() => import('./components/Projects'));
 const Articles = lazy(() => import('./components/Articles'));
 const ArticleDetail = lazy(() => import('./components/ArticleDetail'));
 const AdminRoutes = lazy(() => import('./admin/routes'));
 
-// 创建自定义主题
-const theme = createTheme({
-  palette: {
-    primary: {
-      main: '#1976d2', // 将主色调改为 rgb(25, 118, 210)
-    },
-  },
-});
-
-function FilingFooter() {
-  return (
-    <Box
-      component="footer"
-      sx={{
-        position: 'fixed',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        textAlign: 'center',
-        py: 1.25,
-        fontSize: 12,
-        backgroundColor: 'var(--background-color, #f5f5f7)',
-      }}
-    >
-      <MuiLink
-        href="https://beian.miit.gov.cn"
-        target="_blank"
-        rel="noopener noreferrer"
-        sx={{ color: '#888', textDecoration: 'none' }}
-      >
-        粤ICP备2025420529号
-      </MuiLink>
-    </Box>
-  );
-}
-
 function AppContent() {
   const location = useLocation();
   const isAdmin = location.pathname.startsWith('/admin');
-  
+
   return (
-    <Box sx={{ pb: isAdmin ? 0 : '40px' }}>
+    <Box sx={{ pb: isAdmin ? 0 : '48px' }}>
       {!isAdmin && (
         <Suspense fallback={
-          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80px' }}>
-            <CircularProgress />
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '56px', bgcolor: 'background.paper' }}>
+            <CircularProgress size={20} sx={{ color: 'primary.main' }} />
           </Box>
         }>
-          <Navbar />
+          <PixelNavbar />
         </Suspense>
       )}
       <Routes>
@@ -68,7 +33,7 @@ function AppContent() {
         <Route path="/articles/:id" element={
           <Suspense fallback={
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-              <CircularProgress />
+              <CircularProgress sx={{ color: 'primary.main' }} />
             </Box>
           }>
             <ArticleDetail />
@@ -78,40 +43,37 @@ function AppContent() {
         <Route path="/" element={
           <Suspense fallback={
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-              <CircularProgress />
+              <CircularProgress sx={{ color: 'primary.main' }} />
             </Box>
           }>
             <>
-              <Home />    {/* 首页介绍 */}
-              <Projects />{/* 项目展示组件 */}
+              <Home />
+              <Projects />
             </>
           </Suspense>
         } />
-        
+
         {/* 独立文章页面路由 */}
         <Route path="/articles" element={
           <Suspense fallback={
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-              <CircularProgress />
+              <CircularProgress sx={{ color: 'primary.main' }} />
             </Box>
           }>
             <Articles />
           </Suspense>
         } />
       </Routes>
-      {!isAdmin && <FilingFooter />}
+      {!isAdmin && <PixelFooter />}
     </Box>
   );
 }
 
 function App() {
-  // 添加暗模式状态（暂未使用，保留以备将来功能扩展）
-  const [_darkMode, _setDarkMode] = useState(false);
-
   return (
-    <ThemeProvider theme={theme}>
+    <PixelProvider>
       <Router>
-        <Box sx={{ 
+        <Box sx={{
           minHeight: '100vh',
           backgroundColor: 'background.default',
           color: 'text.primary'
@@ -119,22 +81,21 @@ function App() {
           <Routes>
             {/* 前台页面 */}
             <Route path="/*" element={<AppContent />} />
-            
+
             {/* 后台管理 */}
             <Route path="/admin/*" element={
               <Suspense fallback={
                 <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-                  <CircularProgress />
+                  <CircularProgress sx={{ color: 'primary.main' }} />
                 </Box>
               }>
                 <AdminRoutes />
               </Suspense>
             } />
-            
-        </Routes>
+          </Routes>
         </Box>
       </Router>
-    </ThemeProvider>
+    </PixelProvider>
   );
 }
 
