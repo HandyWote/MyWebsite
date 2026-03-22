@@ -6,3 +6,6 @@ export { PixelChip } from './ui/PixelChip';
 export { PixelAvatar } from './ui/PixelAvatar';
 export { PixelInput } from './ui/PixelInput';
 export { PixelTypography, CodeBlock, TerminalLine } from './ui/PixelTypography';
+export { PixelContainer } from './layout/PixelContainer';
+export { PixelNavbar } from './layout/PixelNavbar';
+export { PixelFooter } from './layout/PixelFooter';
