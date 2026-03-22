@@ -29,9 +29,9 @@ export function PixelContainer({
         alignItems: 'center',
         justifyContent: section ? 'center' : 'flex-start',
         padding: section
-          ? 'clamp(48px, 10vh, 96px) clamp(16px, 7vw, 48px)'
+          ? 'clamp(12px, 2vh, 24px) clamp(16px, 7vw, 48px)'
           : 0,
-        gap: 'clamp(24px, 4vh, 48px)',
+        gap: 'clamp(6px, 1vh, 12px)',
         ...props.sx,
       }}
     >
