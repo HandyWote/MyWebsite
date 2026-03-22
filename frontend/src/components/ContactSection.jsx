@@ -1,66 +1,66 @@
-import React, { useState } from 'react';
-import { Box, Typography, Tooltip, Snackbar } from '@mui/material';
+// ContactSection组件 - Terminal Aesthetics 风格
+import { useState } from 'react';
+import { Box, Snackbar } from '@mui/material';
 import { iconMap } from '../utils/iconMap';
+import { PixelContainer, PixelCard, PixelTypography, TerminalLine } from './pixel';
 
-/**
- * 联系方式展示组件
- * 展示各种联系方式，支持点击复制功能
- */
 const ContactSection = ({ contacts, contactDescription }) => {
   const [snackbarOpen, setSnackbarOpen] = useState(false);
-  const [snackbarMsg, setSnackbarMsg] = useState('');
 
   const handleCopy = (value) => {
     navigator.clipboard.writeText(value);
-    setSnackbarMsg('已复制到剪贴板');
     setSnackbarOpen(true);
   };
 
   return (
-    <div id="contact" style={{ marginTop: '3rem', textAlign: 'center' }}>
-      <Typography
-        variant="h3"
-        component="h2"
-        gutterBottom
-        sx={{ textAlign: 'center', mb: 4, fontSize: { xs: '2rem', sm: '3rem' } }}
-      >
-        联系方式
-      </Typography>
-      <Typography variant="body1" sx={{ mb: 4, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
-        {contactDescription || '如果您对我的工作感兴趣，或者想要了解更多信息，欢迎通过以下方式与我联系：'}
-      </Typography>
-      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-        {contacts.map((c) => (
-          <Tooltip title="点击复制" key={c.id} placement="top">
+    <PixelContainer section id="contact">
+      <TerminalLine>ping contact</TerminalLine>
+
+      <PixelCard title="联系方式" accentLine sx={{ mt: 3 }}>
+        {contactDescription && (
+          <PixelTypography sx={{ mb: 2, color: 'text.secondary' }}>
+            {contactDescription}
+          </PixelTypography>
+        )}
+
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          {contacts.map((c) => (
             <Box
+              key={c.id}
+              onClick={() => handleCopy(c.value)}
               sx={{
                 display: 'flex',
                 alignItems: 'center',
                 cursor: 'pointer',
-                p: 1.2,
-                borderRadius: 2,
-                minWidth: 260,
-                fontSize: 16,
-                bgcolor: 'rgba(255,255,255,0.08)',
-                boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
-                '&:hover': { bgcolor: 'rgba(0,0,0,0.04)' }
+                p: 1.5,
+                border: '1px dashed',
+                borderColor: 'divider',
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                  borderColor: 'primary.main',
+                  borderStyle: 'solid',
+                },
               }}
-              onClick={() => handleCopy(c.value)}
             >
-              {iconMap[c.type] || iconMap.other}
-              <span style={{ marginLeft: 12 }}>{c.value}</span>
+              <Box sx={{ color: 'text.secondary', mr: 1.5, display: 'flex', alignItems: 'center' }}>
+                {iconMap[c.type] || iconMap.other}
+              </Box>
+              <PixelTypography sx={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.875rem' }}>
+                {c.value}
+              </PixelTypography>
             </Box>
-          </Tooltip>
-        ))}
-      </Box>
+          ))}
+        </Box>
+      </PixelCard>
+
       <Snackbar
         open={snackbarOpen}
         autoHideDuration={1500}
         onClose={() => setSnackbarOpen(false)}
-        message={snackbarMsg}
+        message="已复制到剪贴板"
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       />
-    </div>
+    </PixelContainer>
   );
 };
 
