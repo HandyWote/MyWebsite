@@ -1,34 +1,31 @@
-/* eslint-disable no-unused-vars */
-// 导入必要的组件和图标
-import { motion } from 'framer-motion';  // 用于实现动画效果
-import { Box, Typography, Container, Button } from '@mui/material';  // Material-UI组件
-import GitHubIcon from '@mui/icons-material/GitHub';  // GitHub图标
+// Home组件 - Terminal Aesthetics 个人主页
+import { motion } from 'framer-motion';
+import { Box, Typography } from '@mui/material';
+import GitHubIcon from '@mui/icons-material/GitHub';
 import { useState, useEffect } from 'react';
-import { getApiUrl, unwrapApiPayload } from '../config/api'; // 导入API配置
+import { getApiUrl, unwrapApiPayload } from '../config/api';
 
-// 导入子组件
+import {
+  PixelContainer,
+  PixelCard,
+  PixelButton,
+  PixelAvatar,
+  PixelTypography,
+  TerminalLine,
+} from './pixel';
 import LazyImage from './LazyImage';
 import LazyGitHubCalendar from './LazyGitHubCalendar';
 import SkillsSection from './SkillsSection';
 import ContactSection from './ContactSection';
+import { colors } from './pixel/tokens';
 
-/**
- * Home组件 - 个人主页首屏
- * 包含以下特点：
- * 1. 响应式设计：适配不同屏幕尺寸
- * 2. 动画效果：使用framer-motion实现淡入和缩放动画
- * 3. 玻璃态设计：使用glass-effect类实现磨砂玻璃效果
- * 4. 个人信息展示：头像、名称和个性签名
- */
 const Home = () => {
-  // 远程数据状态
   const [siteBlock, setSiteBlock] = useState(null);
   const [aboutBlock, setAboutBlock] = useState(null);
   const [skills, setSkills] = useState([]);
   const [contacts, setContacts] = useState([]);
   const [avatarUrl, setAvatarUrl] = useState('');
 
-  // 拉取首页介绍、技能、联系方式、头像
   const fetchSiteBlock = async () => {
     try {
       const res = await fetch(getApiUrl.siteBlocks());
@@ -36,7 +33,7 @@ const Home = () => {
       const blocks = unwrapApiPayload(data) || [];
       setSiteBlock(blocks.find(b => b.name === 'home'));
       setAboutBlock(blocks.find(b => b.name === 'about'));
-    } catch { /* 静默忽略错误 */ }
+    } catch { /* silent */ }
   };
 
   const fetchSkills = async () => {
@@ -44,7 +41,7 @@ const Home = () => {
       const res = await fetch(getApiUrl.skills());
       const data = await res.json();
       setSkills(unwrapApiPayload(data) || []);
-    } catch { /* 静默忽略错误 */ }
+    } catch { /* silent */ }
   };
 
   const fetchContacts = async () => {
@@ -52,7 +49,7 @@ const Home = () => {
       const res = await fetch(getApiUrl.contacts());
       const data = await res.json();
       setContacts(unwrapApiPayload(data) || []);
-    } catch { /* 静默忽略错误 */ }
+    } catch { /* silent */ }
   };
 
   const fetchAvatar = async () => {
@@ -74,188 +71,173 @@ const Home = () => {
     fetchAvatar();
   }, []);
 
-  useEffect(() => {
-    if (import.meta.env.DEV) {
-      console.log('aboutBlock:', aboutBlock);
-    }
-  }, [aboutBlock]);
-
   return (
-    <section className="section">
-      <Container>
+    <>
+      {/* Hero Section */}
+      <PixelContainer section>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
-          className="glass-effect"
-          style={{
-            padding: '2rem',
-            borderRadius: '1rem',
-            maxWidth: '800px',
-            margin: '0 auto',
-            marginBottom: '3rem',
-          }}
         >
-          {/* 首页介绍 */}
-          <div id="home">
-            {/* 头像动画 */}
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.3, duration: 0.5 }}
-            >
-              {avatarUrl ? (
-                <LazyImage
-                  src={avatarUrl}
-                  alt="HandyWote"
-                  fallbackSrc="/avatar.webp"
-                  sx={{
-                    width: { xs: 140, sm: 180 },
-                    height: { xs: 140, sm: 180 },
-                    borderRadius: '50%',
-                    mb: 2,
-                    border: '4px solid rgba(255, 255, 255, 0.2)',
-                    mx: 'auto',
-                    display: 'block'
-                  }}
-                />
-              ) : null}
-            </motion.div>
-            <Typography variant="h2" component="h1" sx={{ mb: 1, fontSize: { xs: '2rem', sm: '3rem' }, textAlign: 'center' }}>
-              {siteBlock?.title || 'HandyWote'}
-            </Typography>
-            <Typography
-              variant="h4"
-              sx={{ mb: 1, fontStyle: 'italic', color: 'text.secondary', fontSize: { xs: '1.5rem', sm: '2rem' }, textAlign: 'center' }}
-            >
-              {siteBlock?.subtitle || '少年侠气交结五都雄！'}
-            </Typography>
-            <Typography variant="h6" sx={{ mb: 2, fontSize: { xs: '1rem', sm: '1.25rem' }, textAlign: 'center' }}>
-              {siteBlock?.author || '汕头大学 | 黄应辉'}
-            </Typography>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.6 }}
-              style={{ textAlign: 'center' }}
-            >
-              <Button
-                variant="outlined"
-                size="large"
-                startIcon={<GitHubIcon />}
-                href={siteBlock?.github_url || 'https://github.com/HandyWote'}
-                target="_blank"
-                rel="noopener noreferrer"
+          {/* Terminal Header */}
+          <Box className="terminal-header" sx={{ mb: 3 }}>
+            ~/handywote
+          </Box>
+
+          {/* Hero Card */}
+          <PixelCard accentLine>
+            <Box sx={{ textAlign: 'center', py: 4 }}>
+              {/* Avatar */}
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.3, duration: 0.5 }}
+              >
+                {avatarUrl && (
+                  <LazyImage
+                    src={avatarUrl}
+                    alt="HandyWote"
+                    fallbackSrc="/avatar.webp"
+                    component={PixelAvatar}
+                    size="xlarge"
+                    sx={{ mb: 3, mx: 'auto' }}
+                  />
+                )}
+              </motion.div>
+
+              {/* Title with cursor blink */}
+              <Typography
+                variant="h1"
+                className="cursor-blink"
                 sx={{
-                  borderRadius: '2rem',
-                  px: { xs: 3, sm: 4 },
-                  py: { xs: 1.5, sm: 1 },
-                  minWidth: '48px',
-                  minHeight: '48px',
-                  borderColor: 'rgba(255, 255, 255, 0.3)',
-                  color: 'text.primary',
-                  '&:hover': {
-                    borderColor: 'primary.main',
-                    backgroundColor: 'rgba(255, 255, 255, 0.1)'
-                  }
+                  fontFamily: 'fontFamily.mono',
+                  fontSize: { xs: '2rem', sm: '3rem' },
+                  mb: 1,
                 }}
               >
-                GitHub
-              </Button>
-            </motion.div>
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.8, duration: 0.5 }}
-              style={{ marginTop: '2rem', textAlign: 'center' }}
-            >
-              <Box
-                className="glass-effect"
+                {siteBlock?.title || 'HandyWote'}
+              </Typography>
+
+              {/* Subtitle */}
+              <Typography
+                variant="h4"
                 sx={{
-                  p: { xs: 2, sm: 3 },
-                  borderRadius: '1rem',
-                  overflow: 'hidden',
-                  maxWidth: '100%',
-                  '& img': {
-                    width: '100%',
-                    height: 'auto',
-                    display: 'block'
-                  }
+                  fontStyle: 'italic',
+                  color: 'text.secondary',
+                  fontSize: { xs: '1.25rem', sm: '1.75rem' },
+                  mb: 2,
                 }}
               >
-                <Typography
-                  variant="h6"
-                  sx={{ mb: 2, fontSize: { xs: '1rem', sm: '1.25rem' }, color: 'text.secondary' }}
+                {siteBlock?.subtitle || '少年侠气交结五都雄！'}
+              </Typography>
+
+              {/* Author */}
+              <Typography
+                variant="body1"
+                sx={{
+                  color: 'text.secondary',
+                  fontFamily: 'fontFamily.mono',
+                  fontSize: { xs: '0.875rem', sm: '1rem' },
+                  mb: 4,
+                }}
+              >
+                {siteBlock?.author || '汕头大学 | 黄应辉'}
+              </Typography>
+
+              {/* CTA Buttons */}
+              <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', flexWrap: 'wrap' }}>
+                <PixelButton
+                  variant="primary"
+                  suffix="→"
+                  startIcon={<GitHubIcon />}
+                  component="a"
+                  href={siteBlock?.github_url || 'https://github.com/HandyWote'}
+                  target="_blank"
+                  rel="noopener noreferrer"
                 >
-                  GitHub 贡献日历
-                </Typography>
-                <LazyGitHubCalendar
-                  src={siteBlock?.github_calendar_url || "https://ghchart.rshah.org/HandyWote"}
-                  alt="GitHub Contributions"
-                />
+                  GitHub
+                </PixelButton>
+                <PixelButton
+                  variant="outline"
+                  suffix="→"
+                  component="a"
+                  href="#about"
+                >
+                  About Me
+                </PixelButton>
               </Box>
-            </motion.div>
-          </div>
 
-          {/* 关于我 */}
-          <div id="about" style={{ marginTop: '3rem' }}>
-            <Typography
-              variant="h3"
-              component="h2"
-              gutterBottom
-              sx={{ textAlign: 'center', mb: 3, fontSize: { xs: '2rem', sm: '3rem' } }}
-            >
-              关于我
-            </Typography>
-            <Box sx={{ mb: 3 }}>
-              <Typography variant="h5" gutterBottom sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
-                教育背景
-              </Typography>
-              <Typography
-                variant="body1"
-                paragraph
-                component="div"
-                sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
-                dangerouslySetInnerHTML={{ __html: aboutBlock?.content?.education_background || '<span style="color:#aaa">暂无内容</span>' }}
-              />
+              {/* GitHub Calendar */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.8, duration: 0.5 }}
+              >
+                <Box
+                  className="pixel-grid-bg"
+                  sx={{
+                    mt: 4,
+                    p: 3,
+                    border: '1px dashed',
+                    borderColor: 'divider',
+                  }}
+                >
+                  <PixelTypography muted sx={{ mb: 2, fontSize: '0.75rem' }}>
+                    // GitHub Contributions
+                  </PixelTypography>
+                  <LazyGitHubCalendar
+                    src={siteBlock?.github_calendar_url || "https://ghchart.rshah.org/HandyWote"}
+                    alt="GitHub Contributions"
+                  />
+                </Box>
+              </motion.div>
             </Box>
-            <Box sx={{ mb: 3 }}>
-              <Typography variant="h5" gutterBottom sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
-                兴趣爱好
-              </Typography>
-              <Typography
-                variant="body1"
-                paragraph
-                component="div"
-                sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
-                dangerouslySetInnerHTML={{ __html: aboutBlock?.content?.hobbies || '<span style="color:#aaa">暂无内容</span>' }}
-              />
-            </Box>
-            <Box>
-              <Typography variant="h5" gutterBottom sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
-                个人愿景
-              </Typography>
-              <Typography
-                variant="body1"
-                paragraph
-                component="div"
-                sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
-                dangerouslySetInnerHTML={{ __html: aboutBlock?.content?.personal_vision || '<span style="color:#aaa">暂无内容</span>' }}
-              />
-            </Box>
-          </div>
-
-          {/* 技能 */}
-          <SkillsSection skills={skills} />
-
-          {/* 联系方式 */}
-          <ContactSection 
-            contacts={contacts} 
-            contactDescription={siteBlock?.contact_description} 
-          />
+          </PixelCard>
         </motion.div>
-      </Container>
-    </section>
+      </PixelContainer>
+
+      {/* About Section */}
+      <PixelContainer section id="about">
+        <TerminalLine>cd ~/about</TerminalLine>
+
+        <PixelCard title="教育背景" accentLine sx={{ mt: 3 }}>
+          <Typography
+            variant="body2"
+            component="div"
+            sx={{ color: 'text.secondary' }}
+            dangerouslySetInnerHTML={{ __html: aboutBlock?.content?.education_background || '<span style="color:#484f58">暂无内容</span>' }}
+          />
+        </PixelCard>
+
+        <PixelCard title="兴趣爱好" accentLine sx={{ mt: 3 }}>
+          <Typography
+            variant="body2"
+            component="div"
+            sx={{ color: 'text.secondary' }}
+            dangerouslySetInnerHTML={{ __html: aboutBlock?.content?.hobbies || '<span style="color:#484f58">暂无内容</span>' }}
+          />
+        </PixelCard>
+
+        <PixelCard title="个人愿景" accentLine sx={{ mt: 3 }}>
+          <Typography
+            variant="body2"
+            component="div"
+            sx={{ color: 'text.secondary' }}
+            dangerouslySetInnerHTML={{ __html: aboutBlock?.content?.personal_vision || '<span style="color:#484f58">暂无内容</span>' }}
+          />
+        </PixelCard>
+      </PixelContainer>
+
+      {/* Skills Section */}
+      <SkillsSection skills={skills} />
+
+      {/* Contact Section */}
+      <ContactSection
+        contacts={contacts}
+        contactDescription={siteBlock?.contact_description}
+      />
+    </>
   );
 };
 

@@ -1,11 +1,13 @@
+// Login组件 - Terminal Aesthetics 风格
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { 
-  Box, Card, CardContent, TextField, Button, Typography, 
-  Alert, CircularProgress, Checkbox, FormControlLabel, Paper 
+import {
+  Box, TextField, Button, Typography,
+  Alert, CircularProgress, Checkbox, FormControlLabel
 } from '@mui/material';
 import { getAndClearRedirectPath } from '../utils/auth';
-import { getApiMessage, getApiUrl, unwrapApiPayload } from '../../config/api'; // 导入API配置
+import { getApiMessage, getApiUrl, unwrapApiPayload } from '../../config/api';
+import { PixelCard, PixelButton, PixelInput } from '../../components/pixel';
 
 const Login = () => {
   const [username, setUsername] = useState('');
@@ -13,15 +15,13 @@ const Login = () => {
   const [remember, setRemember] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  
+
   const location = useLocation();
   const navigate = useNavigate();
-  
-  // 显示来自路由状态的消息（如token过期提示）
+
   const stateMessage = location.state?.message;
 
   useEffect(() => {
-    // 如果已经有token，直接跳转
     const token = localStorage.getItem('token');
     if (token) {
       const redirectPath = getAndClearRedirectPath();
@@ -33,7 +33,7 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
     setError('');
-    
+
     try {
       const res = await fetch(getApiUrl.adminLogin(), {
         method: 'POST',
@@ -41,14 +41,12 @@ const Login = () => {
         body: JSON.stringify({ username, password, remember }),
         credentials: 'include'
       });
-      
+
       const data = await res.json();
       const payload = unwrapApiPayload(data);
-      
+
       if (res.ok && data.code === 0 && payload?.token) {
         localStorage.setItem('token', payload.token);
-        
-        // 登录成功后跳转到原本想访问的页面
         const redirectPath = getAndClearRedirectPath();
         navigate(redirectPath, { replace: true });
       } else {
@@ -62,7 +60,6 @@ const Login = () => {
   };
 
   return (
-    // 外层 Box 只负责背景和居中
     <Box
       sx={{
         minHeight: '100vh',
@@ -70,51 +67,118 @@ const Login = () => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)'
+        bgcolor: 'background.default',
+        p: 2,
       }}
     >
-      {/* 内容区 Paper 设置响应式宽度 */}
-      <Paper
-        elevation={3}
-        sx={{
-          p: 4,
-          width: { xs: '90vw', sm: 400, md: 480 },
-          maxWidth: 480
-        }}
-      >
-        <Typography variant="h5" align="center" gutterBottom>管理后台登录</Typography>
-        
-        {stateMessage && (
-          <Alert severity="warning" sx={{ mb: 2 }}>
-            {stateMessage}
-          </Alert>
-        )}
-        
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
-          </Alert>
-        )}
-        
-        <form onSubmit={handleLogin}>
+      <Box sx={{ width: { xs: '90vw', sm: 400, md: 480 }, maxWidth: 480 }}>
+        {/* Terminal Header */}
+        <Box className="terminal-header" sx={{ mb: 2 }}>
+          admin login
+        </Box>
+
+        <PixelCard title="Admin Login" accentLine>
+          {stateMessage && (
+            <Alert
+              severity="warning"
+              sx={{
+                mb: 2,
+                borderRadius: 0,
+                bgcolor: 'transparent',
+                color: '#d29922',
+                border: '1px solid #d29922',
+              }}
+            >
+              {stateMessage}
+            </Alert>
+          )}
+
+          {error && (
+            <Alert
+              severity="error"
+              sx={{
+                mb: 2,
+                borderRadius: 0,
+                bgcolor: 'transparent',
+                color: '#f85149',
+                border: '1px solid #f85149',
+              }}
+            >
+              {error}
+            </Alert>
+          )}
+
+          <form onSubmit={handleLogin}>
             <TextField
               fullWidth
-              label="用户名"
+              label="Username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               margin="normal"
               required
               disabled={loading}
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  fontFamily: "'JetBrains Mono', monospace",
+                  borderRadius: 0,
+                  bgcolor: '#21262d',
+                  '& fieldset': {
+                    borderStyle: 'dashed',
+                    borderColor: '#30363d',
+                  },
+                  '&:hover fieldset': {
+                    borderStyle: 'solid',
+                    borderColor: '#30363d',
+                  },
+                  '&.Mui-focused fieldset': {
+                    borderStyle: 'solid',
+                    borderColor: '#58a6ff',
+                  },
+                },
+                '& .MuiInputLabel-root': {
+                  fontFamily: "'JetBrains Mono', monospace",
+                  color: '#8b949e',
+                  '&.Mui-focused': {
+                    color: '#58a6ff',
+                  },
+                },
+              }}
             />
             <TextField
               fullWidth
-              label="密码"
+              label="Password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               margin="normal"
               required
               disabled={loading}
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  fontFamily: "'JetBrains Mono', monospace",
+                  borderRadius: 0,
+                  bgcolor: '#21262d',
+                  '& fieldset': {
+                    borderStyle: 'dashed',
+                    borderColor: '#30363d',
+                  },
+                  '&:hover fieldset': {
+                    borderStyle: 'solid',
+                    borderColor: '#30363d',
+                  },
+                  '&.Mui-focused fieldset': {
+                    borderStyle: 'solid',
+                    borderColor: '#58a6ff',
+                  },
+                },
+                '& .MuiInputLabel-root': {
+                  fontFamily: "'JetBrains Mono', monospace",
+                  color: '#8b949e',
+                  '&.Mui-focused': {
+                    color: '#58a6ff',
+                  },
+                },
+              }}
             />
             <FormControlLabel
               control={
@@ -122,25 +186,35 @@ const Login = () => {
                   checked={remember}
                   onChange={(e) => setRemember(e.target.checked)}
                   disabled={loading}
+                  sx={{
+                    color: '#8b949e',
+                    '&.Mui-checked': {
+                      color: '#58a6ff',
+                    },
+                  }}
                 />
               }
-              label="记住登录状态"
+              label={
+                <Typography sx={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.875rem', color: '#8b949e' }}>
+                  Remember me
+                </Typography>
+              }
               sx={{ mt: 1, mb: 2 }}
             />
-            <Button
+            <PixelButton
               type="submit"
               fullWidth
-              variant="contained"
-              size="large"
+              variant="primary"
               disabled={loading}
-              startIcon={loading ? <CircularProgress size={20} /> : null}
+              sx={{ height: 48 }}
             >
-              {loading ? '登录中...' : '登录'}
-            </Button>
-        </form>
-      </Paper>
+              {loading ? 'Logging in...' : 'Login'}
+            </PixelButton>
+          </form>
+        </PixelCard>
+      </Box>
     </Box>
   );
 };
 
-export default Login; 
+export default Login;

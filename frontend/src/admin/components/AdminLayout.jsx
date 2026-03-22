@@ -1,44 +1,42 @@
+// AdminLayout组件 - Terminal Aesthetics 风格
 import React, { useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { Box, AppBar, Toolbar, Typography, Tabs, Tab, Button, useMediaQuery, Divider } from '@mui/material';
+import { FileText, MessageSquare, User, Settings, Image, LayoutDashboard, LogOut } from 'lucide-react';
 import { verifyToken, clearAuth, saveRedirectPath } from '../utils/auth';
+import { colors, typography, spacing } from '../../components/pixel/tokens';
 
 const tabList = [
-  { label: '内容管理', path: '/admin/content' },
-  { label: '技能管理', path: '/admin/skills' },
-  { label: '联系方式', path: '/admin/contacts' },
-  { label: '头像管理', path: '/admin/avatars' },
-  { label: '文章管理', path: '/admin/articles' },
-  { label: '评论管理', path: '/admin/comments' },
-  { label: '数据管理', path: '/admin/data' }
+  { label: 'Dashboard', path: '/admin', icon: LayoutDashboard },
+  { label: 'Articles', path: '/admin/articles', icon: FileText },
+  { label: 'Comments', path: '/admin/comments', icon: MessageSquare },
+  { label: 'Contacts', path: '/admin/contacts', icon: User },
+  { label: 'Skills', path: '/admin/skills', icon: Settings },
+  { label: 'Avatars', path: '/admin/avatars', icon: Image },
+  { label: 'Content', path: '/admin/content', icon: FileText },
 ];
 
 const AdminLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const isMobile = useMediaQuery('(max-width:900px)');
-  const tabValue = tabList.findIndex(tab => location.pathname.startsWith(tab.path)) ?? 0;
+  const tabValue = tabList.findIndex(tab => location.pathname === tab.path) ?? 0;
 
-  // 定期验证token有效性
   useEffect(() => {
     const checkTokenPeriodically = async () => {
       const result = await verifyToken();
       if (!result.valid) {
         clearAuth();
         saveRedirectPath(location.pathname);
-        navigate('/admin/login', { 
+        navigate('/admin/login', {
           state: { message: '登录已过期，请重新登录' },
-          replace: true 
+          replace: true
         });
       }
     };
 
-    // 立即检查一次
     checkTokenPeriodically();
-
-    // 每5分钟检查一次token有效性
     const interval = setInterval(checkTokenPeriodically, 5 * 60 * 1000);
-
     return () => clearInterval(interval);
   }, [navigate, location.pathname]);
 
@@ -51,99 +49,143 @@ const AdminLayout = () => {
     navigate('/admin/login', { replace: true });
   };
 
-  const renderTabs = (orientation = 'vertical', extraSx = {}) => (
+  const renderTabs = (orientation = 'vertical') => (
     <Tabs
       orientation={orientation}
       value={tabValue === -1 ? 0 : tabValue}
       onChange={handleTabChange}
       variant="scrollable"
       allowScrollButtonsMobile
-      sx={extraSx}
       TabIndicatorProps={{
-        sx: orientation === 'vertical' ? { left: 0, width: 4, bgcolor: 'primary.main' } : { height: 3, borderRadius: 3 }
+        sx: orientation === 'vertical'
+          ? { left: 0, width: 3, bgcolor: 'primary.main' }
+          : { height: 3 }
       }}
     >
-      {tabList.map(tab => (
-        <Tab
-          key={tab.path}
-          label={tab.label}
-          sx={{
-            px: orientation === 'vertical' ? 3 : 2,
-            py: orientation === 'vertical' ? 2 : 1,
-            alignItems: orientation === 'vertical' ? 'flex-start' : 'center',
-            fontWeight: 500,
-            fontSize: 16,
-            color: '#333',
-            '&.Mui-selected': {
-              color: 'primary.main',
-              background: orientation === 'vertical' ? 'rgba(25,118,210,0.08)' : 'transparent'
-            }
-          }}
-        />
-      ))}
+      {tabList.map(tab => {
+        const Icon = tab.icon;
+        return (
+          <Tab
+            key={tab.path}
+            icon={<Icon size={18} />}
+            iconPosition="start"
+            label={tab.label}
+            sx={{
+              px: orientation === 'vertical' ? 3 : 2,
+              py: orientation === 'vertical' ? 2 : 1,
+              minHeight: 48,
+              fontFamily: typography.fontFamily.mono,
+              fontSize: typography.fontSize.sm,
+              color: colors.text.secondary,
+              '&.Mui-selected': {
+                color: colors.accent.blue,
+                bgcolor: colors.interactive.hover,
+              },
+              '&:hover': {
+                bgcolor: colors.interactive.hover,
+              },
+            }}
+          />
+        );
+      })}
     </Tabs>
   );
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: '#f5f7fa' }}>
-      <AppBar position="static" color="primary" sx={{ boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
-        <Toolbar>
-          <Typography variant="h6" sx={{ flexGrow: 1, letterSpacing: 2 }}>管理后台</Typography>
-          <Button color="inherit" onClick={handleLogout}>退出登录</Button>
+    <Box sx={{ minHeight: '100vh', bgcolor: colors.bg.primary }}>
+      {/* Header */}
+      <AppBar position="static">
+        <Toolbar
+          sx={{
+            minHeight: '56px !important',
+            borderBottom: `1px solid ${colors.border.default}`,
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box sx={{ color: colors.accent.blue }}>▌</Box>
+            <Typography
+              variant="h6"
+              sx={{
+                fontFamily: typography.fontFamily.mono,
+                fontWeight: 600,
+                letterSpacing: 1,
+              }}
+            >
+              Admin Panel
+            </Typography>
+          </Box>
+          <Box sx={{ flexGrow: 1 }} />
+          <Button
+            color="inherit"
+            onClick={handleLogout}
+            startIcon={<LogOut size={16} />}
+            sx={{
+              fontFamily: typography.fontFamily.mono,
+              fontSize: typography.fontSize.sm,
+              color: colors.text.secondary,
+              '&:hover': {
+                color: colors.accent.red,
+              },
+            }}
+          >
+            Logout
+          </Button>
         </Toolbar>
       </AppBar>
+
+      {/* Main Content */}
       <Box
         sx={{
           display: 'flex',
           flexDirection: { xs: 'column', md: 'row' },
-          minHeight: 'calc(100vh - 64px)',
-          width: '100%',
-          background: '#f5f7fa'
+          minHeight: `calc(100vh - 56px)`,
         }}
       >
+        {/* Sidebar */}
         {!isMobile && (
           <Box
             sx={{
               width: 220,
-              bgcolor: 'white',
-              borderRight: '1px solid #eee',
+              bgcolor: colors.bg.secondary,
+              borderRight: `1px solid ${colors.border.default}`,
               pt: 2,
-              boxShadow: '2px 0 8px rgba(0,0,0,0.03)',
-              minHeight: 'calc(100vh - 64px)'
+              minHeight: `calc(100vh - 56px)`,
             }}
           >
-            {renderTabs('vertical', { height: '100%' })}
+            {renderTabs('vertical')}
           </Box>
         )}
 
+        {/* Content */}
         <Box
           sx={{
             flex: 1,
             width: '100%',
-            minHeight: 'calc(100vh - 64px)',
-            background: '#f5f7fa',
-            overflowY: 'auto'
+            bgcolor: colors.bg.primary,
+            overflowY: 'auto',
           }}
         >
+          {/* Mobile Tabs */}
           {isMobile && (
-            <Box sx={{ bgcolor: 'white', borderBottom: '1px solid #eee' }}>
-              {renderTabs('horizontal', {
-                px: 2,
-                '& .MuiTabs-flexContainer': {
-                  gap: 0.5
-                }
-              })}
+            <Box
+              sx={{
+                bgcolor: colors.bg.secondary,
+                borderBottom: `1px solid ${colors.border.default}`,
+              }}
+            >
+              {renderTabs('horizontal')}
               <Divider />
             </Box>
           )}
 
+          {/* Page Content */}
           <Box
             sx={{
               width: '100%',
               maxWidth: '1200px',
               mx: 'auto',
               px: { xs: 2, sm: 4 },
-              py: { xs: 3, md: 4 }
+              py: { xs: 3, md: 4 },
             }}
           >
             <Outlet />
@@ -154,4 +196,4 @@ const AdminLayout = () => {
   );
 };
 
-export default AdminLayout; 
+export default AdminLayout;
