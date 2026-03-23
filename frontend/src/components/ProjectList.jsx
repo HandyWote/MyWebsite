@@ -8,36 +8,6 @@ import { getBlockContent, SITE_BLOCK_DEFAULTS } from '../config/siteBlocks';
 
 const MotionDiv = motion.div;
 
-const FALLBACK_PROJECTS = [
-  {
-    id: 1,
-    name: 'my-project',
-    description: 'A powerful CLI tool for automating development workflows',
-    tags: ['Go', 'CLI', 'DevOps'],
-    stars: 234,
-    forks: 45,
-    updatedAt: '2d ago',
-  },
-  {
-    id: 2,
-    name: 'dotfiles',
-    description: 'My personal dotfiles and development environment setup',
-    tags: ['Shell', 'Linux'],
-    stars: 89,
-    forks: 12,
-    updatedAt: '1w ago',
-  },
-  {
-    id: 3,
-    name: 'blog',
-    description: 'A minimalist blog built with React and Markdown',
-    tags: ['React', 'TypeScript'],
-    stars: 156,
-    forks: 23,
-    updatedAt: '3d ago',
-  },
-];
-
 const formatRelativeTime = (dateString) => {
   const date = new Date(dateString);
   const now = new Date();
@@ -51,7 +21,7 @@ const formatRelativeTime = (dateString) => {
 };
 
 function ProjectList() {
-  const [projects, setProjects] = useState(FALLBACK_PROJECTS);
+  const [projects, setProjects] = useState([]);
   const [pageConfig, setPageConfig] = useState(SITE_BLOCK_DEFAULTS.projects_page);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);

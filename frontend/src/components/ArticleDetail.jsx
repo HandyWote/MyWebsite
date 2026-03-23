@@ -209,73 +209,12 @@ const ArticleDetail = () => {
     };
   }, [article]);
 
-  // 演示文章详情数据 - 使用 useMemo 避免每次渲染重新创建
-  const DEMO_ARTICLES_DETAIL = useMemo(() => [
-    {
-      id: 1,
-      title: 'React 18 新特性详解',
-      summary: '深入探讨 React 18 带来的并发特性、自动批处理、Suspense 改进等新功能，以及如何在实际项目中应用这些特性。',
-      content: `# React 18 新特性详解
-
-React 18 带来了许多激动人心的新特性，让我们一起来深入了解这些改进。
-
-## 并发特性 (Concurrent Features)
-
-### 1. 自动批处理 (Automatic Batching)
-
-React 18 引入了自动批处理，这意味着所有的状态更新都会自动批处理，无需手动调用 \`ReactDOM.flushSync\`。
-
-\`\`\`javascript
-// React 18 之前
-setTimeout(() => {
-  setCount(c => c + 1); // 不会批处理
-  setFlag(f => !f);     // 不会批处理
-}, 1000);
-
-// React 18
-setTimeout(() => {
-  setCount(c => c + 1); // 会自动批处理
-  setFlag(f => !f);     // 会自动批处理
-}, 1000);
-\`\`\`
-
-### 2. Mermaid 流程图示例
-
-\`\`\`mermaid
-flowchart TD
-    A[React 18 新特性] --> B[并发特性]
-    A --> C[Suspense 改进]
-    A --> D[自动批处理]
-    B --> E[useTransition]
-    B --> F[useDeferredValue]
-    C --> G[服务端渲染支持]
-    D --> H[更好的性能]
-\`\`\`
-
-这个流程图展示了 React 18 的主要新特性之间的关系。`,
-      category: 'React',
-      tags: ['React', 'JavaScript', '前端开发'],
-      cover: null,
-      created_at: '2024-01-15T10:30:00',
-      updated_at: '2024-01-15T10:30:00',
-      views: 1250,
-      comments: [
-        {
-          id: 1,
-          author: '张三',
-          content: '很详细的文章，对理解 React 18 很有帮助！',
-          created_at: '2024-01-16T09:15:00'
-        }
-      ]
-    }
-  ], []);
-
   // 获取文章详情
   const fetchArticle = useCallback(async () => {
     try {
       setLoading(true);
       const response = await fetch(getApiUrl.articleDetail(id));
-      
+
       if (response.ok) {
         const data = await response.json();
         const rawArticle = unwrapApiPayload(data);
@@ -292,21 +231,12 @@ flowchart TD
         throw new Error('API 请求失败');
       }
     } catch {
-      console.log('后端服务不可用，切换到演示模式');
-      setDemoMode(true);
-      
-      // 从演示数据中查找对应 ID 的文章
-      const demoArticle = DEMO_ARTICLES_DETAIL.find(article => article.id === parseInt(id));
-      
-      if (demoArticle) {
-        setArticle(demoArticle);
-      } else {
-        setError('文章不存在或已被删除');
-      }
+      console.error('获取文章失败');
+      setError('文章不存在或已被删除');
     } finally {
       setLoading(false);
     }
-  }, [DEMO_ARTICLES_DETAIL, id]);
+  }, [id]);
 
   // 获取文章评论
   const fetchComments = useCallback(async () => {
