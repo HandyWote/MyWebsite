@@ -5,14 +5,10 @@ import { verifyToken, clearAuth, saveRedirectPath } from './utils/auth';
 
 import Login from './components/Login';
 import AdminLayout from './components/AdminLayout';
-import AboutManager from './components/AboutManager';
-import SkillsManager from './components/SkillsManager';
-import ContactsManager from './components/ContactsManager';
-import AvatarsManager from './components/AvatarsManager';
 import ArticlesManager from './components/ArticlesManager';
-
 import CommentsManager from './components/CommentsManager';
 import DataImportExport from './components/DataImportExport';
+import FrontendConfigManager from './components/FrontendConfigManager';
 
 // 增强的登录守卫组件
 function RequireAuth({ children }) {
@@ -87,11 +83,8 @@ export default function AdminRoutes() {
           <AdminLayout />
         </RequireAuth>
       }>
-        <Route index element={<AboutManager />} />
-        <Route path="content" element={<AboutManager />} />
-        <Route path="skills" element={<SkillsManager />} />
-        <Route path="contacts" element={<ContactsManager />} />
-        <Route path="avatars" element={<AvatarsManager />} />
+        <Route index element={<Navigate to="sidebar" replace />} />
+        <Route path="sidebar" element={<FrontendConfigManager />} />
         <Route path="articles" element={<ArticlesManager />} />
         <Route path="comments" element={<CommentsManager />} />
 
