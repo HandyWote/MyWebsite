@@ -43,9 +43,8 @@ func SetupRoutes(r *gin.Engine, cfg *config.Config) {
 
 		// Public data
 		api.GET("/site-blocks", GetSiteBlocks)
-		api.GET("/skills", GetSkills)
-		api.GET("/contacts", GetContacts)
 		api.GET("/avatars", GetAvatars)
+		api.GET("/avatars/file/:filename", GetAvatarFile)
 
 		// Auth
 		api.POST("/auth/login", Login)
@@ -65,18 +64,6 @@ func SetupRoutes(r *gin.Engine, cfg *config.Config) {
 		admin.POST("/site-blocks", AdminCreateSiteBlock)
 		admin.PUT("/site-blocks", AdminUpdateSiteBlocks) // 批量更新
 		admin.DELETE("/site-blocks/:id", AdminDeleteSiteBlock)
-
-		// Skills
-		admin.GET("/skills", AdminGetSkills)
-		admin.POST("/skills", AdminCreateSkill)
-		admin.PUT("/skills/:id", AdminUpdateSkill)
-		admin.DELETE("/skills/:id", AdminDeleteSkill)
-
-		// Contacts
-		admin.GET("/contacts", AdminGetContacts)
-		admin.POST("/contacts", AdminCreateContact)
-		admin.PUT("/contacts/:id", AdminUpdateContact)
-		admin.DELETE("/contacts/:id", AdminDeleteContact)
 
 		// Avatars
 		admin.GET("/avatars", AdminGetAvatars)

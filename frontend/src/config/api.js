@@ -87,8 +87,6 @@ export const API_ENDPOINTS = {
     LOGIN: '/api/admin/login',                 // 管理员登录
     LOGOUT: '/api/admin/logout',               // 管理员登出
     SITE_BLOCKS: '/api/admin/site-blocks',     // 管理网站内容块
-    SKILLS: '/api/admin/skills',               // 管理技能
-    CONTACTS: '/api/admin/contacts',           // 管理联系方式
     AVATARS: '/api/admin/avatars',             // 管理头像
     AVATAR_FILE: (filename) => `/api/admin/avatars/file/${filename}`, // 头像文件
     ARTICLES: '/api/admin/articles',           // 管理文章
@@ -186,8 +184,6 @@ export const getApiUrl = {
   adminLogout: () => buildApiUrl(API_ENDPOINTS.ADMIN.LOGOUT),                 // 管理员登出
   adminVerify: () => buildApiUrl('/api/admin/verify'),                      // 管理员验证token
   adminSiteBlocks: () => buildApiUrl(API_ENDPOINTS.ADMIN.SITE_BLOCKS),       // 管理网站内容块
-  adminSkills: () => buildApiUrl(API_ENDPOINTS.ADMIN.SKILLS),                 // 管理技能
-  adminContacts: () => buildApiUrl(API_ENDPOINTS.ADMIN.CONTACTS),             // 管理联系方式
   adminAvatars: () => buildApiUrl(API_ENDPOINTS.ADMIN.AVATARS),               // 管理头像
   adminAvatarFile: (filename) => buildApiUrl(API_ENDPOINTS.ADMIN.AVATAR_FILE(filename)), // 头像文件
   adminArticles: () => buildApiUrl(API_ENDPOINTS.ADMIN.ARTICLES),             // 管理文章
