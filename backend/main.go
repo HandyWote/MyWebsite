@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/handywote/website/config"
 	"github.com/handywote/website/database"
+	"github.com/handywote/website/migrations"
 	"github.com/handywote/website/models"
 	"github.com/handywote/website/routes"
 )
@@ -30,6 +31,11 @@ func main() {
 		&models.SiteBlock{},
 		&models.AISetting{},
 	)
+
+	// Run smart column migrations (only add missing columns)
+	if err := migrations.RunMigrations(database.GetDB()); err != nil {
+		log.Fatalf("Migration failed: %v", err)
+	}
 
 	// Seed initial data
 	seedData()

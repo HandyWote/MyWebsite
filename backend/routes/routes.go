@@ -70,8 +70,6 @@ func SetupRoutes(r *gin.Engine, cfg *config.Config) {
 		admin.POST("/avatars", AdminCreateAvatar)
 		admin.PUT("/avatars/:id/set_current", AdminUpdateAvatar)
 		admin.DELETE("/avatars/:id", AdminDeleteAvatar)
-		admin.GET("/avatars/file/:filename", GetAvatarFile)
-
 		// Articles
 		admin.GET("/articles", AdminGetArticles)
 		admin.GET("/articles/:id", AdminGetArticle)
