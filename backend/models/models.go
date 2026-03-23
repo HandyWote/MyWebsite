@@ -71,7 +71,7 @@ type Avatar struct {
 	ID          uint           `gorm:"primaryKey" json:"id"`
 	Filename    string         `gorm:"size:256;not null" json:"filename"`
 	IsCurrent   bool           `gorm:"default:false" json:"is_current"`
-	CroppedInfo string         `gorm:"type:jsonb" json:"cropped_info"`
+	CroppedInfo *string        `gorm:"type:jsonb" json:"cropped_info"`
 	UploadedAt  time.Time      `json:"uploaded_at"`
 	DeletedAt   gorm.DeletedAt `gorm:"index" json:"deleted_at"`
 }
