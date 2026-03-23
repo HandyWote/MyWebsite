@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Box, Button, Avatar, Paper, IconButton, Stack, Snackbar, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions, Typography } from '@mui/material';
+import { Box, Button, Avatar, Paper, IconButton, Stack, Snackbar, Tooltip, Typography } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
@@ -9,7 +9,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { getApiUrl } from '../../config/api';
 import { clearAuth } from '../utils/auth';
 
-function SortableAvatarCard({ avatar, index, onDelete, ...props }) {
+function SortableAvatarCard({ avatar, index, onDelete, onSetCurrent, ...props }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: avatar.id });
 
   const handleDeleteClick = (e) => {
@@ -40,6 +40,7 @@ function SortableAvatarCard({ avatar, index, onDelete, ...props }) {
           <IconButton
             color="error"
             size="small"
+            aria-label="删除头像"
             onClick={handleDeleteClick}
             sx={{
               '&:hover': {
@@ -77,6 +78,13 @@ function SortableAvatarCard({ avatar, index, onDelete, ...props }) {
           {avatar.uploaded_at ? new Date(avatar.uploaded_at).toLocaleString() : ''}
         </Box>
       </Box>
+      <Button
+        size="small"
+        variant={index === 0 ? 'contained' : 'outlined'}
+        onClick={() => onSetCurrent(avatar.id)}
+      >
+        设为当前头像
+      </Button>
     </div>
   );
 }
@@ -87,8 +95,6 @@ const AvatarsManager = () => {
   const [loading, setLoading] = useState(true);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMsg, setSnackbarMsg] = useState('');
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [avatarToDelete, setAvatarToDelete] = useState(null);
   const sensors = useSensors(useSensor(PointerSensor));
 
   // 拉取头像数据
@@ -134,6 +140,9 @@ const AvatarsManager = () => {
   // 拖拽排序
   const handleDragEnd = async (event) => {
     const { active, over } = event;
+    if (!over || active.id === over.id) {
+      return;
+    }
     if (active.id !== over.id) {
       const oldIndex = avatars.findIndex(a => a.id === active.id);
       const newIndex = avatars.findIndex(a => a.id === over.id);
@@ -141,46 +150,36 @@ const AvatarsManager = () => {
       setAvatars(newAvatars);
       
       // 设第一个为当前头像
-      const token = localStorage.getItem('token');
       if (newAvatars.length > 0) {
-        try {
-          const res = await fetch(`${getApiUrl.adminAvatars()}/${newAvatars[0].id}/set_current`, {
-            method: 'PUT',
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
-          
-          if (res.ok) {
-            setSnackbarMsg('已设为当前头像');
-            setSnackbarOpen(true);
-          } else {
-            throw new Error('设置当前头像失败');
-          }
-        } catch (error) {
-          setSnackbarMsg('设置当前头像失败: ' + error.message);
-          setSnackbarOpen(true);
-          fetchAvatars(); // 恢复原始状态
-        }
+        await handleSetCurrent(newAvatars[0].id);
       }
     }
   };
 
-  // 删除头像确认
-  const confirmDelete = (avatarId) => {
-    setAvatarToDelete(avatarId);
-    setDeleteDialogOpen(true);
+  const handleSetCurrent = async (avatarId) => {
+    const token = localStorage.getItem('token');
+    try {
+      const res = await fetch(`${getApiUrl.adminAvatars()}/${avatarId}/set_current`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) {
+        throw new Error('设置当前头像失败');
+      }
+      setSnackbarMsg('已设为当前头像');
+      setSnackbarOpen(true);
+      fetchAvatars();
+    } catch (error) {
+      setSnackbarMsg('设置当前头像失败: ' + error.message);
+      setSnackbarOpen(true);
+    }
   };
 
   // 删除头像
-  const handleDelete = async () => {
-    setDeleteDialogOpen(false);
-
-    if (!avatarToDelete) {
-      return;
-    }
-
+  const handleDelete = async (avatarId) => {
     try {
       const token = localStorage.getItem('token');
-              const res = await fetch(`${getApiUrl.adminAvatars()}/${avatarToDelete}`, {
+      const res = await fetch(`${getApiUrl.adminAvatars()}/${avatarId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -199,8 +198,6 @@ const AvatarsManager = () => {
     } catch (error) {
       setSnackbarMsg('删除失败: ' + error.message);
       setSnackbarOpen(true);
-    } finally {
-      setAvatarToDelete(null);
     }
   };
 
@@ -257,7 +254,8 @@ const AvatarsManager = () => {
                     key={avatar.id}
                     avatar={avatar}
                     index={index}
-                    onDelete={confirmDelete}
+                    onDelete={handleDelete}
+                    onSetCurrent={handleSetCurrent}
                   />
                 ))
               )}
@@ -265,42 +263,6 @@ const AvatarsManager = () => {
           </SortableContext>
         </DndContext>
       </Paper>
-      
-      {/* 删除确认对话框 */}
-      <Dialog
-        open={deleteDialogOpen}
-        onClose={() => {
-          setDeleteDialogOpen(false);
-          setAvatarToDelete(null);
-        }}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle>确认删除头像</DialogTitle>
-        <DialogContent>
-          <Typography>
-            确定要删除这个头像吗？此操作不可撤销。
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button
-            onClick={() => {
-              setDeleteDialogOpen(false);
-              setAvatarToDelete(null);
-            }}
-          >
-            取消
-          </Button>
-          <Button
-            onClick={handleDelete}
-            color="error"
-            variant="contained"
-          >
-            确认删除
-          </Button>
-        </DialogActions>
-      </Dialog>
-      
       <Snackbar
         open={snackbarOpen}
         autoHideDuration={1500}

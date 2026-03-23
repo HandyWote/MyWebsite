@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Box, Button, Paper, Stack, TextField, Typography } from '@mui/material';
 import { getApiUrl, unwrapApiPayload } from '../../config/api';
 import { getBlockContent, SITE_BLOCK_DEFAULTS } from '../../config/siteBlocks';
+import AvatarsManager from './AvatarsManager';
 
 const HOME_FIELD_KEYS = ['title', 'subtitle', 'github_calendar_url'];
 
@@ -173,9 +174,7 @@ export default function FrontendConfigManager() {
       <Stack spacing={2}>
         <Paper sx={{ p: 2 }}>
           <Typography variant="subtitle1" sx={{ mb: 1 }}>头像管理</Typography>
-          <Typography variant="body2" color="text.secondary">
-            下一步将在此区块内统一完成头像上传、删除与设为当前头像操作。
-          </Typography>
+          <AvatarsManager />
         </Paper>
 
         <Paper sx={{ p: 2 }}>
