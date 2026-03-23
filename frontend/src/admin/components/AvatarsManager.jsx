@@ -25,7 +25,7 @@ function SortableAvatarCard({ avatar, index, onDelete, onSetCurrent, ...props })
     onDelete(avatar.id);
   };
 
-  const isCurrent = index === 0;
+  const isCurrent = Boolean(avatar.is_current);
 
   return (
     <Card ref={setNodeRef} sx={{

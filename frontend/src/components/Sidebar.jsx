@@ -25,6 +25,29 @@ const itemVariants = {
   visible: { opacity: 1, x: 0 }
 };
 
+function normalizeGitHubUsername(value) {
+  if (typeof value !== 'string') {
+    return 'HandyWote';
+  }
+
+  const input = value.trim();
+  if (!input) {
+    return 'HandyWote';
+  }
+
+  let source = input;
+  try {
+    const parsed = new URL(input);
+    source = parsed.pathname;
+  } catch {
+    // keep original input when it is already a username
+  }
+
+  const withoutQuery = source.split('?')[0].split('#')[0];
+  const segments = withoutQuery.split('/').filter(Boolean);
+  return segments[segments.length - 1] || input;
+}
+
 function Sidebar() {
   const [siteBlock, setSiteBlock] = useState(null);
   const [avatarUrl, setAvatarUrl] = useState('/avatar.webp');
@@ -137,7 +160,7 @@ function Sidebar() {
 
         {/* GitHub Activity 区域 */}
         <MotionDiv variants={itemVariants}>
-          <GitHubActivity username={siteBlock?.github_calendar_url || 'HandyWote'} />
+          <GitHubActivity username={normalizeGitHubUsername(siteBlock?.github_calendar_url)} />
         </MotionDiv>
       </MotionDiv>
     </PixelContainer>

@@ -11,6 +11,7 @@ import (
 	"github.com/handywote/website/database"
 	"github.com/handywote/website/models"
 	"github.com/handywote/website/utils"
+	"gorm.io/gorm"
 )
 
 func buildUploadedAvatar(filename string) models.Avatar {
@@ -18,6 +19,14 @@ func buildUploadedAvatar(filename string) models.Avatar {
 		Filename:  filename,
 		IsCurrent: true,
 	}
+}
+
+func createThenClearCurrent(create func() error, clear func() error) error {
+	if err := create(); err != nil {
+		return err
+	}
+
+	return clear()
 }
 
 // GetSiteBlocks 获取内容块
@@ -165,12 +174,20 @@ func UploadAvatar(c *gin.Context) {
 		return
 	}
 
-	// 上传新头像后自动设置为当前头像
-	database.GetDB().Model(&models.Avatar{}).Where("is_current = ?", true).Update("is_current", false)
-
 	avatar := buildUploadedAvatar(filename)
 
-	if err := database.GetDB().Create(&avatar).Error; err != nil {
+	if err := database.GetDB().Transaction(func(tx *gorm.DB) error {
+		return createThenClearCurrent(
+			func() error {
+				return tx.Create(&avatar).Error
+			},
+			func() error {
+				return tx.Model(&models.Avatar{}).
+					Where("id <> ? AND is_current = ?", avatar.ID, true).
+					Update("is_current", false).Error
+			},
+		)
+	}); err != nil {
 		utils.ErrorInternal(c, "Failed to create avatar record")
 		return
 	}

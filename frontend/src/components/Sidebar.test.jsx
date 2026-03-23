@@ -78,6 +78,24 @@ describe('Sidebar', () => {
     });
   });
 
+  it('extracts GitHub username when github_calendar_url is a full URL', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      json: async () => ({
+        data: [{ name: 'home', title: 'Loaded Title', github_calendar_url: 'https://ghchart.rshah.org/HandyWote' }],
+      }),
+    });
+
+    render(<Sidebar />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Loaded Title')).toBeInTheDocument();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('github-activity')).toHaveAttribute('data-username', 'HandyWote');
+    });
+  });
+
   it('passes sidebar configured lists to child sections', async () => {
     globalThis.fetch = vi.fn(async (input) => {
       const url = String(input);

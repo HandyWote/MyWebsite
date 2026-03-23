@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/handywote/website/models"
@@ -26,5 +27,51 @@ func TestBuildUploadedAvatarDefaultsToCurrent(t *testing.T) {
 
 	if !avatar.IsCurrent {
 		t.Fatal("expected uploaded avatar to be current by default")
+	}
+}
+
+func TestCreateThenClearCurrent_DoesNotClearWhenCreateFails(t *testing.T) {
+	createErr := errors.New("create failed")
+	clearCalled := false
+
+	err := createThenClearCurrent(
+		func() error { return createErr },
+		func() error {
+			clearCalled = true
+			return nil
+		},
+	)
+
+	if !errors.Is(err, createErr) {
+		t.Fatalf("expected create error, got %v", err)
+	}
+
+	if clearCalled {
+		t.Fatal("clear should not be called when create fails")
+	}
+}
+
+func TestCreateThenClearCurrent_PropagatesClearErrorAfterCreateSuccess(t *testing.T) {
+	clearErr := errors.New("clear failed")
+	createCalled := false
+	clearCalled := false
+
+	err := createThenClearCurrent(
+		func() error {
+			createCalled = true
+			return nil
+		},
+		func() error {
+			clearCalled = true
+			return clearErr
+		},
+	)
+
+	if !createCalled || !clearCalled {
+		t.Fatal("expected both create and clear to be called")
+	}
+
+	if !errors.Is(err, clearErr) {
+		t.Fatalf("expected clear error, got %v", err)
 	}
 }
