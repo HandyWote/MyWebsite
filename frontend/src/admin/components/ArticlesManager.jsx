@@ -75,9 +75,13 @@ const ArticlesManager = () => {
     const query = { ...articleQueryRef.current, ...params };
     setLoading(true);
     const token = localStorage.getItem('token');
+    console.log('[DEBUG] Token:', token);
+    console.log('[DEBUG] Request URL:', `${getApiUrl.adminArticles()}?page=${query.page}&per_page=${query.perPage}&search=${query.search}`);
     const res = await fetch(`${getApiUrl.adminArticles()}?page=${query.page}&per_page=${query.perPage}&search=${query.search}`,
       { headers: { 'Authorization': `Bearer ${token}` } });
     if (!res.ok) {
+      console.error('[DEBUG] Response status:', res.status);
+      console.error('[DEBUG] Response statusText:', res.statusText);
       if (res.status === 401) {
         clearAuth();
         navigate('/admin/login', { state: { message: '登录已过期，请重新登录' } });

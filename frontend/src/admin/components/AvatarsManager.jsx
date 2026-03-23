@@ -121,7 +121,7 @@ const AvatarsManager = () => {
       }
       // 兼容 data.data 和 data.avatars
       const arr = (data.data || data.avatars || []).map(a => {
-        const url = a.filename ? getApiUrl.adminAvatarFile(a.filename) : undefined;
+        const url = a.filename ? getApiUrl.avatarFile(a.filename) : undefined;
         return { ...a, url };
       });
       setAvatars(arr);
