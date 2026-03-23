@@ -159,7 +159,7 @@ describe('Admin pages without sockets', () => {
     render(<FrontendConfigManager />);
 
     await waitFor(() => {
-      expect(screen.getByText('首页配置')).toBeTruthy();
+      expect(screen.getByText('左侧内容栏管理')).toBeTruthy();
     });
 
     fireEvent.change(screen.getAllByRole('textbox')[0], {
@@ -176,7 +176,7 @@ describe('Admin pages without sockets', () => {
     expect(homeBlock.content.title).toBe('新的标题');
   });
 
-  it('persists edited about fields and sidebar social/education/tech rows', async () => {
+  it('persists edited sidebar social/education/tech rows', async () => {
     let putBody = null;
     globalThis.fetch = vi.fn(async (input, init = {}) => {
       const url = String(input);
@@ -192,11 +192,7 @@ describe('Admin pages without sockets', () => {
     render(<FrontendConfigManager />);
 
     await waitFor(() => {
-      expect(screen.getByText('关于页配置')).toBeTruthy();
-    });
-
-    fireEvent.change(screen.getByTestId('field-about-education'), {
-      target: { value: '新的教育背景' },
+      expect(screen.getByText('左侧内容栏管理')).toBeTruthy();
     });
     fireEvent.click(screen.getByTestId('add-sidebar-social-link'));
     fireEvent.change(screen.getByTestId('field-sidebar-social-label-0'), {
@@ -226,9 +222,7 @@ describe('Admin pages without sockets', () => {
     });
 
     const parsed = JSON.parse(putBody);
-    const aboutBlock = parsed.blocks.find((item) => item.name === 'about');
     const sidebarBlock = parsed.blocks.find((item) => item.name === 'sidebar');
-    expect(aboutBlock.content.education_background).toBe('新的教育背景');
     expect(sidebarBlock.content.social_links[0].label).toBe('Blog');
     expect(sidebarBlock.content.social_links[0].href).toBe('https://example.com');
     expect(sidebarBlock.content.education[0].school).toBe('Shantou University');

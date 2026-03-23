@@ -7,11 +7,6 @@ export const SITE_BLOCK_DEFAULTS = {
     github_calendar_url: 'https://ghchart.rshah.org/HandyWote',
     contact_description: '',
   },
-  about: {
-    education_background: '',
-    hobbies: '',
-    personal_vision: '',
-  },
   sidebar: {
     social_links: [],
     education: [],

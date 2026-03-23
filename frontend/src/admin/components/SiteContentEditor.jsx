@@ -127,27 +127,6 @@ const SiteContentEditor = () => {
         </Button>
       </Paper>
       
-      <Paper sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h6">关于我</Typography>
-        <TextField 
-          fullWidth 
-          multiline 
-          minRows={4} 
-          sx={{ my: 2 }} 
-          label="关于我内容"
-          value={siteBlocks.about?.desc || ''}
-          onChange={(e) => handleContentChange('about', { ...siteBlocks.about, desc: e.target.value })}
-        />
-        <Button 
-          variant="contained" 
-          onClick={() => handleSave('about')}
-          disabled={saving}
-          startIcon={saving ? <CircularProgress size={16} /> : null}
-        >
-          {saving ? '保存中...' : '保存'}
-        </Button>
-      </Paper>
-
       <Snackbar
         open={snackbar.open}
         autoHideDuration={3000}
