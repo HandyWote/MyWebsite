@@ -1,7 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Box, Button, Avatar, Paper, IconButton, Stack, Snackbar, Tooltip, Typography } from '@mui/material';
-import DeleteIcon from '@mui/icons-material/Delete';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import CardActions from '@mui/material/CardActions';
+import Menu from '@mui/material/Menu';
+import MenuItem from '@mui/material/MenuItem';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
 import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -11,81 +16,75 @@ import { clearAuth } from '../utils/auth';
 
 function SortableAvatarCard({ avatar, index, onDelete, onSetCurrent, ...props }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: avatar.id });
+  const [anchorEl, setAnchorEl] = useState(null);
 
-  const handleDeleteClick = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const handleMenuOpen = (e) => setAnchorEl(e.currentTarget);
+  const handleMenuClose = () => setAnchorEl(null);
+  const handleDelete = () => {
+    handleMenuClose();
     onDelete(avatar.id);
   };
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.7 : 1,
-    marginBottom: 24,
-    background: '#fff',
-    borderRadius: 12,
-    boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-    display: 'flex',
-    alignItems: 'center',
-    padding: 16,
-    gap: 16
-  };
+  const isCurrent = index === 0;
 
   return (
-    <div ref={setNodeRef} style={style} {...props}>
-      {/* 删除按钮区域 - 在左边 */}
-      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        <Tooltip title="删除头像">
-          <IconButton
-            color="error"
-            size="small"
-            aria-label="删除头像"
-            onClick={handleDeleteClick}
-            sx={{
-              '&:hover': {
-                backgroundColor: 'error.light',
-                color: 'white'
-              }
-            }}
-          >
-            <DeleteIcon />
-          </IconButton>
-        </Tooltip>
-      </Box>
+    <Card ref={setNodeRef} sx={{
+      transform: CSS.Transform.toString(transform),
+      transition,
+      opacity: isDragging ? 0.7 : 1,
+      mb: 2,
+      border: '1px dashed #30363d',
+      '&:hover': {
+        border: '1px solid #58a6ff',
+        borderStyle: 'solid',
+      },
+    }} {...props}>
+      <CardContent sx={{ pb: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          {/* 拖拽区域 + 头像 */}
+          <Box {...attributes} {...listeners} sx={{ cursor: 'grab', '&:active': { cursor: 'grabbing' } }}>
+            <Avatar
+              src={avatar.url || undefined}
+              sx={{ width: 64, height: 64, border: isCurrent ? '3px solid #58a6ff' : 'none' }}
+            />
+          </Box>
 
-      {/* 拖拽区域 */}
-      <Box
-        {...attributes}
-        {...listeners}
-        sx={{
-          cursor: 'grab',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          flex: 1,
-          '&:active': {
-            cursor: 'grabbing'
-          }
-        }}
-        title="拖拽排序"
-      >
-        <Avatar src={avatar.url || undefined} sx={{ width: 64, height: 64, border: index === 0 ? '3px solid #1AAD19' : 'none', mb: 1 }} />
-        <Box sx={{ color: index === 0 ? '#1AAD19' : 'text.secondary', fontWeight: index === 0 ? 700 : 400, mb: 0.5 }}>
-          {index === 0 ? '当前头像' : `头像${index + 1}`}
+          {/* 信息区 */}
+          <Box sx={{ flex: 1 }}>
+            <Typography sx={{ fontWeight: isCurrent ? 700 : 400, color: isCurrent ? '#58a6ff' : 'text.secondary' }}>
+              {isCurrent ? '当前头像' : `头像 ${index + 1}`}
+            </Typography>
+            <Typography variant="caption" color="text.disabled">
+              {avatar.uploaded_at ? new Date(avatar.uploaded_at).toLocaleString() : ''}
+            </Typography>
+          </Box>
+
+          {/* 菜单按钮 */}
+          <IconButton size="small" onClick={handleMenuOpen}>
+            <MoreVertIcon />
+          </IconButton>
+          <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}>
+            <MenuItem onClick={handleDelete} sx={{ color: 'error.main' }}>
+              删除头像
+            </MenuItem>
+          </Menu>
         </Box>
-        <Box sx={{ fontSize: 12, color: 'text.disabled', mb: 1 }}>
-          {avatar.uploaded_at ? new Date(avatar.uploaded_at).toLocaleString() : ''}
-        </Box>
-      </Box>
-      <Button
-        size="small"
-        variant={index === 0 ? 'contained' : 'outlined'}
-        onClick={() => onSetCurrent(avatar.id)}
-      >
-        设为当前头像
-      </Button>
-    </div>
+      </CardContent>
+
+      <CardActions sx={{ px: 2, py: 1, bgcolor: 'action.hover', justifyContent: 'space-between' }}>
+        <Typography variant="caption" color="text.secondary">
+          ID: {avatar.id}
+        </Typography>
+        <Button
+          size="small"
+          variant={isCurrent ? 'contained' : 'outlined'}
+          disabled={isCurrent}
+          onClick={() => onSetCurrent(avatar.id)}
+        >
+          {isCurrent ? '当前头像' : '设为当前头像'}
+        </Button>
+      </CardActions>
+    </Card>
   );
 }
 

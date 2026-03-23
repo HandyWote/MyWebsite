@@ -7,7 +7,7 @@ import { verifyToken, clearAuth, saveRedirectPath } from '../utils/auth';
 import { colors, typography, spacing } from '../../components/pixel/tokens';
 
 const tabList = [
-  { label: '左侧内容栏', path: '/admin/sidebar', icon: Settings },
+  { label: 'Sidebar', path: '/admin/sidebar', icon: Settings },
   { label: 'Articles', path: '/admin/articles', icon: FileText },
   { label: 'Comments', path: '/admin/comments', icon: MessageSquare },
 ];
