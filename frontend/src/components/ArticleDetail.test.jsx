@@ -3,7 +3,10 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import ArticleDetail from './ArticleDetail';
 
 vi.mock('react-router-dom', () => ({
-  useParams: () => ({ id: '42' })
+  useParams: () => ({ id: '42' }),
+  Link: ({ children, to, ...props }) => (
+    <a href={typeof to === 'string' ? to : '#'} {...props}>{children}</a>
+  ),
 }));
 
 vi.mock('./PdfViewerOnCanvas', () => ({

@@ -13,6 +13,13 @@ import (
 	"github.com/handywote/website/utils"
 )
 
+func buildUploadedAvatar(filename string) models.Avatar {
+	return models.Avatar{
+		Filename:  filename,
+		IsCurrent: true,
+	}
+}
+
 // GetSiteBlocks 获取内容块
 func GetSiteBlocks(c *gin.Context) {
 	var blocks []models.SiteBlock
@@ -39,6 +46,9 @@ func buildPublicSiteBlockPayload(block models.SiteBlock) map[string]interface{} 
 	if block.Content != "" && json.Unmarshal([]byte(block.Content), &contentObj) == nil {
 		payload["content"] = contentObj
 		for k, v := range contentObj {
+			if k == "id" || k == "name" || k == "content" {
+				continue
+			}
 			// 兼容前端历史读取方式：siteBlock.title / siteBlock.subtitle
 			payload[k] = v
 		}
@@ -155,10 +165,10 @@ func UploadAvatar(c *gin.Context) {
 		return
 	}
 
-	avatar := models.Avatar{
-		Filename:  filename,
-		IsCurrent: false,
-	}
+	// 上传新头像后自动设置为当前头像
+	database.GetDB().Model(&models.Avatar{}).Where("is_current = ?", true).Update("is_current", false)
+
+	avatar := buildUploadedAvatar(filename)
 
 	if err := database.GetDB().Create(&avatar).Error; err != nil {
 		utils.ErrorInternal(c, "Failed to create avatar record")

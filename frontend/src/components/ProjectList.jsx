@@ -3,6 +3,8 @@ import { Box, Typography } from '@mui/material';
 import { motion } from 'framer-motion';
 import PixelCard from './pixel/ui/PixelCard';
 import PixelChip from './pixel/ui/PixelChip';
+import { getApiUrl, unwrapApiPayload } from '../config/api';
+import { getBlockContent, SITE_BLOCK_DEFAULTS } from '../config/siteBlocks';
 
 const MotionDiv = motion.div;
 
@@ -50,19 +52,29 @@ const formatRelativeTime = (dateString) => {
 
 function ProjectList() {
   const [projects, setProjects] = useState(FALLBACK_PROJECTS);
+  const [pageConfig, setPageConfig] = useState(SITE_BLOCK_DEFAULTS.projects_page);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const fetchProjects = async () => {
+    let activeConfig = SITE_BLOCK_DEFAULTS.projects_page;
     try {
-      const perPage = 100;
+      const blockRes = await fetch(getApiUrl.siteBlocks());
+      const blockData = await blockRes.json();
+      const blocks = unwrapApiPayload(blockData) || [];
+      activeConfig = getBlockContent(blocks, 'projects_page');
+      setPageConfig(activeConfig);
+
+      const perPage = Number(activeConfig.per_page) || SITE_BLOCK_DEFAULTS.projects_page.per_page;
+      const sort = activeConfig.sort || SITE_BLOCK_DEFAULTS.projects_page.sort;
+      const username = activeConfig.github_username || SITE_BLOCK_DEFAULTS.projects_page.github_username;
       let page = 1;
       let allRepos = [];
 
       // GitHub REST API 单页最多 100 条，这里循环拉取直到最后一页
       while (true) {
         const response = await fetch(
-          `https://api.github.com/users/HandyWote/repos?sort=updated&per_page=${perPage}&page=${page}`,
+          `https://api.github.com/users/${username}/repos?sort=${sort}&per_page=${perPage}&page=${page}`,
           {
             headers: {
               'Accept': 'application/vnd.github.v3+json',
@@ -101,7 +113,7 @@ function ProjectList() {
       setError(null);
     } catch (err) {
       console.error('Failed to fetch projects:', err);
-      setError(err.message);
+      setError(activeConfig.error_text || err.message);
     } finally {
       setLoading(false);
     }
@@ -137,6 +149,17 @@ function ProjectList() {
             sx={{ fontFamily: 'JetBrains Mono, monospace', color: 'accent.red', fontSize: '0.875rem' }}
           >
             error: {error}
+          </Typography>
+        </Box>
+      )}
+
+      {!loading && !error && projects.length === 0 && (
+        <Box sx={{ mb: 2 }}>
+          <Typography
+            component="div"
+            sx={{ fontFamily: 'JetBrains Mono, monospace', color: 'text.secondary', fontSize: '0.875rem' }}
+          >
+            {pageConfig.empty_text || SITE_BLOCK_DEFAULTS.projects_page.empty_text}
           </Typography>
         </Box>
       )}

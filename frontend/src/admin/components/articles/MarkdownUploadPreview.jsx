@@ -1,11 +1,8 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { Box, Button, Chip, Stack, Typography, Paper, Alert } from '@mui/material';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import remarkMath from 'remark-math';
-import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
+import ArticleMarkdownContent from '../../../components/articles/ArticleMarkdownContent';
 
 class MarkdownPreviewBoundary extends React.Component {
   constructor(props) {
@@ -141,37 +138,6 @@ const MarkdownUploadPreview = ({
             </Typography>
           )}
         </Box>
-      </Box>
-
-      <Box>
-        <Typography variant="subtitle2" sx={{ mb: 1 }}>
-          Markdown 渲染预览：
-        </Typography>
-        <Paper
-          variant="outlined"
-          sx={{
-            p: 2,
-            minHeight: 120,
-            bgcolor: '#fafafa',
-            '& h1, & h2, & h3, & h4, & h5, & h6': {
-              marginTop: 1,
-              marginBottom: 1
-            },
-            '& p': {
-              marginBottom: 1
-            },
-            '& ul, & ol': {
-              marginBottom: 1,
-              paddingLeft: 2
-            }
-          }}
-        >
-          <MarkdownPreviewBoundary key={previewContent} onError={onError}>
-            <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>
-              {previewContent || '在上方上传 Markdown 文件后，这里将展示渲染效果...'}
-            </ReactMarkdown>
-          </MarkdownPreviewBoundary>
-        </Paper>
       </Box>
     </Box>
   );

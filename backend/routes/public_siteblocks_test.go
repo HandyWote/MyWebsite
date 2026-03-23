@@ -24,3 +24,20 @@ func TestBuildPublicSiteBlockPayload_ParseAndFlatten(t *testing.T) {
 	assert.Equal(t, "HandyWote", payload["title"])
 	assert.Equal(t, "hello", payload["subtitle"])
 }
+
+func TestBuildPublicSiteBlockPayload_ReservedKeysNotOverridden(t *testing.T) {
+	block := models.SiteBlock{
+		ID:      9,
+		Name:    "articles_page",
+		Content: `{"id":123,"name":"bad","content":"bad","title":"文章"}`,
+	}
+
+	payload := buildPublicSiteBlockPayload(block)
+
+	assert.Equal(t, uint(9), payload["id"])
+	assert.Equal(t, "articles_page", payload["name"])
+	assert.Equal(t, "文章", payload["title"])
+	content, ok := payload["content"].(map[string]interface{})
+	assert.True(t, ok)
+	assert.Equal(t, float64(123), content["id"])
+}

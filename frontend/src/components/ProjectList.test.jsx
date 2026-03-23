@@ -15,8 +15,11 @@ vi.mock('framer-motion', () => ({
 }));
 
 describe('ProjectList', () => {
+  let projectPageConfig;
+
   beforeEach(() => {
     vi.clearAllMocks();
+    projectPageConfig = null;
     const pageOneRepos = Array.from({ length: 100 }, (_, index) => ({
       id: 1000 + index,
       name: `repo-seed-${index}`,
@@ -57,6 +60,17 @@ describe('ProjectList', () => {
     globalThis.fetch = vi.fn((url) => {
       const requestUrl = String(url);
 
+      if (requestUrl.includes('/api/site-blocks')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            data: projectPageConfig
+              ? [{ name: 'projects_page', content: projectPageConfig }]
+              : [],
+          }),
+        });
+      }
+
       if (requestUrl.includes('page=2')) {
         return Promise.resolve({
           ok: true,
@@ -88,9 +102,14 @@ describe('ProjectList', () => {
     render(<ProjectList />);
 
     await waitFor(() => {
-      expect(globalThis.fetch).toHaveBeenCalledTimes(2);
+      expect(globalThis.fetch).toHaveBeenCalledTimes(3);
     });
 
+    expect(
+      globalThis.fetch.mock.calls.some(([requestUrl]) =>
+        String(requestUrl).includes('/api/site-blocks')
+      )
+    ).toBe(true);
     expect(globalThis.fetch).toHaveBeenCalledWith(
       expect.stringContaining('page=1'),
       expect.any(Object),
@@ -104,5 +123,22 @@ describe('ProjectList', () => {
     expect(screen.getByText('repo-fork')).toBeInTheDocument();
     expect(screen.getByText('repo-3')).toBeInTheDocument();
     expect(screen.getByText('found 101 repositories')).toBeInTheDocument();
+  });
+
+  it('uses projects_page github_username and per_page to build github request', async () => {
+    projectPageConfig = {
+      github_username: 'ConfigUser',
+      per_page: 50,
+      sort: 'created',
+    };
+
+    render(<ProjectList />);
+
+    await waitFor(() => {
+      expect(globalThis.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('users/ConfigUser/repos?sort=created&per_page=50&page=1'),
+        expect.any(Object),
+      );
+    });
   });
 });

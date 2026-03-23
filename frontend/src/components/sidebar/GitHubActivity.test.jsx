@@ -39,13 +39,9 @@ describe('GitHubActivity', () => {
     expect(output[output.length - 1]).toEqual(input[input.length - 1]);
   });
 
-  it('provides a link to full GitHub contributions page', () => {
+  it('does not render legacy full-link footer in compact sidebar mode', () => {
     render(<GitHubActivity username="octocat" />);
-
-    const fullLink = screen.getByRole('link', { name: '查看完整贡献图' });
-    expect(fullLink).toHaveAttribute('href', 'https://github.com/octocat');
-    expect(fullLink).toHaveAttribute('target', '_blank');
-    expect(fullLink).toHaveAttribute('rel', 'noreferrer');
+    expect(screen.queryByRole('link', { name: '查看完整贡献图' })).not.toBeInTheDocument();
   });
 
   it('keeps calendar container readable with horizontal scroll', () => {

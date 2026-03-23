@@ -23,9 +23,10 @@ describe('ArticleCard Component', () => {
     expect(screen.getByText('Test Article')).toBeInTheDocument();
   });
 
-  it('should render article category', () => {
+  it('should render article tags', () => {
     renderWithRouter(<ArticleCard article={mockArticle} />);
-    expect(screen.getByText('Tech')).toBeInTheDocument();
+    expect(screen.getByText('react')).toBeInTheDocument();
+    expect(screen.getByText('javascript')).toBeInTheDocument();
   });
 
   it('should render article summary', () => {

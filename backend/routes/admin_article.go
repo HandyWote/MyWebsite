@@ -509,6 +509,10 @@ func AdminGetSiteBlocks(c *gin.Context) {
 	utils.Success(c, result)
 }
 
+func isValidSiteBlockName(name string) bool {
+	return strings.TrimSpace(name) != ""
+}
+
 // AdminUpdateSiteBlocks 批量更新内容块（匹配前端API）
 func AdminUpdateSiteBlocks(c *gin.Context) {
 	var input struct {
@@ -526,7 +530,8 @@ func AdminUpdateSiteBlocks(c *gin.Context) {
 	updatedBlocks := make([]models.SiteBlock, 0, len(input.Blocks))
 
 	for _, block := range input.Blocks {
-		if block.Name == "" {
+		blockName := strings.TrimSpace(block.Name)
+		if !isValidSiteBlockName(blockName) {
 			continue
 		}
 
@@ -539,23 +544,23 @@ func AdminUpdateSiteBlocks(c *gin.Context) {
 		contentStr := string(contentBytes)
 
 		var existingBlock models.SiteBlock
-		result := database.GetDB().Where("name = ?", block.Name).First(&existingBlock)
+		result := database.GetDB().Where("name = ?", blockName).First(&existingBlock)
 
 		if result.Error != nil {
 			// 不存在则创建
 			newBlock := models.SiteBlock{
-				Name:    block.Name,
+				Name:    blockName,
 				Content: contentStr,
 			}
 			if err := database.GetDB().Create(&newBlock).Error; err != nil {
-				utils.ErrorInternal(c, "Failed to create site block: "+block.Name)
+				utils.ErrorInternal(c, "Failed to create site block: "+blockName)
 				return
 			}
 			updatedBlocks = append(updatedBlocks, newBlock)
 		} else {
 			// 存在则更新
 			if err := database.GetDB().Model(&existingBlock).Update("content", contentStr).Error; err != nil {
-				utils.ErrorInternal(c, "Failed to update site block: "+block.Name)
+				utils.ErrorInternal(c, "Failed to update site block: "+blockName)
 				return
 			}
 			existingBlock.Content = contentStr

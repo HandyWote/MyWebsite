@@ -23,6 +23,7 @@ describe('API Configuration', () => {
     it('should have PUBLIC endpoints', () => {
       expect(API_ENDPOINTS.PUBLIC).toBeDefined();
       expect(API_ENDPOINTS.PUBLIC.ARTICLES).toBe('/api/articles');
+      expect(API_ENDPOINTS.PUBLIC.AVATAR_FILE('avatar.webp')).toBe('/api/avatars/file/avatar.webp');
     });
 
     it('should have ADMIN endpoints', () => {

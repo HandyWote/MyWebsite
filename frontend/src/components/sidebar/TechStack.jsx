@@ -1,15 +1,27 @@
 import { Box } from '@mui/material';
 import PixelChip from '../pixel/ui/PixelChip';
 
-const TECH_STACK = ['React', 'Go', 'TypeScript', 'Node.js', 'PostgreSQL'];
+function TechStack({ items = [] }) {
+  const techStackList = items || [];
 
-function TechStack() {
   return (
     <Box sx={{ mb: 3 }}>
       <SectionTitle>Tech Stack</SectionTitle>
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-        {TECH_STACK.map((tech) => (
-          <PixelChip key={tech} label={tech} size="small" />
+        {techStackList.length === 0 && (
+          <Box
+            component="div"
+            sx={{ color: 'text.muted', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.75rem' }}
+          >
+            (未配置)
+          </Box>
+        )}
+        {techStackList.map((tech) => (
+          <PixelChip
+            key={typeof tech === 'string' ? tech : tech.name}
+            label={typeof tech === 'string' ? tech : tech.name}
+            size="small"
+          />
         ))}
       </Box>
     </Box>

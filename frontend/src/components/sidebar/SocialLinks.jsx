@@ -1,21 +1,48 @@
 import { Box, Typography } from '@mui/material';
-import { Github, Mail } from 'lucide-react';
+import { Github, Mail, MessageCircle, Phone, Link as LinkIcon } from 'lucide-react';
 
-const SOCIALS = [
-  { icon: Github, label: 'GitHub', href: 'https://github.com/username' },
-  { icon: Mail, label: 'Email', href: 'mailto:hello@example.com' },
-];
+const iconMap = {
+  github: Github,
+  email: Mail,
+  wechat: MessageCircle,
+  qq: MessageCircle,
+  phone: Phone,
+  other: LinkIcon,
+};
 
-function SocialLinks() {
+const buildHref = (item) => {
+  if (item?.href) {
+    return item.href;
+  }
+  if (item?.type === 'email' && item?.value) {
+    return `mailto:${item.value}`;
+  }
+  return item?.value || '#';
+};
+
+function SocialLinks({ links = [] }) {
+  const list = links || [];
+
   return (
     <Box sx={{ mb: 3 }}>
       <SectionTitle>Social</SectionTitle>
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-        {SOCIALS.map((social) => (
+        {list.length === 0 && (
+          <Typography
+            component="div"
+            sx={{ color: 'text.muted', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.75rem' }}
+          >
+            (未配置)
+          </Typography>
+        )}
+        {list.map((social) => {
+          const Icon = iconMap[social.type] || iconMap.other;
+          const label = social.label || social.value || 'Link';
+          return (
           <Box
             component="a"
-            key={social.label}
-            href={social.href}
+            key={`${social.type || 'other'}-${label}`}
+            href={buildHref(social)}
             target="_blank"
             rel="noopener noreferrer"
             sx={{
@@ -36,10 +63,11 @@ function SocialLinks() {
               },
             }}
           >
-            <social.icon size={14} />
-            {social.label}
+            <Icon size={14} />
+            {label}
           </Box>
-        ))}
+          );
+        })}
       </Box>
     </Box>
   );

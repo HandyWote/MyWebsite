@@ -38,7 +38,7 @@ describe('Admin Login', () => {
 
     fireEvent.change(usernameInput, { target: { value: 'admin' } });
     fireEvent.change(passwordInput, { target: { value: '123456' } });
-    fireEvent.click(screen.getByRole('button', { name: '登录' }));
+    fireEvent.click(screen.getByRole('button', { name: /登录|Login/ }));
 
     await waitFor(() => {
       expect(window.localStorage.setItem).toHaveBeenCalledWith('token', 'test-token');

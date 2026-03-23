@@ -2,6 +2,7 @@ import { Box, Typography } from '@mui/material';
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { getApiUrl, unwrapApiPayload } from '../config/api';
+import { getBlockContent } from '../config/siteBlocks';
 import PixelAvatar from './pixel/ui/PixelAvatar';
 import PixelContainer from './pixel/layout/PixelContainer';
 import SocialLinks from './sidebar/SocialLinks';
@@ -26,17 +27,35 @@ const itemVariants = {
 
 function Sidebar() {
   const [siteBlock, setSiteBlock] = useState(null);
+  const [avatarUrl, setAvatarUrl] = useState('/avatar.webp');
+  const [sidebarBlock, setSidebarBlock] = useState({
+    social_links: [],
+    education: [],
+    tech_stack: [],
+  });
   const [loading, setLoading] = useState(true);
 
   const fetchSiteData = async () => {
     try {
-      const res = await fetch(getApiUrl.siteBlocks());
-      const data = await res.json();
-      const blocks = unwrapApiPayload(data) || [];
+      const [siteBlocksRes, avatarsRes] = await Promise.all([
+        fetch(getApiUrl.siteBlocks()),
+        fetch(getApiUrl.avatars()),
+      ]);
+      const [siteBlocksData, avatarsData] = await Promise.all([
+        siteBlocksRes.json(),
+        avatarsRes.json(),
+      ]);
+      const blocks = unwrapApiPayload(siteBlocksData) || [];
+      const avatars = unwrapApiPayload(avatarsData) || avatarsData?.avatars || [];
       const homeBlock = blocks.find(b => b.name === 'home');
+      const sidebarContent = getBlockContent(blocks, 'sidebar');
+      const currentAvatar = avatars.find((avatar) => avatar.is_current);
       setSiteBlock(homeBlock);
+      setSidebarBlock(sidebarContent);
+      setAvatarUrl(currentAvatar ? getApiUrl.avatarFile(currentAvatar.filename) : '/avatar.webp');
     } catch {
       // silent fail, use fallback values
+      setAvatarUrl('/avatar.webp');
     } finally {
       setLoading(false);
     }
@@ -47,7 +66,6 @@ function Sidebar() {
   }, []);
 
   // Extract data with fallbacks
-  const avatarUrl = siteBlock?.avatar || '/avatar.jpg';
   const siteTitle = siteBlock?.title || 'name@host';
   const siteSubtitle = siteBlock?.subtitle || 'slogan text';
 
@@ -62,7 +80,7 @@ function Sidebar() {
         <MotionDiv variants={itemVariants}>
           <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
             <PixelAvatar
-              src={loading ? '/avatar.jpg' : avatarUrl}
+              src={loading ? '/avatar.webp' : avatarUrl}
               alt="avatar"
               sx={{ width: 64, height: 64 }}
             />
@@ -104,17 +122,17 @@ function Sidebar() {
 
         {/* Social 区域 */}
         <MotionDiv variants={itemVariants}>
-          <SocialLinks />
+          <SocialLinks links={sidebarBlock.social_links} />
         </MotionDiv>
 
         {/* Education 区域 */}
         <MotionDiv variants={itemVariants}>
-          <Education />
+          <Education items={sidebarBlock.education} />
         </MotionDiv>
 
         {/* Tech Stack 区域 */}
         <MotionDiv variants={itemVariants}>
-          <TechStack />
+          <TechStack items={sidebarBlock.tech_stack} />
         </MotionDiv>
 
         {/* GitHub Activity 区域 */}

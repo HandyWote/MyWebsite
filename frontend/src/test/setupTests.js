@@ -24,3 +24,15 @@ const localStorageMock = {
   clear: vi.fn(),
 }
 window.localStorage = localStorageMock
+
+// 模拟 IntersectionObserver
+class IntersectionObserverMock {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+
+Object.defineProperty(window, 'IntersectionObserver', {
+  writable: true,
+  value: IntersectionObserverMock,
+})
