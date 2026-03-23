@@ -16,15 +16,11 @@ import {
 } from './pixel';
 import LazyImage from './LazyImage';
 import LazyGitHubCalendar from './LazyGitHubCalendar';
-import SkillsSection from './SkillsSection';
-import ContactSection from './ContactSection';
 import { colors } from './pixel/tokens';
 
 const Home = () => {
   const [siteBlock, setSiteBlock] = useState(null);
   const [aboutBlock, setAboutBlock] = useState(null);
-  const [skills, setSkills] = useState([]);
-  const [contacts, setContacts] = useState([]);
   const [avatarUrl, setAvatarUrl] = useState('');
 
   const fetchSiteBlock = async () => {
@@ -34,22 +30,6 @@ const Home = () => {
       const blocks = unwrapApiPayload(data) || [];
       setSiteBlock(blocks.find(b => b.name === 'home'));
       setAboutBlock(blocks.find(b => b.name === 'about'));
-    } catch { /* silent */ }
-  };
-
-  const fetchSkills = async () => {
-    try {
-      const res = await fetch(getApiUrl.skills());
-      const data = await res.json();
-      setSkills(unwrapApiPayload(data) || []);
-    } catch { /* silent */ }
-  };
-
-  const fetchContacts = async () => {
-    try {
-      const res = await fetch(getApiUrl.contacts());
-      const data = await res.json();
-      setContacts(unwrapApiPayload(data) || []);
     } catch { /* silent */ }
   };
 
@@ -67,8 +47,6 @@ const Home = () => {
 
   useEffect(() => {
     fetchSiteBlock();
-    fetchSkills();
-    fetchContacts();
     fetchAvatar();
   }, []);
 
@@ -279,29 +257,6 @@ const Home = () => {
               />
             </PixelCard>
 
-            {/* 技能清单 */}
-            {skills.length > 0 && (
-              <PixelCard title="技能清单">
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                  {skills.slice(0, 12).map((skill, index) => (
-                    <Box
-                      key={index}
-                      sx={{
-                        px: 1.5,
-                        py: 0.5,
-                        fontSize: '0.75rem',
-                        fontFamily: "'JetBrains Mono', monospace",
-                        backgroundColor: 'rgba(88, 166, 255, 0.1)',
-                        color: '#58a6ff',
-                        border: '1px dashed #30363d',
-                      }}
-                    >
-                      {skill.name}
-                    </Box>
-                  ))}
-                </Box>
-              </PixelCard>
-            )}
           </Box>
         </Box>
       </PixelContainer>
@@ -311,14 +266,6 @@ const Home = () => {
         <TerminalLine>cd ~/about</TerminalLine>
       </PixelContainer>
 
-      {/* Skills Section */}
-      <SkillsSection skills={skills} />
-
-      {/* Contact Section */}
-      <ContactSection
-        contacts={contacts}
-        contactDescription={siteBlock?.contact_description}
-      />
     </>
   );
 };

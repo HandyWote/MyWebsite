@@ -71,8 +71,6 @@ export const API_ENDPOINTS = {
   // 公共API - 无需认证，所有用户可访问
   PUBLIC: {
     SITE_BLOCKS: '/api/site-blocks',           // 网站内容块
-    SKILLS: '/api/skills',                     // 技能列表
-    CONTACTS: '/api/contacts',                 // 联系方式
     AVATARS: '/api/avatars',                   // 头像列表
     ARTICLES: '/api/articles',                 // 文章列表
     ARTICLE_DETAIL: (id) => `/api/articles/${id}`, // 文章详情
@@ -80,7 +78,7 @@ export const API_ENDPOINTS = {
     CREATE_COMMENT: (id) => `/api/articles/${id}/comments`,    // 创建评论
     CATEGORIES: '/api/categories',             // 文章分类
     TAGS: '/api/tags',                         // 文章标签
-    AVATAR_FILE: (filename) => `/api/admin/avatars/file/${filename}`, // 头像文件
+    AVATAR_FILE: (filename) => `/api/avatars/file/${filename}`, // 头像文件
     ARTICLE_PDF: (filename) => `/api/articles/pdf/${filename}`, // PDF文件访问
   },
   
@@ -173,8 +171,6 @@ export const getApiMessage = (response, fallback = '') => {
 export const getApiUrl = {
   // ========== 公共API ==========
   siteBlocks: () => buildApiUrl(API_ENDPOINTS.PUBLIC.SITE_BLOCKS),           // 网站内容块
-  skills: () => buildApiUrl(API_ENDPOINTS.PUBLIC.SKILLS),                     // 技能列表
-  contacts: () => buildApiUrl(API_ENDPOINTS.PUBLIC.CONTACTS),                 // 联系方式
   avatars: () => buildApiUrl(API_ENDPOINTS.PUBLIC.AVATARS),                   // 头像列表
   articles: () => buildApiUrl(API_ENDPOINTS.PUBLIC.ARTICLES),                 // 文章列表
   articleDetail: (id) => buildApiUrl(API_ENDPOINTS.PUBLIC.ARTICLE_DETAIL(id)), // 文章详情
@@ -222,4 +218,9 @@ export default {
   buildApiUrl,
   unwrapApiPayload,
   getApiMessage,
+  getBlockContent,
+  SITE_BLOCK_DEFAULTS,
 };
+
+export { getBlockContent, SITE_BLOCK_DEFAULTS };
+import { getBlockContent, SITE_BLOCK_DEFAULTS } from './siteBlocks';

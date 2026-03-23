@@ -1,4 +1,4 @@
-import { act, render } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import Home from './Home';
 
@@ -8,12 +8,16 @@ vi.mock('framer-motion', () => ({
   },
 }));
 
-vi.mock('@mui/material', () => ({
-  Box: ({ children, ...props }) => <div {...props}>{children}</div>,
-  Typography: ({ children }) => <div>{children}</div>,
-  Container: ({ children, ...props }) => <div {...props}>{children}</div>,
-  Button: ({ children, href }) => <a href={href}>{children}</a>,
-}));
+vi.mock('@mui/material', async () => {
+  const actual = await vi.importActual('@mui/material');
+  return {
+    ...actual,
+    Box: ({ children, ...props }) => <div {...props}>{children}</div>,
+    Typography: ({ children }) => <div>{children}</div>,
+    Container: ({ children, ...props }) => <div {...props}>{children}</div>,
+    Button: ({ children, href }) => <a href={href}>{children}</a>,
+  };
+});
 
 vi.mock('@mui/icons-material/GitHub', () => ({
   default: () => <span>GitHubIcon</span>,
@@ -27,20 +31,11 @@ vi.mock('./LazyGitHubCalendar', () => ({
   default: () => <div>GitHubCalendar</div>,
 }));
 
-vi.mock('./SkillsSection', () => ({
-  default: () => <div>SkillsSection</div>,
-}));
-
-vi.mock('./ContactSection', () => ({
-  default: () => <div>ContactSection</div>,
-}));
-
 vi.mock('../config/api', () => ({
+  unwrapApiPayload: (response) => response?.data ?? response,
   getApiUrl: {
     baseUrl: () => 'https://example.com',
     siteBlocks: () => '/api/site-blocks',
-    skills: () => '/api/skills',
-    contacts: () => '/api/contacts',
     avatars: () => '/api/avatars',
     avatarFile: (filename) => `/api/admin/avatars/file/${filename}`,
   },
@@ -69,8 +64,10 @@ describe('Home', () => {
     });
 
     expect(globalThis.fetch).toHaveBeenCalledWith('/api/site-blocks');
-    expect(globalThis.fetch).toHaveBeenCalledWith('/api/skills');
-    expect(globalThis.fetch).toHaveBeenCalledWith('/api/contacts');
     expect(globalThis.fetch).toHaveBeenCalledWith('/api/avatars');
+    expect(globalThis.fetch).not.toHaveBeenCalledWith('/api/skills');
+    expect(globalThis.fetch).not.toHaveBeenCalledWith('/api/contacts');
+    expect(screen.queryByText('SkillsSection')).not.toBeInTheDocument();
+    expect(screen.queryByText('ContactSection')).not.toBeInTheDocument();
   });
 });
