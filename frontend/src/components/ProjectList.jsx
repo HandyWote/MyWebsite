@@ -7,6 +7,45 @@ import { getApiUrl, unwrapApiPayload } from '../config/api';
 import { getBlockContent, SITE_BLOCK_DEFAULTS } from '../config/siteBlocks';
 
 const MotionDiv = motion.div;
+const GITHUB_CACHE_TTL_MS = 3 * 60 * 60 * 1000;
+
+const buildGithubCacheKey = (username, sort, perPage) =>
+  `github_repos:${username}:${sort}:${perPage}`;
+
+const getBrowserStorage = () => {
+  if (typeof window === 'undefined' || !window.localStorage) {
+    return null;
+  }
+  return window.localStorage;
+};
+
+const readGithubCache = (cacheKey) => {
+  try {
+    const storage = getBrowserStorage();
+    if (!storage) return null;
+    const raw = storage.getItem(cacheKey);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || !Array.isArray(parsed.data) || typeof parsed.timestamp !== 'number') {
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+};
+
+const writeGithubCache = (cacheKey, data) => {
+  const storage = getBrowserStorage();
+  if (!storage) return;
+  storage.setItem(
+    cacheKey,
+    JSON.stringify({
+      timestamp: Date.now(),
+      data,
+    }),
+  );
+};
 
 const formatRelativeTime = (dateString) => {
   const date = new Date(dateString);
@@ -38,6 +77,16 @@ function ProjectList() {
       const perPage = Number(activeConfig.per_page) || SITE_BLOCK_DEFAULTS.projects_page.per_page;
       const sort = activeConfig.sort || SITE_BLOCK_DEFAULTS.projects_page.sort;
       const username = activeConfig.github_username || SITE_BLOCK_DEFAULTS.projects_page.github_username;
+      const cacheKey = buildGithubCacheKey(username, sort, perPage);
+      const cached = readGithubCache(cacheKey);
+      const now = Date.now();
+
+      if (cached && now - cached.timestamp < GITHUB_CACHE_TTL_MS) {
+        setProjects(cached.data);
+        setError(null);
+        return;
+      }
+
       let page = 1;
       let allRepos = [];
 
@@ -80,9 +129,22 @@ function ProjectList() {
         .sort((a, b) => b.stars - a.stars);
 
       setProjects(mappedProjects);
+      writeGithubCache(cacheKey, mappedProjects);
       setError(null);
     } catch (err) {
       console.error('Failed to fetch projects:', err);
+      const perPage = Number(activeConfig.per_page) || SITE_BLOCK_DEFAULTS.projects_page.per_page;
+      const sort = activeConfig.sort || SITE_BLOCK_DEFAULTS.projects_page.sort;
+      const username = activeConfig.github_username || SITE_BLOCK_DEFAULTS.projects_page.github_username;
+      const cacheKey = buildGithubCacheKey(username, sort, perPage);
+      const staleCache = readGithubCache(cacheKey);
+
+      if (staleCache && Array.isArray(staleCache.data) && staleCache.data.length > 0) {
+        setProjects(staleCache.data);
+        setError(null);
+        return;
+      }
+
       setError(activeConfig.error_text || err.message);
     } finally {
       setLoading(false);

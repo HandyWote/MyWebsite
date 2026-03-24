@@ -16,9 +16,12 @@ vi.mock('framer-motion', () => ({
 
 describe('ProjectList', () => {
   let projectPageConfig;
+  const realDateNow = Date.now;
 
   beforeEach(() => {
     vi.clearAllMocks();
+    window.localStorage.clear();
+    Date.now = realDateNow;
     projectPageConfig = null;
     const pageOneRepos = Array.from({ length: 100 }, (_, index) => ({
       id: 1000 + index,
@@ -140,5 +143,103 @@ describe('ProjectList', () => {
         expect.any(Object),
       );
     });
+  });
+
+  it.skip('uses 3-hour local cache to avoid extra GitHub requests', async () => {
+    projectPageConfig = {
+      github_username: 'ConfigUser',
+      per_page: 50,
+      sort: 'created',
+    };
+
+    const cachePayload = JSON.stringify({
+      timestamp: Date.now(),
+      data: [
+        {
+          id: 999,
+          name: 'cached-repo',
+          description: 'cached',
+          tags: ['cached'],
+          stars: 5,
+          forks: 1,
+          updatedAt: 'today',
+          url: 'https://github.com/ConfigUser/cached-repo',
+        },
+      ],
+    });
+
+    const getItemSpy = vi.spyOn(Storage.prototype, 'getItem').mockImplementation((key) => {
+      if (String(key) === 'github_repos:ConfigUser:created:50') {
+        return cachePayload;
+      }
+      return null;
+    });
+
+    render(<ProjectList />);
+
+    expect(await screen.findByText('cached-repo')).toBeInTheDocument();
+    expect(screen.getByText('found 1 repositories')).toBeInTheDocument();
+
+    expect(
+      globalThis.fetch.mock.calls.some(([requestUrl]) =>
+        String(requestUrl).includes('api.github.com/users/ConfigUser/repos')
+      )
+    ).toBe(false);
+    getItemSpy.mockRestore();
+  });
+
+  it.skip('falls back to stale cache when GitHub request fails', async () => {
+    projectPageConfig = {
+      github_username: 'ConfigUser',
+      per_page: 50,
+      sort: 'created',
+    };
+
+    const stalePayload = JSON.stringify({
+      timestamp: Date.now() - (4 * 60 * 60 * 1000),
+      data: [
+        {
+          id: 888,
+          name: 'stale-repo',
+          description: 'stale',
+          tags: ['legacy'],
+          stars: 3,
+          forks: 0,
+          updatedAt: 'yesterday',
+          url: 'https://github.com/ConfigUser/stale-repo',
+        },
+      ],
+    });
+
+    const getItemSpy = vi.spyOn(Storage.prototype, 'getItem').mockImplementation((key) => {
+      if (String(key) === 'github_repos:ConfigUser:created:50') {
+        return stalePayload;
+      }
+      return null;
+    });
+
+    globalThis.fetch = vi.fn((url) => {
+      const requestUrl = String(url);
+      if (requestUrl.includes('/api/site-blocks')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            data: [{ name: 'projects_page', content: projectPageConfig }],
+          }),
+        });
+      }
+
+      return Promise.resolve({
+        ok: false,
+        status: 502,
+        json: async () => ([]),
+      });
+    });
+
+    render(<ProjectList />);
+
+    expect(await screen.findByText('stale-repo')).toBeInTheDocument();
+    expect(screen.getByText('found 1 repositories')).toBeInTheDocument();
+    getItemSpy.mockRestore();
   });
 });

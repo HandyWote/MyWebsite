@@ -28,9 +28,6 @@
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
     
     <!-- 预加载关键资源 -->
-    <link rel="preload" href="./src/main.jsx" as="script" crossorigin="anonymous" />
-    <link rel="preload" href="./src/App.css" as="style" />
-    <link rel="preload" href="./src/index.css" as="style" />
     <link rel="preload" href="/avatar.webp" as="image" />
     <link rel="preload" href="/default-cover.svg" as="image" />
     
@@ -60,19 +57,5 @@
 
     <script type="module" src="./src/main.jsx"></script>
     
-    <!-- Service Worker注册脚本 -->
-    <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js')
-            .then(registration => {
-              console.log('ServiceWorker registration successful with scope: ', registration.scope);
-            })
-            .catch(error => {
-              console.log('ServiceWorker registration failed: ', error);
-            });
-        });
-      }
-    </script>
   </body>
 </html>
