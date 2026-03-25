@@ -38,6 +38,7 @@ function GitHubActivity({ username = 'HandyWote' }) {
           showMonthLabels={false}
           showColorLegend={false}
           showTotalCount={false}
+          colorScheme="dark"
           style={{
             minWidth: '214px',
             fontFamily: 'var(--font-mono)',
