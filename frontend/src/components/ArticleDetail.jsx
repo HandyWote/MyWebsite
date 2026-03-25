@@ -1,7 +1,6 @@
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
-  Container,
   Typography,
   Box,
   TextField,
@@ -21,7 +20,7 @@ import {
 } from '@mui/icons-material';
 import 'katex/dist/katex.min.css';
 import { getApiUrl, getApiMessage, unwrapApiPayload } from '../config/api'; // 导入API配置
-import { PixelContainer, PixelCard, PixelButton, PixelChip, PixelTypography, TerminalLine, PixelSidebar } from './pixel';
+import { PixelCard, PixelButton, PixelChip, PixelTypography, TerminalLine } from './pixel';
 import PdfViewerOnCanvas from './PdfViewerOnCanvas';
 import ArticleMarkdownContent from './articles/ArticleMarkdownContent';
 
@@ -346,31 +345,47 @@ const ArticleDetail = () => {
 
   if (loading) {
     return (
-      <Container maxWidth="lg" sx={{ py: 4 }}>
-        <Skeleton variant="text" height={60} sx={{ mb: 2 }} />
-        <Skeleton variant="text" height={40} sx={{ mb: 4 }} />
-        <Skeleton variant="rectangular" height={300} sx={{ mb: 4 }} />
-        <Skeleton variant="text" height={20} sx={{ mb: 1 }} />
-        <Skeleton variant="text" height={20} sx={{ mb: 1 }} />
-        <Skeleton variant="text" height={20} sx={{ mb: 1 }} />
-      </Container>
+      <Box sx={{ p: 3 }}>
+        <TerminalLine>cat article/{id}.md</TerminalLine>
+        <Box
+          sx={{
+            border: '1px dashed',
+            borderColor: 'border.default',
+            p: 3,
+            borderRadius: 0,
+          }}
+        >
+          <Skeleton variant="text" height={60} sx={{ mb: 2 }} />
+          <Skeleton variant="text" height={40} sx={{ mb: 4 }} />
+          <Skeleton variant="rectangular" height={300} sx={{ mb: 4 }} />
+          <Skeleton variant="text" height={20} sx={{ mb: 1 }} />
+          <Skeleton variant="text" height={20} sx={{ mb: 1 }} />
+          <Skeleton variant="text" height={20} sx={{ mb: 1 }} />
+        </Box>
+      </Box>
     );
   }
 
   if (error) {
     return (
-      <Container maxWidth="lg" sx={{ py: 4 }}>
-        <Alert severity="error" sx={{ mb: 4 }}>
-          {error}
-        </Alert>
-        <Button
-          variant="contained"
-          startIcon={<ArrowBackIcon />}
-          onClick={() => window.history.back()}
+      <Box sx={{ p: 3 }}>
+        <TerminalLine>cat article/{id}.md</TerminalLine>
+        <Box
+          sx={{
+            border: '1px dashed',
+            borderColor: 'border.default',
+            p: 3,
+            borderRadius: 0,
+          }}
         >
-          返回
-        </Button>
-      </Container>
+          <Alert severity="error" sx={{ mb: 4 }}>
+            {error}
+          </Alert>
+          <PixelButton variant="ghost" startIcon={<ArrowBack />} onClick={() => window.history.back()}>
+            返回
+          </PixelButton>
+        </Box>
+      </Box>
     );
   }
 
@@ -379,35 +394,31 @@ const ArticleDetail = () => {
   }
 
   return (
-    <PixelContainer section>
+    <Box sx={{ p: 3 }}>
       <TerminalLine>cat article/{id}.md</TerminalLine>
 
-      {/* 文章 */}
+      {/* 边框容器 - 与列表页一致 */}
       <Box
         sx={{
-          width: '100%',
-          display: 'grid',
-          gridTemplateColumns: { xs: '1fr', md: '1fr' },
-          gap: 'clamp(12px, 2vw, 24px)',
-          alignItems: 'start',
+          border: '1px dashed',
+          borderColor: 'border.default',
+          p: 3,
+          borderRadius: 0,
         }}
       >
+        {/* 返回按钮 */}
+        <PixelButton variant="ghost" startIcon={<ArrowBack />} component={Link} to="/articles">
+          返回文章列表
+        </PixelButton>
 
-        {/* 右侧内容区 */}
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 'clamp(12px, 2vw, 24px)' }}>
-          {/* 返回按钮 */}
-          <PixelButton variant="ghost" startIcon={<ArrowBack />} component={Link} to="/articles">
-            返回文章列表
-          </PixelButton>
+        {/* 演示模式提示 */}
+        {demoMode && (
+          <Alert severity="info" sx={{ mb: 0, mt: 2 }}>
+            当前处于演示模式，显示的是示例文章内容。评论功能在演示模式下不可用。
+          </Alert>
+        )}
 
-          {/* 演示模式提示 */}
-          {demoMode && (
-            <Alert severity="info" sx={{ mb: 0 }}>
-              当前处于演示模式，显示的是示例文章内容。评论功能在演示模式下不可用。
-            </Alert>
-          )}
-
-          <PixelCard>
+        <PixelCard sx={{ mt: 2 }}>
             {/* 文章头部信息 */}
             <Box sx={{ mb: 4 }}>
               <PixelTypography variant="h1" className="cursor-blink" sx={{ mb: 2 }}>
@@ -607,9 +618,8 @@ const ArticleDetail = () => {
               </Typography>
             )}
           </PixelCard>
-        </Box>
       </Box>
-    </PixelContainer>
+    </Box>
   );
 };
 
