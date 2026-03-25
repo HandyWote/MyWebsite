@@ -10,4 +10,40 @@ describe('app shell', () => {
 
     expect(indexHtml).not.toContain('https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.css');
   });
+
+  it('uses /app/ as production base path in vite config', () => {
+    const currentDir = path.dirname(fileURLToPath(import.meta.url));
+    const viteConfig = fs.readFileSync(path.resolve(currentDir, '../vite.config.js'), 'utf8');
+
+    expect(viteConfig).toContain("base: process.env.NODE_ENV === 'production' ? '/app/' : './'");
+  });
+
+  it('configures BrowserRouter basename from Vite base path', () => {
+    const currentDir = path.dirname(fileURLToPath(import.meta.url));
+    const appSource = fs.readFileSync(path.resolve(currentDir, './App.jsx'), 'utf8');
+
+    expect(appSource).toContain('const routerBasename =');
+    expect(appSource).toContain('import.meta.env.BASE_URL');
+    expect(appSource).toContain('<Router basename={routerBasename}>');
+  });
+
+  it('does not hardcode avatar fallback to root path in app components', () => {
+    const currentDir = path.dirname(fileURLToPath(import.meta.url));
+    const homeSource = fs.readFileSync(path.resolve(currentDir, './components/Home.jsx'), 'utf8');
+    const sidebarSource = fs.readFileSync(path.resolve(currentDir, './components/Sidebar.jsx'), 'utf8');
+
+    expect(homeSource).not.toContain("'/avatar.webp'");
+    expect(homeSource).not.toContain('"/avatar.webp"');
+    expect(sidebarSource).not.toContain("'/avatar.webp'");
+    expect(sidebarSource).not.toContain('"/avatar.webp"');
+  });
+
+  it('service worker cache list is based on app base path', () => {
+    const currentDir = path.dirname(fileURLToPath(import.meta.url));
+    const swSource = fs.readFileSync(path.resolve(currentDir, '../public/sw.js'), 'utf8');
+
+    expect(swSource).toContain('const BASE_PATH =');
+    expect(swSource).toContain('const withBase =');
+    expect(swSource).toContain("['/', '/index.html', '/avatar.webp', '/manifest.json'].map(withBase)");
+  });
 });

@@ -11,6 +11,9 @@ const ArticleList = lazy(() => import('./components/ArticleList'));
 const ProjectList = lazy(() => import('./components/ProjectList'));
 const ArticleDetail = lazy(() => import('./components/ArticleDetail'));
 const AdminRoutes = lazy(() => import('./admin/routes'));
+const routerBasename = ['/', './'].includes(import.meta.env.BASE_URL)
+  ? undefined
+  : import.meta.env.BASE_URL.replace(/\/$/, '');
 
 function AppContent() {
   return (
@@ -50,7 +53,7 @@ function AppContent() {
 function App() {
   return (
     <PixelProvider>
-      <Router>
+      <Router basename={routerBasename}>
         <Box sx={{
           minHeight: 'calc(100vh - 24px)',
           backgroundColor: 'background.default',

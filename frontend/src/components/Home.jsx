@@ -18,6 +18,8 @@ import LazyImage from './LazyImage';
 import LazyGitHubCalendar from './LazyGitHubCalendar';
 import { colors } from './pixel/tokens';
 
+const AVATAR_FALLBACK = `${import.meta.env.BASE_URL}avatar.webp`;
+
 const Home = () => {
   const [siteBlock, setSiteBlock] = useState(null);
   const [aboutBlock, setAboutBlock] = useState(null);
@@ -39,9 +41,9 @@ const Home = () => {
       const data = await res.json();
       const avatars = unwrapApiPayload(data) || data.avatars || [];
       const current = avatars.find(a => a.is_current);
-      setAvatarUrl(current ? getApiUrl.avatarFile(current.filename) : '/avatar.webp');
+      setAvatarUrl(current ? getApiUrl.avatarFile(current.filename) : AVATAR_FALLBACK);
     } catch {
-      setAvatarUrl('/avatar.webp');
+      setAvatarUrl(AVATAR_FALLBACK);
     }
   };
 
@@ -84,7 +86,7 @@ const Home = () => {
                     <LazyImage
                       src={avatarUrl}
                       alt="HandyWote"
-                      fallbackSrc="/avatar.webp"
+                      fallbackSrc={AVATAR_FALLBACK}
                       component={PixelAvatar}
                       size="xlarge"
                       sx={{ mb: 3, mx: 'auto' }}
@@ -196,7 +198,7 @@ const Home = () => {
                     <LazyImage
                       src={avatarUrl}
                       alt="HandyWote"
-                      fallbackSrc="/avatar.webp"
+                      fallbackSrc={AVATAR_FALLBACK}
                       component={PixelAvatar}
                       size="xlarge"
                       sx={{ mb: 2, mx: 'auto' }}

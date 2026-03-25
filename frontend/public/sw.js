@@ -1,10 +1,7 @@
-const CACHE_NAME = 'handywote-v1';
-const urlsToCache = [
-  '/',
-  '/index.html',
-  '/avatar.webp',
-  '/manifest.json'
-];
+const CACHE_NAME = 'handywote-v2';
+const BASE_PATH = new URL(self.registration.scope).pathname.replace(/\/$/, '');
+const withBase = (path) => `${BASE_PATH}${path === '/' ? '/' : path}`;
+const urlsToCache = ['/', '/index.html', '/avatar.webp', '/manifest.json'].map(withBase);
 
 // 安装事件
 self.addEventListener('install', event => {

@@ -24,6 +24,7 @@ const itemVariants = {
   hidden: { opacity: 0, x: -20 },
   visible: { opacity: 1, x: 0 }
 };
+const AVATAR_FALLBACK = `${import.meta.env.BASE_URL}avatar.webp`;
 
 function normalizeGitHubUsername(value) {
   if (typeof value !== 'string') {
@@ -50,7 +51,7 @@ function normalizeGitHubUsername(value) {
 
 function Sidebar() {
   const [siteBlock, setSiteBlock] = useState(null);
-  const [avatarUrl, setAvatarUrl] = useState('/avatar.webp');
+  const [avatarUrl, setAvatarUrl] = useState(AVATAR_FALLBACK);
   const [sidebarBlock, setSidebarBlock] = useState({
     social_links: [],
     education: [],
@@ -75,10 +76,10 @@ function Sidebar() {
       const currentAvatar = avatars.find((avatar) => avatar.is_current);
       setSiteBlock(homeBlock);
       setSidebarBlock(sidebarContent);
-      setAvatarUrl(currentAvatar ? getApiUrl.avatarFile(currentAvatar.filename) : '/avatar.webp');
+      setAvatarUrl(currentAvatar ? getApiUrl.avatarFile(currentAvatar.filename) : AVATAR_FALLBACK);
     } catch {
       // silent fail, use fallback values
-      setAvatarUrl('/avatar.webp');
+      setAvatarUrl(AVATAR_FALLBACK);
     } finally {
       setLoading(false);
     }
@@ -103,7 +104,7 @@ function Sidebar() {
         <MotionDiv variants={itemVariants}>
           <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
             <PixelAvatar
-              src={loading ? '/avatar.webp' : avatarUrl}
+              src={loading ? AVATAR_FALLBACK : avatarUrl}
               alt="avatar"
               sx={{ width: 64, height: 64 }}
             />

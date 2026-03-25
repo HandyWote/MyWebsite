@@ -1,0 +1,32 @@
+FROM docker.1ms.run/node:18-alpine AS frontend-builder
+
+WORKDIR /build/frontend
+COPY frontend/package*.json ./
+RUN npm ci
+COPY frontend/ ./
+RUN npm run build
+
+FROM docker.1ms.run/node:18-alpine AS scene-builder
+
+WORKDIR /build/3Dend
+COPY 3Dend/package*.json ./
+RUN npm install
+COPY 3Dend/ ./
+RUN npm run build
+
+FROM docker.1ms.run/nginx:alpine
+
+RUN rm -rf /etc/nginx/conf.d/*
+
+COPY deploy/nginx.web.conf /etc/nginx/nginx.conf
+COPY frontend/mime.types /etc/nginx/mime.types
+
+COPY --from=scene-builder /build/3Dend/dist/ /usr/share/nginx/html/
+COPY --from=frontend-builder /build/frontend/dist/ /usr/share/nginx/html/app/
+
+RUN chmod -R 644 /usr/share/nginx/html/ && \
+    find /usr/share/nginx/html/ -type d -exec chmod 755 {} \;
+
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]
