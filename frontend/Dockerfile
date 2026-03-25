@@ -6,7 +6,7 @@ WORKDIR /app
 
 # 复制package文件并安装所有依赖（包括开发依赖，构建需要vite）
 COPY package*.json ./
-RUN npm ci
+RUN npm config set registry https://registry.npmmirror.com && npm ci
 
 # 复制源代码并构建
 COPY . .

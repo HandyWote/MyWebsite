@@ -2,7 +2,7 @@ FROM docker.1ms.run/node:18-alpine AS frontend-builder
 
 WORKDIR /build/frontend
 COPY frontend/package*.json ./
-RUN npm ci
+RUN npm config set registry https://registry.npmmirror.com && npm ci
 COPY frontend/ ./
 RUN npm run build
 
@@ -10,7 +10,7 @@ FROM docker.1ms.run/node:18-alpine AS scene-builder
 
 WORKDIR /build/3Dend
 COPY 3Dend/package*.json ./
-RUN npm install
+RUN npm config set registry https://registry.npmmirror.com && npm install
 COPY 3Dend/ ./
 RUN npm run build
 
