@@ -56,11 +56,28 @@ func AnalyzeArticleByContent(c *gin.Context) {
 func GetAISetting(c *gin.Context) {
 	setting, err := services.GetAISetting()
 	if err != nil {
-		utils.ErrorNotFound(c, "AI setting not found")
+		// 没有配置记录时，从环境变量读取默认值
+		cfg := config.LoadConfig()
+		utils.Success(c, gin.H{
+			"prompt":         "", // 提示词使用代码内置默认值
+			"model":          cfg.OpenAIModel,
+			"base_url":       cfg.OpenAIAPIURL,
+			"api_key":        "",
+			"api_key_masked": maskAPIKey(cfg.OpenAIAPIKey),
+		})
 		return
 	}
 
-	utils.Success(c, setting)
+	utils.Success(c, gin.H{
+		"id":             setting.ID,
+		"prompt":         setting.Prompt,
+		"model":          setting.Model,
+		"base_url":       setting.BaseURL,
+		"api_key":        "",
+		"api_key_masked": maskAPIKey(setting.APIKey),
+		"created_at":     setting.CreatedAt,
+		"updated_at":     setting.UpdatedAt,
+	})
 }
 
 // UpdateAISetting 更新 AI 配置
@@ -69,6 +86,10 @@ func UpdateAISetting(c *gin.Context) {
 	if err := c.ShouldBindJSON(&input); err != nil {
 		utils.ErrorBadRequest(c, "Invalid request body")
 		return
+	}
+
+	if shouldIgnoreAPIKeyUpdate(input.APIKey) {
+		input.APIKey = ""
 	}
 
 	setting, err := services.UpdateAISetting(input)
@@ -119,35 +140,105 @@ func TestAISetting(c *gin.Context) {
 }
 
 func normalizeAIAnalyzeResult(raw string) map[string]interface{} {
+	cleanRaw := strings.TrimSpace(raw)
 	res := map[string]interface{}{
 		"category":          "",
 		"tags":              []string{},
-		"suggested_summary": strings.TrimSpace(raw),
+		"suggested_summary": cleanRaw,
 	}
 
-	if strings.TrimSpace(raw) == "" {
+	if cleanRaw == "" {
 		return res
 	}
 
-	var parsed struct {
-		Category         string   `json:"category"`
-		Tags             []string `json:"tags"`
-		SuggestedSummary string   `json:"suggested_summary"`
-		Summary          string   `json:"summary"`
-	}
-	if err := json.Unmarshal([]byte(raw), &parsed); err != nil {
+	jsonText := extractJSONObject(cleanRaw)
+	if jsonText == "" {
 		return res
 	}
 
-	res["category"] = strings.TrimSpace(parsed.Category)
-	res["tags"] = parsed.Tags
-	switch {
-	case strings.TrimSpace(parsed.SuggestedSummary) != "":
-		res["suggested_summary"] = strings.TrimSpace(parsed.SuggestedSummary)
-	case strings.TrimSpace(parsed.Summary) != "":
-		res["suggested_summary"] = strings.TrimSpace(parsed.Summary)
-	default:
-		res["suggested_summary"] = ""
+	var parsed map[string]interface{}
+	if err := json.Unmarshal([]byte(jsonText), &parsed); err != nil {
+		return res
 	}
+
+	res["category"] = strings.TrimSpace(getStringValue(parsed, "category"))
+	res["tags"] = normalizeTags(parsed["tags"])
+
+	summary := strings.TrimSpace(getStringValue(parsed, "suggested_summary"))
+	if summary == "" {
+		summary = strings.TrimSpace(getStringValue(parsed, "summary"))
+	}
+	res["suggested_summary"] = summary
+
 	return res
+}
+
+func extractJSONObject(text string) string {
+	start := strings.Index(text, "{")
+	end := strings.LastIndex(text, "}")
+	if start == -1 || end == -1 || end < start {
+		return ""
+	}
+	return strings.TrimSpace(text[start : end+1])
+}
+
+func getStringValue(input map[string]interface{}, key string) string {
+	value, ok := input[key]
+	if !ok || value == nil {
+		return ""
+	}
+	if s, ok := value.(string); ok {
+		return s
+	}
+	return ""
+}
+
+func normalizeTags(tags interface{}) []string {
+	out := make([]string, 0)
+	switch v := tags.(type) {
+	case []interface{}:
+		for _, item := range v {
+			if s, ok := item.(string); ok {
+				trimmed := strings.TrimSpace(s)
+				if trimmed != "" {
+					out = append(out, trimmed)
+				}
+			}
+		}
+	case []string:
+		for _, item := range v {
+			trimmed := strings.TrimSpace(item)
+			if trimmed != "" {
+				out = append(out, trimmed)
+			}
+		}
+	case string:
+		parts := strings.Split(v, ",")
+		for _, item := range parts {
+			trimmed := strings.TrimSpace(item)
+			if trimmed != "" {
+				out = append(out, trimmed)
+			}
+		}
+	}
+	return out
+}
+
+func maskAPIKey(raw string) string {
+	key := strings.TrimSpace(raw)
+	if key == "" {
+		return ""
+	}
+	if len(key) <= 8 {
+		return "****"
+	}
+	return key[:4] + "****" + key[len(key)-4:]
+}
+
+func shouldIgnoreAPIKeyUpdate(key string) bool {
+	trimmed := strings.TrimSpace(key)
+	if trimmed == "" {
+		return false
+	}
+	return strings.Contains(trimmed, "****")
 }

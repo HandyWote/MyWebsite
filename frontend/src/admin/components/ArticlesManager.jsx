@@ -1,22 +1,20 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import {
-  Box, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, TablePagination,
-  TextField, Stack, Checkbox, IconButton, Typography,
-  Alert, CircularProgress, Divider
-} from '@mui/material';
-import DeleteIcon from '@mui/icons-material/Delete';
-import EditIcon from '@mui/icons-material/Edit';
-import AddIcon from '@mui/icons-material/Add';
-import CloudUploadIcon from '@mui/icons-material/CloudUpload';
-import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
-import SettingsSuggestIcon from '@mui/icons-material/SettingsSuggest';
-import Snackbar from '@mui/material/Snackbar';
-import { getApiMessage, getApiUrl, unwrapApiPayload } from '../../config/api';
-import { clearAuth } from '../utils/auth';
+// frontend/src/admin/components/ArticlesManager.jsx
+import { useState, useEffect, useCallback } from 'react';
+import { Box, Button, Snackbar, Alert, CircularProgress, Typography } from '@mui/material';
+import { Add, Upload, SettingsSuggest, AutoAwesome, Delete } from '@mui/icons-material';
+
+// Store
+import useArticleStore from '@/stores/articleStore';
+
+// 配置
+import { getApiUrl } from '@/config/api';
+
+// 子组件
+import { ArticleList, ArticleImporter } from './articles';
 import ArticleEditDialog from './articles/ArticleEditDialog';
 import AiSettingsDialog from './articles/AiSettingsDialog';
 
+// 默认文章结构
 const defaultArticle = {
   title: '',
   category: '',
@@ -24,777 +22,419 @@ const defaultArticle = {
   summary: '',
   content: '',
   cover: '',
-  content_type: 'markdown',  // 默认内容类型
+  content_type: 'markdown',
   pdf_filename: '',
 };
 
-const DEFAULT_COVER = '/default-cover.svg'; 
+const DEFAULT_COVER = '/default-cover.svg';
 
-const ArticlesManager = () => {
-  const navigate = useNavigate();
-  const [articles, setArticles] = useState([]);
-  const [selected, setSelected] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [openDialog, setOpenDialog] = useState(false);
-  const [editArticle, setEditArticle] = useState(defaultArticle);
+/**
+ * 文章管理容器组件
+ * 职责：UI 状态管理、子组件组合、事件协调
+ */
+export default function ArticlesManager() {
+  // ========== Store 状态和方法 ==========
+  const {
+    articles,
+    loading,
+    error,
+    pagination,
+    aiAnalysis,
+    aiLoading,
+    aiSettings,
+    aiSettingsLoading,
+    fetchArticles,
+    fetchArticleById,
+    createArticle,
+    updateArticle,
+    deleteArticle,
+    batchDeleteArticles,
+    uploadCover,
+    uploadPdf,
+    importMarkdown,
+    analyzeContent,
+    clearAiAnalysis,
+    fetchAiSettings,
+    updateAiSettings,
+    testAiConnection,
+  } = useArticleStore();
+
+  // ========== UI 状态（局部）==========
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingArticle, setEditingArticle] = useState(defaultArticle);
   const [editId, setEditId] = useState(null);
-  const [search, setSearch] = useState('');
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [total, setTotal] = useState(0);
-  const [fileUploading, setFileUploading] = useState(false);
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [previewContent, setPreviewContent] = useState('');
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [aiSettingsOpen, setAiSettingsOpen] = useState(false);
-  const [aiSettings, setAiSettings] = useState({ prompt: '', model: '', base_url: '', api_key: '' });
-  const [aiSettingsLoading, setAiSettingsLoading] = useState(false);
-  const [aiSettingsSaving, setAiSettingsSaving] = useState(false);
-  const [aiTesting, setAiTesting] = useState(false);
+  const [aiSettingsForm, setAiSettingsForm] = useState(null); // AI 设置表单（本地编辑状态）
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [fileUploading, setFileUploading] = useState(false);
   const [pdfUploading, setPdfUploading] = useState(false);
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: '',
+    severity: 'info',
+  });
 
-  // AI分析相关状态
-  const [aiAnalyzing, setAiAnalyzing] = useState(false);
-  const [aiSuggestions, setAiSuggestions] = useState(null);
-  
-  // 批量AI分析相关状态
-  const [batchAiAnalyzing, setBatchAiAnalyzing] = useState(false);
-  const [batchAiProgress, setBatchAiProgress] = useState({ current: 0, total: 0, success: 0, fail: 0, failedArticles: [] });
-  const [batchAiCancelled, setBatchAiCancelled] = useState(false);
-  const articleQueryRef = useRef({ page: 1, perPage: 10, search: '' });
-
-  useEffect(() => {
-    articleQueryRef.current = {
-      page: page + 1,
-      perPage: rowsPerPage,
-      search,
-    };
-  }, [page, rowsPerPage, search]);
-
-  // 拉取文章
-  const fetchArticles = useCallback(async (params = {}) => {
-    const query = { ...articleQueryRef.current, ...params };
-    setLoading(true);
-    const token = localStorage.getItem('token');
-    console.log('[DEBUG] Token:', token);
-    console.log('[DEBUG] Request URL:', `${getApiUrl.adminArticles()}?page=${query.page}&per_page=${query.perPage}&search=${query.search}`);
-    const res = await fetch(`${getApiUrl.adminArticles()}?page=${query.page}&per_page=${query.perPage}&search=${query.search}`,
-      { headers: { 'Authorization': `Bearer ${token}` } });
-    if (!res.ok) {
-      console.error('[DEBUG] Response status:', res.status);
-      console.error('[DEBUG] Response statusText:', res.statusText);
-      if (res.status === 401) {
-        clearAuth();
-        navigate('/admin/login', { state: { message: '登录已过期，请重新登录' } });
-        return;
-      }
-      console.error('获取文章失败:', res.status, res.statusText);
-      setLoading(false);
-      return;
-    }
-    let data;
-    try {
-      data = await res.json();
-    } catch (e) {
-      console.error('解析响应失败:', e);
-      setLoading(false);
-      return;
-    }
-    if (data.code !== 0) {
-      console.error('获取文章失败:', data.message);
-      setLoading(false);
-      return;
-    }
-    const payload = unwrapApiPayload(data) || {};
-    // 将 Tags 字符串转换为数组
-    const processedArticles = (payload.articles || []).map(article => ({
-      ...article,
-      tags: typeof article.tags === 'string'
-        ? article.tags.split(',').filter(t => t.trim())
-        : article.tags || []
-    }));
-    setArticles(processedArticles);
-    setTotal(payload.total || 0);
-    setLoading(false);
-  }, [navigate]);
-
+  // ========== 初始化 ==========
   useEffect(() => {
     fetchArticles();
   }, [fetchArticles]);
 
-  // 分页、搜索
-  const handleChangePage = (e, newPage) => { setPage(newPage); fetchArticles({ page: newPage + 1 }); };
-  const handleChangeRowsPerPage = e => { setRowsPerPage(+e.target.value); setPage(0); fetchArticles({ page: 1, perPage: +e.target.value }); };
-  // 搜索后自动跳转到第一页
-  const handleSearch = () => { setPage(0); fetchArticles({ page: 1, search }); };
+  // ========== 辅助函数 ==========
+  const showSnackbar = (message, severity = 'info') => {
+    setSnackbar({ open: true, message, severity });
+  };
 
-  // 选择
-  const handleSelectAll = e => setSelected(e.target.checked ? articles.map(a => a.id) : []);
-  const handleSelect = id => setSelected(sel => sel.includes(id) ? sel.filter(i => i !== id) : [...sel, id]);
+  const getCoverUrl = (cover) => {
+    if (!cover) return DEFAULT_COVER;
+    if (/^https?:\/\//.test(cover)) return cover;
+    return `${getApiUrl.baseUrl()}${cover}`;
+  };
 
-  // 新增/编辑弹窗
-  const openEdit = async (article = defaultArticle, id = null) => {
-    let targetArticle = { ...article };
-    let targetPreview = article.content || '';
+  const validateTags = (tags) => /^[\u4e00-\u9fa5a-zA-Z0-9_,\-\s]+$/.test(tags);
 
-    if (id) {
-      try {
-        const token = localStorage.getItem('token');
-        const res = await fetch(getApiUrl.adminArticleDetail(id), {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-
-        if (!res.ok) {
-          throw new Error(`获取文章详情失败 (HTTP ${res.status})`);
-        }
-
-        const data = await res.json();
-        if (data.code !== 0 || !data.data) {
-          throw new Error(data.msg || '获取文章详情失败');
-        }
-
-        targetArticle = { ...targetArticle, ...data.data };
-        targetPreview = data.data.content || '';
-      } catch (error) {
-        console.error('获取文章详情失败:', error);
-        setSnackbar({ open: true, message: error.message || '获取文章详情失败', severity: 'error' });
-      }
+  const normalizeAiSuggestions = (suggestions) => {
+    if (!suggestions || typeof suggestions !== 'object') {
+      return { category: '', tags: [], summary: '' };
     }
 
-    setEditArticle(targetArticle);
-    setPreviewContent(targetPreview);
-    setEditId(id);
-    setOpenDialog(true);
+    const category = (suggestions.category || '').toString().trim();
+    const summary = (suggestions.suggested_summary || suggestions.summary || '').toString().trim();
+
+    let tags = [];
+    if (Array.isArray(suggestions.tags)) {
+      tags = suggestions.tags
+        .map((item) => (item || '').toString().trim())
+        .filter(Boolean);
+    } else if (typeof suggestions.tags === 'string') {
+      tags = suggestions.tags
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean);
+    }
+
+    return { category, tags, summary };
   };
-  const closeEdit = () => {
-    setOpenDialog(false);
-    setEditArticle(defaultArticle);
+
+  // ========== 文章列表操作 ==========
+  const handleCreate = () => {
+    setEditingArticle(defaultArticle);
     setEditId(null);
-    setAiSuggestions(null); // 清除AI建议
     setPreviewContent('');
+    clearAiAnalysis();
+    setEditDialogOpen(true);
   };
 
-  // 标签格式校验
-  const validateTags = tags => /^[\u4e00-\u9fa5a-zA-Z0-9_,\-\s]+$/.test(tags);
+  const handleEdit = async (article) => {
+    try {
+      // 获取完整文章详情
+      const fullArticle = await fetchArticleById(article.id);
+      setEditingArticle({
+        ...defaultArticle,
+        ...fullArticle,
+        tags: typeof fullArticle.tags === 'string'
+          ? fullArticle.tags
+          : (fullArticle.tags || []).join(','),
+      });
+      setEditId(article.id);
+      setPreviewContent(fullArticle.content || '');
+      clearAiAnalysis();
+      setEditDialogOpen(true);
+    } catch (err) {
+      showSnackbar(err.message, 'error');
+    }
+  };
 
-  // AI智能分析文章内容
-  const handleAiAnalyze = async () => {
-    if (!editArticle.title.trim() || !editArticle.content.trim()) {
-      setSnackbar({ open: true, message: '请先填写标题和内容', severity: 'warning' });
+  const handleSave = async () => {
+    // 验证
+    if (!editingArticle.title) {
+      showSnackbar('标题必填', 'error');
+      return;
+    }
+    if (editingArticle.content_type === 'markdown' && !editingArticle.content) {
+      showSnackbar('Markdown 内容必填', 'error');
+      return;
+    }
+    if (editingArticle.content_type === 'pdf' && !editingArticle.pdf_filename) {
+      showSnackbar('PDF 文件必填', 'error');
+      return;
+    }
+    if (editingArticle.tags && !validateTags(editingArticle.tags)) {
+      showSnackbar('标签格式不合法', 'error');
       return;
     }
 
-    setAiAnalyzing(true);
     try {
-      const token = localStorage.getItem('token');
-      console.log('开始AI分析请求...');
-
-      const response = await fetch(getApiUrl.adminArticleAiAnalyze(), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          title: editArticle.title,
-          content: editArticle.content,
-          summary: editArticle.summary
-        })
-      });
-
-      console.log('AI分析响应状态:', response.status);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('AI分析响应错误:', errorText);
-        throw new Error(`HTTP ${response.status}: ${errorText}`);
-      }
-
-      const result = await response.json();
-      console.log('AI分析结果:', result);
-
-      if (result.code === 0) {
-        setAiSuggestions(result.data);
-        setSnackbar({ open: true, message: 'AI分析完成！请查看建议', severity: 'success' });
+      if (editId) {
+        await updateArticle(editId, editingArticle);
+        showSnackbar('文章更新成功', 'success');
       } else {
-        setSnackbar({ open: true, message: result.msg || 'AI分析失败', severity: 'error' });
+        await createArticle(editingArticle);
+        showSnackbar('文章创建成功', 'success');
       }
-    } catch (error) {
-      console.error('AI分析错误:', error);
-      let errorMessage = '网络错误，请稍后重试';
-
-      if (error.message.includes('CORS')) {
-        errorMessage = 'CORS错误：请检查后端服务配置';
-      } else if (error.message.includes('500')) {
-        errorMessage = '服务器内部错误：请检查AI服务配置';
-      } else if (error.message.includes('Failed to fetch')) {
-        errorMessage = '无法连接到服务器：请检查后端服务是否运行';
-      }
-
-      setSnackbar({ open: true, message: errorMessage, severity: 'error' });
-    } finally {
-      setAiAnalyzing(false);
+      setEditDialogOpen(false);
+      setEditingArticle(defaultArticle);
+      setEditId(null);
+      clearAiAnalysis();
+    } catch (err) {
+      showSnackbar(err.message, 'error');
     }
   };
 
-  // 应用AI建议
-  const applyAiSuggestions = () => {
-    if (!aiSuggestions) return;
-
-    setEditArticle(prev => ({
-      ...prev,
-      category: aiSuggestions.category || prev.category,
-      tags: aiSuggestions.tags ? aiSuggestions.tags.join(',') : prev.tags,
-      summary: aiSuggestions.suggested_summary || prev.summary
-    }));
-
-    setSnackbar({ open: true, message: 'AI建议已应用', severity: 'success' });
-  };
-
-  // 保存
-  const handleSave = async () => {
-    // 验证必填字段
-    if (!editArticle.title) return setSnackbar({ open: true, message: '标题必填', severity: 'error' });
-
-    // 根据内容类型验证对应的内容
-    if (editArticle.content_type === 'markdown') {
-      if (!editArticle.content) return setSnackbar({ open: true, message: 'Markdown内容必填', severity: 'error' });
-    } else if (editArticle.content_type === 'pdf') {
-      if (!editArticle.pdf_filename) return setSnackbar({ open: true, message: 'PDF文件必填', severity: 'error' });
-    }
-
-    if (editArticle.tags && !validateTags(editArticle.tags)) return setSnackbar({ open: true, message: '标签格式不合法，只能包含中英文、数字、逗号、下划线、短横线', severity: 'error' });
-    setLoading(true);
+  const handleDelete = async (id) => {
+    if (!confirm('确定删除该文章？')) return;
     try {
-      const token = localStorage.getItem('token');
-      const method = editId ? 'PUT' : 'POST';
-      const url = editId ? getApiUrl.adminArticleDetail(editId) : getApiUrl.adminArticles();
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify(editArticle)
-      });
-      if (!res.ok) {
-        if (res.status === 401) {
-          clearAuth();
-          navigate('/admin/login', { state: { message: '登录已过期，请重新登录' } });
-          return;
-        }
-        throw new Error('保存失败');
-      }
-      const data = await res.json();
-      if (data.code !== 0) {
-        throw new Error(data.msg || '保存失败');
-      }
-      closeEdit();
-      fetchArticles({ page: 1 });
-      setSnackbar({ open: true, message: '保存成功', severity: 'success' });
-    } catch (error) {
-      setSnackbar({ open: true, message: error.message || '保存失败', severity: 'error' });
+      await deleteArticle(id);
+      showSnackbar('文章删除成功', 'success');
+    } catch (err) {
+      showSnackbar(err.message, 'error');
     }
-    setLoading(false);
   };
 
-  // 删除
-  const handleDelete = async (ids) => {
-    if (!window.confirm('确定要删除选中的文章吗？')) return;
-    setLoading(true);
+  const handleBatchDelete = async () => {
+    if (!selectedIds.length) return;
+    if (!confirm(`确定删除选中的 ${selectedIds.length} 篇文章？`)) return;
     try {
-      const token = localStorage.getItem('token');
-      const idArr = Array.isArray(ids) ? ids : [ids];
-      if (idArr.length > 1) {
-        await fetch(getApiUrl.adminArticleBatchDelete(), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({ ids: idArr })
-        });
-      } else {
-                  await fetch(`${getApiUrl.adminArticles()}/${idArr[0]}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
-      }
-      setSelected([]);
-      fetchArticles({ page: page + 1 });
-      setSnackbar({ open: true, message: '删除成功', severity: 'success' });
-    } catch {
-      setSnackbar({ open: true, message: '删除失败', severity: 'error' });
+      await batchDeleteArticles(selectedIds);
+      setSelectedIds([]);
+      showSnackbar('批量删除成功', 'success');
+    } catch (err) {
+      showSnackbar(err.message, 'error');
     }
-    setLoading(false);
   };
 
-  // 上传封面
-  const handleUploadCover = async e => {
-    const file = e.target.files[0];
+  // ========== 文件上传 ==========
+  const handleUploadCover = async (e) => {
+    const file = e.target.files?.[0];
     if (!file) return;
+
     setFileUploading(true);
-    const token = localStorage.getItem('token');
-    const formData = new FormData();
-    formData.append('file', file);
     try {
-      const res = await fetch(getApiUrl.adminArticleCover(), {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
-        body: formData
-      });
-      const data = await res.json();
-      const payload = unwrapApiPayload(data);
-      if (!res.ok || data.code !== 0 || !payload?.url) {
-        throw new Error(getApiMessage(data, '封面上传失败'));
-      }
-      setEditArticle(a => ({ ...a, cover: payload.url }));
-    } catch (error) {
-      setSnackbar({ open: true, message: error.message || '封面上传失败', severity: 'error' });
+      const url = await uploadCover(file);
+      setEditingArticle((prev) => ({ ...prev, cover: url }));
+      showSnackbar('封面上传成功', 'success');
+    } catch (err) {
+      showSnackbar(err.message, 'error');
+    } finally {
+      setFileUploading(false);
     }
-    setFileUploading(false);
   };
 
-  // 上传PDF文件
   const handleUploadPdf = async (file) => {
     if (!file) return;
+
     setPdfUploading(true);
-    const token = localStorage.getItem('token');
-    const formData = new FormData();
-    formData.append('file', file);
     try {
-      const res = await fetch(getApiUrl.adminArticlePdfUpload(), {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
-        body: formData
-      });
-      const data = await res.json();
-      const payload = unwrapApiPayload(data);
-      if (data.code === 0) {
-        setEditArticle(a => ({ ...a, pdf_filename: payload?.filename || '' }));
-        setSnackbar({ open: true, message: 'PDF上传成功', severity: 'success' });
-      } else {
-        setSnackbar({ open: true, message: getApiMessage(data, 'PDF上传失败'), severity: 'error' });
-      }
-    } catch {
-      setSnackbar({ open: true, message: 'PDF上传失败', severity: 'error' });
-    }
-    setPdfUploading(false);
-  };
-
-  // 批量导入md
-  const handleBatchImport = async e => {
-    const files = Array.from(e.target.files);
-    // 允许重复选择同一批文件
-    e.target.value = '';
-    if (!files.length) return;
-    setLoading(true);
-    const token = localStorage.getItem('token');
-    const formData = new FormData();
-    files.forEach(f => formData.append('files', f));
-    try {
-      const res = await fetch(getApiUrl.adminArticleImportMd(), {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
-        body: formData
-      });
-      const data = await res.json();
-      if (data.code === 0) {
-        const stats = data.data || {};
-        const successCount = (stats.markdown || 0) + (stats.pdf || 0);
-        const failFiles = stats.failed || [];
-        setSnackbar({
-          open: true,
-          message: data.msg || `成功导入${successCount}篇文章`,
-          severity: failFiles.length ? 'warning' : 'success'
-        });
-      } else {
-        setSnackbar({ open: true, message: data.msg || '导入失败', severity: 'error' });
-      }
-    } catch {
-      setSnackbar({ open: true, message: '导入失败', severity: 'error' });
-    }
-    setLoading(false);
-    fetchArticles({ page: 1 });
-  };
-
-  // 更新预览内容（仅Markdown文章）
-  useEffect(() => {
-    if (editArticle.content_type === 'markdown') {
-      const timer = setTimeout(() => {
-        setPreviewContent(editArticle.content || '');
-      }, 300);
-      return () => clearTimeout(timer);
-    } else {
-      setPreviewContent('');
-    }
-  }, [editArticle.content, editArticle.content_type]);
-
-  // 封面图片显示适配
-  const getCoverUrl = cover => {
-    if (!cover) return DEFAULT_COVER;
-    if (/^https?:\/\//.test(cover)) return cover;
-            return `${getApiUrl.baseUrl()}${cover}`;
-  };
-
-  // 批量AI分析功能
-  const handleBatchAiAnalyze = async () => {
-    if (!selected.length) return;
-    
-    setBatchAiAnalyzing(true);
-    setBatchAiCancelled(false);
-    setBatchAiProgress({ current: 0, total: selected.length, success: 0, fail: 0, failedArticles: [] });
-    
-    const token = localStorage.getItem('token');
-    let successCount = 0;
-    let failCount = 0;
-    const failedArticles = [];
-    
-    try {
-      for (let i = 0; i < selected.length; i++) {
-        if (batchAiCancelled) break;
-        
-        const articleId = selected[i];
-        setBatchAiProgress(prev => ({ ...prev, current: i + 1 }));
-        
-        try {
-          // 获取文章详情
-          const articleRes = await fetch(getApiUrl.adminArticleDetail(articleId), {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
-          const articleResult = await articleRes.json();
-          if (!articleRes.ok || articleResult.code !== 0 || !articleResult.data) {
-            throw new Error(articleResult.msg || `获取文章详情失败 (HTTP ${articleRes.status})`);
-          }
-          const articleData = articleResult.data;
-          
-          if (!articleData.title || (articleData.content_type === 'markdown' && !articleData.content)) {
-            failCount++;
-            failedArticles.push({ id: articleId, title: articleData.title || '未知标题', error: articleData.content_type === 'pdf' ? 'PDF文章不支持AI分析' : '标题或内容为空' });
-            continue;
-          }
-          
-          // AI分析
-                      const aiRes = await fetch(getApiUrl.adminArticleAiAnalyze(), {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({
-              title: articleData.title,
-              content: articleData.content,
-              summary: articleData.summary
-            })
-          });
-          
-          if (!aiRes.ok) {
-            throw new Error(`HTTP ${aiRes.status}`);
-          }
-          
-          const aiResult = await aiRes.json();
-          
-          if (aiResult.code === 0) {
-            // 应用AI建议并更新文章
-            const updateData = {
-              ...articleData,
-              category: aiResult.data.category || articleData.category,
-              tags: aiResult.data.tags ? aiResult.data.tags.join(',') : articleData.tags,
-              summary: aiResult.data.suggested_summary || articleData.summary
-            };
-            
-            const updateRes = await fetch(getApiUrl.adminArticleDetail(articleId), {
-              method: 'PUT',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-              },
-              body: JSON.stringify(updateData)
-            });
-            
-            if (updateRes.ok) {
-              successCount++;
-            } else {
-              throw new Error('更新文章失败');
-            }
-          } else {
-            throw new Error(aiResult.msg || 'AI分析失败');
-          }
-          
-        } catch (error) {
-          failCount++;
-          failedArticles.push({ 
-            id: articleId, 
-            title: `文章ID: ${articleId}`, 
-            error: error.message 
-          });
-        }
-        
-        setBatchAiProgress(prev => ({ 
-          ...prev, 
-          success: successCount, 
-          fail: failCount, 
-          failedArticles 
-        }));
-        
-        // 添加延迟避免请求过快
-        await new Promise(resolve => setTimeout(resolve, 500));
-      }
-      
-      // 完成后刷新列表和清空选择
-      await fetchArticles({ page: page + 1 });
-      setSelected([]);
-      
-      const message = batchAiCancelled 
-        ? `批量分析已取消。成功: ${successCount}篇，失败: ${failCount}篇`
-        : `批量分析完成！成功: ${successCount}篇，失败: ${failCount}篇`;
-      
-      setSnackbar({ 
-        open: true, 
-        message, 
-        severity: failCount > 0 ? 'warning' : 'success' 
-      });
-      
-    } catch (error) {
-      setSnackbar({ 
-        open: true, 
-        message: `批量分析出错: ${error.message}`, 
-        severity: 'error' 
-      });
+      const filename = await uploadPdf(file);
+      setEditingArticle((prev) => ({ ...prev, pdf_filename: filename }));
+      showSnackbar('PDF 上传成功', 'success');
+    } catch (err) {
+      showSnackbar(err.message, 'error');
     } finally {
-      setBatchAiAnalyzing(false);
-      setBatchAiCancelled(false);
+      setPdfUploading(false);
     }
   };
-  
-  // 取消批量AI分析
-  const handleCancelBatchAi = () => {
-    setBatchAiCancelled(true);
-  };
 
-  const fetchAiSettings = async () => {
-    setAiSettingsLoading(true);
+  // ========== AI 分析 ==========
+  const handleAiAnalyze = async () => {
+    if (!editingArticle.title?.trim() || !editingArticle.content?.trim()) {
+      showSnackbar('请先填写标题和内容', 'warning');
+      return;
+    }
+
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(getApiUrl.adminAiSettings(), {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (!res.ok) {
-        throw new Error('读取AI设置失败');
-      }
-      const json = await res.json();
-      const payload = json.data || {};
-      setAiSettings({
-        prompt: payload.prompt || '',
-        model: payload.model || '',
-        base_url: payload.base_url || '',
-        api_key: ''
-      });
-    } catch (error) {
-      setSnackbar({ open: true, message: error.message, severity: 'error' });
-    } finally {
-      setAiSettingsLoading(false);
+      await analyzeContent(
+        editingArticle.title,
+        editingArticle.content,
+        editingArticle.summary || ''
+      );
+      showSnackbar('AI 分析完成！请查看建议', 'success');
+    } catch (err) {
+      showSnackbar(err.message, 'error');
     }
   };
 
-  const handleOpenAiSettings = () => {
+  const handleApplyAiSuggestions = () => {
+    if (!aiAnalysis) return;
+    const normalized = normalizeAiSuggestions(aiAnalysis);
+
+    setEditingArticle((prev) => ({
+      ...prev,
+      category: normalized.category || prev.category,
+      tags: normalized.tags.length > 0 ? normalized.tags.join(',') : prev.tags,
+      summary: normalized.summary || prev.summary,
+    }));
+    showSnackbar('AI 建议已应用', 'success');
+  };
+
+  // ========== AI 设置 ==========
+  const handleOpenAiSettings = async () => {
     setAiSettingsOpen(true);
-    fetchAiSettings();
+    try {
+      const settings = await fetchAiSettings();
+      setAiSettingsForm(settings);
+    } catch (err) {
+      showSnackbar(err.message, 'error');
+    }
   };
 
   const handleSaveAiSettings = async () => {
-    setAiSettingsSaving(true);
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(getApiUrl.adminAiSettings(), {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(aiSettings)
-      });
-      if (!res.ok) {
-        throw new Error('保存AI设置失败');
-      }
-      setSnackbar({ open: true, message: 'AI设置已保存', severity: 'success' });
-      setAiSettingsOpen(false);
-    } catch (error) {
-      setSnackbar({ open: true, message: error.message, severity: 'error' });
-    } finally {
-      setAiSettingsSaving(false);
+      await updateAiSettings(aiSettingsForm);
+      showSnackbar('AI 设置保存成功', 'success');
+    } catch (err) {
+      showSnackbar(err.message, 'error');
     }
   };
 
   const handleTestAiSettings = async () => {
-    setAiTesting(true);
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(getApiUrl.adminAiSettingsTest(), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(aiSettings)
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(data.msg || '测试失败');
-      }
-      setSnackbar({ open: true, message: data.msg || 'AI服务可用', severity: 'success' });
-    } catch (error) {
-      setSnackbar({ open: true, message: error.message, severity: 'error' });
-    } finally {
-      setAiTesting(false);
+      await testAiConnection(aiSettingsForm);
+      showSnackbar('AI 连接测试成功', 'success');
+    } catch (err) {
+      showSnackbar(err.message, 'error');
     }
   };
 
+  // ========== 批量导入 ==========
+  const handleImport = async (files) => {
+    try {
+      const result = await importMarkdown(files);
+      const stats = result || {};
+      const successCount = (stats.markdown || 0) + (stats.pdf || 0);
+      showSnackbar(`成功导入 ${successCount} 篇文章`, 'success');
+      return { success: successCount, failed: (stats.failed || []).length };
+    } catch (err) {
+      showSnackbar(err.message, 'error');
+      return { success: 0, failed: files.length };
+    }
+  };
+
+  // ========== 渲染 ==========
   return (
-    <Box sx={{ p: 3 }}>
-      <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => openEdit()}>新增文章</Button>
-        <Button variant="outlined" color="error" startIcon={<DeleteIcon />} disabled={!selected.length} onClick={() => handleDelete(selected)}>批量删除</Button>
-        <Button 
-          variant="outlined" 
-          color="primary" 
-          startIcon={batchAiAnalyzing ? <CircularProgress size={16} /> : <AutoAwesomeIcon />} 
-          disabled={!selected.length || batchAiAnalyzing} 
-          onClick={handleBatchAiAnalyze}
-        >
-          {batchAiAnalyzing ? '分析中...' : '批量AI分析'}
-        </Button>
-        <Button variant="outlined" component="label" startIcon={<CloudUploadIcon />}>批量导入MD/PDF
-          <input type="file" accept=".md,.markdown,.pdf" multiple hidden onChange={handleBatchImport} />
+    <Box>
+      {/* 工具栏 */}
+      <Box sx={{ mb: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+        <Button variant="contained" startIcon={<Add />} onClick={handleCreate}>
+          新建文章
         </Button>
         <Button
           variant="outlined"
-          startIcon={<SettingsSuggestIcon />}
-          onClick={handleOpenAiSettings}
-          size="small"
+          startIcon={<Upload />}
+          onClick={() => setImportDialogOpen(true)}
         >
-          AI设置
+          批量导入
         </Button>
-        <TextField size="small" placeholder="搜索标题" value={search} onChange={e => setSearch(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSearch()} sx={{ width: 200 }} />
-        <Button variant="outlined" onClick={handleSearch}>搜索</Button>
-      </Stack>
-      {/* 批量AI分析进度显示 */}
-      {batchAiAnalyzing && (
-        <Alert 
-          severity="info" 
-          sx={{ mb: 2 }}
-          action={
-            <Button color="inherit" size="small" onClick={handleCancelBatchAi}>
-              取消
-            </Button>
-          }
+        <Button
+          variant="outlined"
+          startIcon={<SettingsSuggest />}
+          onClick={handleOpenAiSettings}
         >
-          <Box>
-            <Typography variant="body2" gutterBottom>
-              正在进行批量AI分析：{batchAiProgress.current}/{batchAiProgress.total} 篇文章
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              成功: {batchAiProgress.success}篇，失败: {batchAiProgress.fail}篇
-            </Typography>
-            {batchAiProgress.failedArticles.length > 0 && (
-              <Typography variant="body2" color="error" sx={{ mt: 1 }}>
-                失败文章: {batchAiProgress.failedArticles.map(item => item.title).join(', ')}
-              </Typography>
-            )}
-          </Box>
-        </Alert>
-      )}
-      <TableContainer component={Paper}>
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell padding="checkbox">
-                <Checkbox checked={selected.length === articles.length && articles.length > 0} indeterminate={selected.length > 0 && selected.length < articles.length} onChange={handleSelectAll} />
-              </TableCell>
-              <TableCell>标题</TableCell>
-              <TableCell>分类</TableCell>
-              <TableCell>标签</TableCell>
-              <TableCell>摘要</TableCell>
-              <TableCell>封面</TableCell>
-              <TableCell>创建时间</TableCell>
-              <TableCell>更新时间</TableCell>
-              <TableCell>操作</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {articles.map(row => (
-              <TableRow key={row.id} selected={selected.includes(row.id)}>
-                <TableCell padding="checkbox">
-                  <Checkbox checked={selected.includes(row.id)} onChange={() => handleSelect(row.id)} />
-                </TableCell>
-                <TableCell>{row.title}</TableCell>
-                <TableCell>{row.category}</TableCell>
-                <TableCell>{row.tags}</TableCell>
-                <TableCell>{row.summary}</TableCell>
-                <TableCell>
-                  <img
-                    src={getCoverUrl(row.cover)}
-                    alt="封面"
-                    style={{ width: 48, height: 32, objectFit: 'cover' }}
-                    onError={e => { e.target.onerror = null; e.target.src = DEFAULT_COVER; }}
-                  />
-                </TableCell>
-                <TableCell>{row.created_at}</TableCell>
-                <TableCell>{row.updated_at}</TableCell>
-                <TableCell>
-                  <IconButton size="small" onClick={() => openEdit(row, row.id)}><EditIcon /></IconButton>
-                  <IconButton size="small" color="error" onClick={() => handleDelete(row.id)}><DeleteIcon /></IconButton>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
-      <TablePagination
-        component="div"
-        count={total}
-        page={page}
-        onPageChange={handleChangePage}
-        rowsPerPage={rowsPerPage}
-        onRowsPerPageChange={handleChangeRowsPerPage}
-        labelRowsPerPage="每页行数"
+          AI 设置
+        </Button>
+        {selectedIds.length > 0 && (
+          <Button
+            variant="outlined"
+            color="error"
+            startIcon={<Delete />}
+            onClick={handleBatchDelete}
+          >
+            删除选中 ({selectedIds.length})
+          </Button>
+        )}
+      </Box>
+
+      {/* 文章列表 */}
+      <ArticleList
+        articles={articles}
+        loading={loading}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+        selectedIds={selectedIds}
+        onSelectionChange={setSelectedIds}
+        pagination={pagination}
+        onPageChange={(page) => fetchArticles({ page })}
+        onRowsPerPageChange={(perPage) => fetchArticles({ page: 1, perPage })}
       />
-      {/* 新增/编辑弹窗 */}
+
+      {/* 编辑对话框 */}
       <ArticleEditDialog
-        open={openDialog}
+        open={editDialogOpen}
         loading={loading}
         isEdit={Boolean(editId)}
-        article={editArticle}
-        onClose={closeEdit}
+        article={editingArticle}
+        onClose={() => {
+          setEditDialogOpen(false);
+          setEditingArticle(defaultArticle);
+          setEditId(null);
+          clearAiAnalysis();
+        }}
         onSave={handleSave}
-        onArticleChange={setEditArticle}
+        onArticleChange={setEditingArticle}
         validateTags={validateTags}
         fileUploading={fileUploading}
         onUploadCover={handleUploadCover}
-        coverPreview={getCoverUrl(editArticle.cover)}
-        aiAnalyzing={aiAnalyzing}
-        aiSuggestions={aiSuggestions}
+        coverPreview={getCoverUrl(editingArticle.cover)}
+        aiAnalyzing={aiLoading}
+        aiSuggestions={aiAnalysis}
         onAiAnalyze={handleAiAnalyze}
-        onApplySuggestions={applyAiSuggestions}
+        onApplySuggestions={handleApplyAiSuggestions}
         previewContent={previewContent}
         onPreviewContentChange={setPreviewContent}
-        onMarkdownError={(message, severity) => setSnackbar({ open: true, message, severity })}
+        onMarkdownError={(message, severity) => showSnackbar(message, severity)}
         onUploadPdf={handleUploadPdf}
         pdfUploading={pdfUploading}
       />
+
+      {/* AI 设置对话框 */}
       <AiSettingsDialog
         open={aiSettingsOpen}
         loading={aiSettingsLoading}
-        saving={aiSettingsSaving}
-        testing={aiTesting}
-        settings={aiSettings}
+        saving={aiSettingsLoading}
+        testing={aiSettingsLoading}
+        settings={aiSettingsForm || {}}
         onClose={() => setAiSettingsOpen(false)}
-        onChange={setAiSettings}
+        onChange={setAiSettingsForm}
         onSave={handleSaveAiSettings}
         onTest={handleTestAiSettings}
       />
+
+      {/* 批量导入对话框 */}
+      <ArticleImporter
+        open={importDialogOpen}
+        onImport={handleImport}
+        onClose={() => setImportDialogOpen(false)}
+      />
+
+      {/* 全局提示 */}
       <Snackbar
         open={snackbar.open}
-        autoHideDuration={2000}
-        onClose={() => setSnackbar(s => ({ ...s, open: false }))}
-        message={snackbar.message}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      />
-      {loading && <Box sx={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', bgcolor: 'rgba(255,255,255,0.4)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <Typography variant="h6">加载中...</Typography>
-      </Box>}
+        autoHideDuration={3000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+      >
+        <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
+      </Snackbar>
+
+      {/* 全局加载遮罩 */}
+      {loading && (
+        <Box
+          sx={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100vw',
+            height: '100vh',
+            bgcolor: 'rgba(255,255,255,0.4)',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Typography variant="h6">加载中...</Typography>
+        </Box>
+      )}
     </Box>
   );
-};
-
-export default ArticlesManager;
+}

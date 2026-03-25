@@ -74,7 +74,7 @@ const AiSettingsDialog = ({
             <TextField
               label="API Key"
               type="password"
-              placeholder="sk-xxxx"
+              placeholder={settings.api_key_masked || 'sk-xxxx'}
               value={settings.api_key || ''}
               onChange={handleFieldChange('api_key')}
               fullWidth

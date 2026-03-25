@@ -315,13 +315,19 @@ const ArticleEditDialog = ({
           </SectionCard>
 
           {currentArticle.content_type === 'markdown' ? (
-            <SectionCard title="正文内容" subtitle="上传 Markdown 文件并实时预览渲染效果">
+            <SectionCard title="正文内容" subtitle="上传 Markdown 文件，标题将自动从文件名提取">
               <MarkdownUploadPreview
                 content={currentArticle.content || ''}
                 onContentChange={value => onArticleChange(prev => ({ ...prev, content: value }))}
                 previewContent={previewContent}
                 onPreviewContentChange={onPreviewContentChange}
                 onError={onMarkdownError}
+                onFileNameChange={nameWithoutExt => {
+                  // 仅在新建文章且标题为空时自动填充标题
+                  if (!isEdit && !currentArticle.title) {
+                    onArticleChange(prev => ({ ...prev, title: nameWithoutExt }));
+                  }
+                }}
               />
             </SectionCard>
           ) : (

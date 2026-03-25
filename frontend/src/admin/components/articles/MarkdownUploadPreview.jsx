@@ -36,7 +36,8 @@ const MarkdownUploadPreview = ({
   onContentChange,
   previewContent,
   onPreviewContentChange,
-  onError
+  onError,
+  onFileNameChange
 }) => {
   const inputRef = useRef(null);
   const [fileName, setFileName] = useState('');
@@ -65,7 +66,11 @@ const MarkdownUploadPreview = ({
       const text = typeof event.target?.result === 'string' ? event.target.result : '';
       onContentChange(text);
       onPreviewContentChange(text);
+
+      // 提取文件名作为标题（去掉 .md 后缀）
+      const nameWithoutExt = file.name.replace(/\.md$/i, '');
       setFileName(file.name);
+      onFileNameChange?.(nameWithoutExt);
     };
     reader.onerror = () => {
       onError?.('读取Markdown文件失败，请重试', 'error');

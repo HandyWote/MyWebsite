@@ -1,3 +1,19 @@
+/**
+ * @deprecated 此 Hook 已废弃，请使用 stores/articleStore.js 配合 utils/apiClient.js
+ *
+ * 迁移指南：
+ * - 数据获取：使用 useArticleStore() 获取状态和操作方法
+ * - API 调用：使用 api.get/post/put/del 进行请求
+ * - 示例：
+ *   // 旧方式
+ *   const { data, loading, error } = useApi({ url: '/api/articles' });
+ *
+ *   // 新方式
+ *   const { articles, loading, fetchArticles } = useArticleStore();
+ *   useEffect(() => { fetchArticles(); }, []);
+ *
+ * 此文件将在未来版本中移除。
+ */
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { handleError, AppError, ErrorType } from '../utils/errorHandler';
 
