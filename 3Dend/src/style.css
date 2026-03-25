@@ -1,0 +1,40 @@
+* {
+    margin: 0;
+    padding: 0;
+}
+
+html,
+body {
+    overflow: hidden;
+}
+
+.webgl {
+    position: fixed;
+    top: 0;
+    left: 0;
+    outline: none;
+}
+
+.interface-wrapper {
+    width: 100%;
+    top: 64px;
+    left: 64px;
+}
+
+.icon-control-container {
+    height: 26.5px;
+    width: 26.5px;
+}
+
+@media only screen and (max-width: 768px) {
+    .interface-wrapper {
+        width: 100%;
+        top: 24px;
+        left: 24px;
+    }
+
+    .icon-control-container {
+        height: 19.5px;
+        width: 19.5px;
+    }
+}

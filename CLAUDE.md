@@ -1,139 +1,106 @@
 # CLAUDE.md
 
-
 !!!回复请使用中文!!!
 !!!使用项目中已有的组件，除非必要，不要另起炉灶!!!
-don't eddit code without my command
+don't edit code without my command
 have to use superpower skill
 采用TDD开发范式(REG)
 在探讨方案时需要给我提供多个方案提供灵感，推荐未来技术债最低的方案
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Development Mode (Currently Used)
+## Development Mode
 
-In development mode, only the database runs in Docker, while the backend and frontend run directly on the host:
+In development mode, only the database runs in Docker (or locally), while backend and frontend run directly on the host.
 
-### Database (Docker Only)
-```bash
-docker-compose up -d              # Start PostgreSQL database only
-```
-
-### Backend Development
+### Backend (Go + Gin)
 ```bash
 cd backend
-uv sync                           # Install dependencies using uv package manager
-uv run app.py --debug             # Start development server (port 5000)
-uv run test_ai.py                 # Test AI service configuration
+go mod tidy                    # Install dependencies
+go run main.go                 # Start dev server (port 5000)
+go test ./...                  # Run all tests
+go test ./routes -v            # Run specific package tests with verbose
+go test -run TestName ./...    # Run specific test
 ```
 
-### Frontend Development
+### Frontend (React + Vite)
 ```bash
 cd frontend
-npm install                       # Install dependencies
-npm run dev                       # Start dev server (port 3131)
-npm run build                     # Build for production
-npm run lint                      # Run ESLint
-npm run preview                   # Preview production build
+npm install                    # Install dependencies
+npm run dev                    # Start dev server (port 3131)
+npm run build                  # Build for production
+npm run lint                   # Run ESLint
+npm run test                   # Run Vitest tests
+npm run test:run               # Run tests once (no watch)
 ```
 
 ### Service Communication
 - **Frontend**: http://localhost:3131
 - **Backend**: http://localhost:5000
-- **Database**: PostgreSQL runs in Docker
+- **Database**: PostgreSQL (external or Docker)
 
-The frontend uses Vite proxy to automatically forward `/api`, `/socket.io`, and `/uploads` requests to the backend (see `vite.config.js` lines 27-68), no CORS configuration needed.
+Vite proxy forwards `/api` and `/uploads` requests to backend automatically.
 
 ## Full Docker Deployment
 
-### Quick Start with Docker
 ```bash
-docker-compose up -d              # Start all services
+docker-compose up -d           # Start all services
+docker-compose logs -f backend # Monitor backend logs
+docker-compose down            # Stop all services
 ```
 
-### Monitoring
-```bash
-docker-compose logs -f backend    # Monitor backend logs
-docker-compose logs -f frontend   # Monitor frontend logs
-docker-compose down               # Stop all services
+## Architecture
+
+### Tech Stack
+- **Backend**: Go 1.25 + Gin + GORM + PostgreSQL
+- **Frontend**: React 19 + Material-UI + Vite + Zustand
+- **Deployment**: Docker Compose + Nginx
+
+### Backend Structure
+```
+backend/
+├── config/        # Configuration loading from .env
+├── database/      # PostgreSQL connection
+├── middleware/    # JWT auth, CORS
+├── migrations/    # Database migrations
+├── models/        # GORM models (Article, Comment, AISetting, etc.)
+├── routes/        # Gin route handlers + route registration
+├── services/      # Business logic (AI integration, file handling)
+├── utils/         # Response helpers
+└── main.go        # Entry point
 ```
 
-## Testing
-
-### Backend Tests
-```bash
-cd backend
-uv run test_ai.py                 # Test AI service configuration
+### Frontend Structure
+```
+frontend/src/
+├── admin/         # Admin dashboard components
+├── components/    # Public-facing UI components
+├── config/        # API configuration (axios setup)
+├── hooks/         # Custom React hooks
+├── theme/         # Material-UI theming
+└── utils/         # Frontend utilities
 ```
 
-### Frontend Tests
-```bash
-# Frontend API configuration test
-cd frontend && node src/config/api.test.js
-```
+### Key Patterns
 
-docker-compose logs -f backend    # Monitor backend logs
+**Configuration Flow:**
+- Environment variables → `config/config.go` loads from `.env`
+- AI settings: Database `ai_settings` table **overrides** environment variables (see `services/ai.go:getAIConfig`)
+- Environment variable names: `OPENAI_API_KEY`, `OPENAI_MODEL`, `OPENAI_API_URL`
 
-## High-Level Architecture
+**Route Organization:**
+- Public routes: `/api/*` (no auth required)
+- Admin routes: `/api/admin/*` (JWT required via `middleware.JWTAuth`)
+- Route registration in `routes/routes.go`
 
-### Service Architecture
-The project uses a microservices architecture with Docker Compose orchestration:
+**Database Models (GORM):**
+- `Article`, `Comment`, `Skill`, `Contact`, `Avatar`, `SiteBlock`, `AISetting`
+- Auto-migration on startup via `main.go`
 
-```
-User Browser → Nginx (port 4419) → Frontend/Backend Services
-                              ↓
-                    PostgreSQL Database
-```
+**Frontend API Calls:**
+- Centralized in `frontend/src/config/api.js`
+- Uses axios with base URL configuration
 
-**Service Communication:**
-- **Frontend** (port 4419): Nginx serves static files and proxies API calls to backend
-- **Backend** (port 5000): Flask API, internal Docker network only (not exposed to host)
-- **Database**: PostgreSQL with pgvector extension for potential AI features
-- **WebSocket**: Real-time communication via Socket.IO through Nginx proxy
-
-### Code Organization
-
-**Backend Structure (Flask + SQLAlchemy):**
-- `backend/models/`: SQLAlchemy data models (Article, Skill, Contact, Comment, etc.)
-- `backend/routes/`: API route blueprints organized by feature
-- `backend/services/`: Business logic including AI integration and file handling
-- `backend/utils/`: Utility functions for common operations
-- `backend/config.py`: Configuration management with environment variable support
-
-**Frontend Structure (React + Material-UI):**
-- `frontend/src/admin/`: Admin dashboard components and management interfaces
-- `frontend/src/components/`: Public-facing UI components
-- `frontend/src/config/`: API configuration and WebSocket setup
-- `frontend/src/hooks/`: Custom React hooks
-- `frontend/src/theme/`: Material-UI theming and styling
-- `frontend/src/utils/`: Frontend utility functions
-
-### Key Design Patterns
-
-**Authentication:** JWT-based with refresh tokens, configured in `backend/config.py`
-
-**API Communication:** Frontend uses Axios with centralized configuration in `frontend/src/config/api.js`
-
-**Real-time Updates:** Socket.IO integration for live data updates, configured in both backend and frontend
-
-**File Management:** Uploads handled through backend with storage in `backend/uploads/`, served via Nginx
-
-**Configuration Management:** Environment-based configuration using `.env` files, with Docker environment detection for path resolution
-
-**Database Design:** PostgreSQL with SQLAlchemy ORM, includes models for articles, skills, contacts, comments, and site content blocks
-
-### Development Workflow
-
-**Adding New Features:**
-1. Backend: Create/modify models in `backend/models/`, add routes in `backend/routes/`, implement business logic in `backend/services/`
-2. Frontend: Create components in appropriate directories, update API calls in `frontend/src/config/api.js`
-3. Test: Run backend tests with `python test_ai.py` and frontend tests as needed
-
-**Common Modifications:**
-- API endpoints: Update both backend routes and frontend API configuration
-- Environment variables: Modify `backend/.env` and ensure Docker Compose picks up changes
-- UI styling: Use Material-UI theme system in `frontend/src/theme/`
-
-**Code Standards:**
-- Backend: PEP 8 compliance, snake_case for modules/functions, PascalCase for models
-- Frontend: 2-space indentation, PascalCase for React components, camelCase for utilities
+## Code Standards
+- Backend: Go idiomatic style, camelCase for functions, PascalCase for exports
+- Frontend: 2-space indentation, PascalCase for components, camelCase for utilities

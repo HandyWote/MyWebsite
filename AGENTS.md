@@ -1,43 +1,106 @@
-# Repository Guidelines
+# CLAUDE.md
+
 !!!回复请使用中文!!!
 !!!使用项目中已有的组件，除非必要，不要另起炉灶!!!
-don't eddit code without my command
+don't edit code without my command
 have to use superpower skill
 采用TDD开发范式(REG)
 在探讨方案时需要给我提供多个方案提供灵感，推荐未来技术债最低的方案
-## Project Structure & Module Organization
-- `backend/` hosts the Flask API: `models/` for SQLAlchemy entities, `routes/` for blueprints, `services/` for cross-cutting logic, and `config.py` + `.env` for runtime parameters.
-- `frontend/` is Vite + React 19; components live in `src/components/`, admin dashboards in `src/admin/`, with networking and sockets centralized under `src/config/`.
-- `docker-compose.yml` wires backend, frontend (via Nginx), PostgreSQL, and Socket.IO; change ports or env vars here rather than editing source files.
 
-## Build, Test, and Development Commands
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Development Mode
+
+In development mode, only the database runs in Docker (or locally), while backend and frontend run directly on the host.
+
+### Backend (Go + Gin)
 ```bash
-docker-compose up -d              # build & run the whole stack
-docker-compose logs -f backend    # tail a service
-
-cd backend && uv pip install -e . && python app.py --debug
-python backend/test_ai.py         # checks OpenAI config + services.ai
-
-cd frontend && npm install
-npm run dev && npm run lint
-npm run build && npm run preview
+cd backend
+go mod tidy                    # Install dependencies
+go run main.go                 # Start dev server (port 5000)
+go test ./...                  # Run all tests
+go test ./routes -v            # Run specific package tests with verbose
+go test -run TestName ./...    # Run specific test
 ```
 
-## Coding Style & Naming Conventions
-- Backend: follow PEP 8, 4-space indents, snake_case modules, PascalCase models, and SCREAMING_SNAKE_CASE config keys. Keep queries in `models/` or dedicated service helpers.
-- Frontend: 2-space indents (see `src/main.jsx`), PascalCase React components, camelCase hooks/utilities, and environment-specific values exported from `src/config/api.js`.
+### Frontend (React + Vite)
+```bash
+cd frontend
+npm install                    # Install dependencies
+npm run dev                    # Start dev server (port 3131)
+npm run build                  # Build for production
+npm run lint                   # Run ESLint
+npm run test                   # Run Vitest tests
+npm run test:run               # Run tests once (no watch)
+```
 
-## Testing Guidelines
-- Backend regression check is `python backend/test_ai.py`; add more `test_*.py` scripts so contributors can run them directly without extra tooling.
-- Frontend smoke tests live in `frontend/src/config/api.test.js`; run `node src/config/api.test.js` whenever API endpoints or ports change and mirror the `*.test.js` naming for new checks.
-- Document any manual verification (e.g., `docker-compose up -d` + hitting `/admin`) in your PR until automated coverage grows.
+### Service Communication
+- **Frontend**: http://localhost:3131
+- **Backend**: http://localhost:5000
+- **Database**: PostgreSQL (external or Docker)
 
-## Commit & Pull Request Guidelines
-- Use the Conventional Commits style already in history (`feat(frontend): …`, `fix(api): …`, `docs: …`), keeping scopes aligned with top-level folders.
-- PRs should explain the problem, summarize the solution, link issues, include screenshots for UI changes, and list the commands you ran (`npm run lint`, `python backend/test_ai.py`, Docker smoke).
-- Squash fixups locally and ensure CI (or manual test evidence) is green before requesting review.
+Vite proxy forwards `/api` and `/uploads` requests to backend automatically.
 
-## Security & Configuration Tips
-- Copy `backend/.env.example` to `.env`, never commit secrets, and rotate `SECRET_KEY`, `JWT_SECRET_KEY`, and database credentials per environment; note new env vars in the PR.
-- Update both `frontend/src/config/api.js` and the CORS list in `backend/app.py` when backend URLs or ports move to avoid browser preflight failures.
-- Store uploads inside `backend/uploads` and ensure Docker volume permissions are updated if you introduce new storage paths.
+## Full Docker Deployment
+
+```bash
+docker-compose up -d           # Start all services
+docker-compose logs -f backend # Monitor backend logs
+docker-compose down            # Stop all services
+```
+
+## Architecture
+
+### Tech Stack
+- **Backend**: Go 1.25 + Gin + GORM + PostgreSQL
+- **Frontend**: React 19 + Material-UI + Vite + Zustand
+- **Deployment**: Docker Compose + Nginx
+
+### Backend Structure
+```
+backend/
+├── config/        # Configuration loading from .env
+├── database/      # PostgreSQL connection
+├── middleware/    # JWT auth, CORS
+├── migrations/    # Database migrations
+├── models/        # GORM models (Article, Comment, AISetting, etc.)
+├── routes/        # Gin route handlers + route registration
+├── services/      # Business logic (AI integration, file handling)
+├── utils/         # Response helpers
+└── main.go        # Entry point
+```
+
+### Frontend Structure
+```
+frontend/src/
+├── admin/         # Admin dashboard components
+├── components/    # Public-facing UI components
+├── config/        # API configuration (axios setup)
+├── hooks/         # Custom React hooks
+├── theme/         # Material-UI theming
+└── utils/         # Frontend utilities
+```
+
+### Key Patterns
+
+**Configuration Flow:**
+- Environment variables → `config/config.go` loads from `.env`
+- AI settings: Database `ai_settings` table **overrides** environment variables (see `services/ai.go:getAIConfig`)
+- Environment variable names: `OPENAI_API_KEY`, `OPENAI_MODEL`, `OPENAI_API_URL`
+
+**Route Organization:**
+- Public routes: `/api/*` (no auth required)
+- Admin routes: `/api/admin/*` (JWT required via `middleware.JWTAuth`)
+- Route registration in `routes/routes.go`
+
+**Database Models (GORM):**
+- `Article`, `Comment`, `Skill`, `Contact`, `Avatar`, `SiteBlock`, `AISetting`
+- Auto-migration on startup via `main.go`
+
+**Frontend API Calls:**
+- Centralized in `frontend/src/config/api.js`
+- Uses axios with base URL configuration
+
+## Code Standards
+- Backend: Go idiomatic style, camelCase for functions, PascalCase for exports
+- Frontend: 2-space indentation, PascalCase for components, camelCase for utilities
