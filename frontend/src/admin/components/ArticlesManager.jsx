@@ -26,7 +26,7 @@ const defaultArticle = {
   pdf_filename: '',
 };
 
-const DEFAULT_COVER = '/default-cover.svg';
+const DEFAULT_COVER = `${import.meta.env.BASE_URL}default-cover.svg`;
 
 /**
  * 文章管理容器组件

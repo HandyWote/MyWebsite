@@ -2,26 +2,26 @@
   "name": "HandyWote - 个人网站",
   "short_name": "HandyWote",
   "description": "黄应辉的个人网站 - 汕头大学",
-  "start_url": "/",
+  "start_url": "/app/",
   "display": "standalone",
   "background_color": "#f5f5f7",
   "theme_color": "#1976d2",
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/avatar.webp",
+      "src": "/app/avatar.webp",
       "sizes": "180x180",
       "type": "image/webp",
       "purpose": "any maskable"
     },
     {
-      "src": "/avatar.webp",
+      "src": "/app/avatar.webp",
       "sizes": "192x192",
       "type": "image/webp",
       "purpose": "any maskable"
     },
     {
-      "src": "/avatar.webp",
+      "src": "/app/avatar.webp",
       "sizes": "512x512",
       "type": "image/webp",
       "purpose": "any maskable"
@@ -29,9 +29,9 @@
   ],
   "categories": ["portfolio", "personal"],
   "lang": "zh-CN",
-  "scope": "/",
+  "scope": "/app/",
   "serviceworker": {
-    "src": "/sw.js",
-    "scope": "/"
+    "src": "/app/sw.js",
+    "scope": "/app/"
   }
 }
