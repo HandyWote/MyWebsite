@@ -2,7 +2,6 @@ package main
 
 import (
 	"log"
-	"os"
 
 	"github.com/gin-gonic/gin"
 	"github.com/handywote/website/config"
@@ -46,11 +45,8 @@ func main() {
 	// Setup routes
 	routes.SetupRoutes(r, cfg)
 
-	// Get port from environment or use default
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "5000"
-	}
+	// Start server on configured port
+	port := cfg.Port
 
 	log.Printf("Starting server on port %s", port)
 	if err := r.Run(":" + port); err != nil {
