@@ -67,6 +67,7 @@ dist/
 dist.zip
 dist-ssr/
 build/
+*.local
 
 # Others
 logs/
