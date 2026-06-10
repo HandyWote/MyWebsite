@@ -48,8 +48,8 @@ func LoadConfig() *Config {
 		DBName:     getEnv("DB_NAME", "mywebsite"),
 		Port:       getEnv("PORT", "5000"),
 
-		SecretKey:    getEnv("SECRET_KEY", "dev-secret-key"),
-		JWTSecretKey: getEnv("JWT_SECRET_KEY", "dev-jwt-secret"),
+		SecretKey:    getEnv("SECRET_KEY", "dev-secret-key-change-in-production"),
+		JWTSecretKey: getEnv("JWT_SECRET_KEY", "dev-jwt-secret-change-in-production"),
 
 		AdminUsername: getEnv("ADMIN_USERNAME", "admin"),
 		AdminPassword: getEnv("ADMIN_PASSWORD", "admin123"),
