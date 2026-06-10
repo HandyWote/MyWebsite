@@ -1,6 +1,7 @@
 // frontend/src/stores/articleStore.js
 import { create } from 'zustand';
 import { api, uploadFile, API_ENDPOINTS } from '@/utils/apiClient';
+import { normalizeTags } from '@/utils/normalizeTags';
 
 const useArticleStore = create((set, get) => ({
   // ========== 文章列表状态 ==========
@@ -41,9 +42,7 @@ const useArticleStore = create((set, get) => ({
       set({
         articles: articles.map(article => ({
           ...article,
-          tags: typeof article.tags === 'string'
-            ? article.tags.split(',').filter(t => t.trim())
-            : article.tags || [],
+          tags: normalizeTags(article.tags),
         })),
         pagination: { ...pagination, page, perPage, total },
         loading: false,
