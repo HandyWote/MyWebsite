@@ -4,26 +4,50 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    env_file:
-      - ./backend/.env
     environment:
-      # 时区配置
-      TZ: Asia/Shanghai
+      # 服务端口
+      PORT: ${PORT:-5000}
+      # 数据库
+      DB_HOST: ${DB_HOST:-host.docker.internal}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-password}
+      DB_NAME: ${DB_NAME:-mywebsite}
+      # 安全配置
+      SECRET_KEY: ${SECRET_KEY:-dev-secret-key-change-in-production}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-dev-jwt-secret-change-in-production}
+      # 管理员账号
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123}
+      # 文件上传
+      UPLOAD_FOLDER: ${UPLOAD_FOLDER:-uploads}
+      MAX_CONTENT_LENGTH: ${MAX_CONTENT_LENGTH:-52428800}
+      ALLOWED_IMAGE_EXTENSIONS: ${ALLOWED_IMAGE_EXTENSIONS:-jpg,jpeg,png,webp}
+      # OpenAI
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-3.5-turbo}
+      OPENAI_API_URL: ${OPENAI_API_URL:-https://api.openai.com/v1}
+      # JWT 有效期
+      JWT_ACCESS_TOKEN_EXPIRES: ${JWT_ACCESS_TOKEN_EXPIRES:-86400}
+      JWT_REMEMBER_TOKEN_EXPIRES: ${JWT_REMEMBER_TOKEN_EXPIRES:-604800}
+      # 评论限制
+      COMMENT_LIMIT_ENABLED: ${COMMENT_LIMIT_ENABLED:-true}
+      COMMENT_LIMIT_TIME_WINDOW: ${COMMENT_LIMIT_TIME_WINDOW:-24}
+      COMMENT_LIMIT_MAX_COUNT: ${COMMENT_LIMIT_MAX_COUNT:-1}
+      COMMENT_LIMIT_EXEMPT_ADMIN: ${COMMENT_LIMIT_EXEMPT_ADMIN:-true}
+      # 时区
+      TZ: ${TZ:-Asia/Shanghai}
     volumes:
       - ./backend/uploads:/app/uploads
     networks:
       - Web_network
     restart: always
-    # depends_on:
-    #   postgres:
-    #     condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
-    # 不暴露端口到宿主机，仅在Docker网络内部访问
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
@@ -32,6 +56,8 @@ services:
     build:
       context: .
       dockerfile: ./Dockerfile.web
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-}
     ports:
       - "4419:80"
     networks:
@@ -46,31 +72,6 @@ services:
       retries: 3
       start_period: 40s
 
-  # postgres:
-  #   image: docker.xuanyuan.me/pgvector/pgvector:pg17
-  #   container_name: mywebsite-postgres
-  #   environment:
-  #     POSTGRES_DB: mywebsite
-  #     POSTGRES_USER: postgres
-  #     POSTGRES_PASSWORD: password
-  #     TZ: Asia/Shanghai
-  #   ports:
-  #     - 5432:5432
-  #   volumes:
-  #     - postgres_data:/var/lib/postgresql/data
-  #   networks:
-  #     - Web_network
-  #   restart: always
-  #   healthcheck:
-  #     test: ["CMD-SHELL", "pg_isready -U postgres -d mywebsite"]
-  #     interval: 20s
-  #     timeout: 10s
-  #     retries: 5
-  #     start_period: 30s
-
 networks:
   Web_network:
     driver: bridge
-
-# volumes:
-#   postgres_data:
