@@ -28,8 +28,6 @@ import {
   Avatar,
   Badge,
   Tooltip,
-  Alert,
-  Snackbar,
   Pagination,
   CircularProgress
 } from '@mui/material';
@@ -52,6 +50,9 @@ import {
 } from '@mui/icons-material';
 import { getApiUrl } from '../../config/api';
 import { clearAuth } from '../utils/auth';
+import { formatDateTime } from '../../utils/formatDate';
+import useNotification from '../../hooks/useNotification';
+import NotificationSnackbar from '../../components/NotificationSnackbar';
 
 // 评论状态枚举
 const COMMENT_STATUS = {
@@ -79,6 +80,10 @@ const STATUS_CONFIG = {
   }
 };
 
+const getCommentStatusConfig = (status) => (
+  STATUS_CONFIG[status] || STATUS_CONFIG[COMMENT_STATUS.NORMAL]
+);
+
 // 评论卡片组件
 function CommentCard({ comment, onView, onDelete, onStatusChange, ...props }) {
   const [anchorEl, setAnchorEl] = useState(null);
@@ -88,6 +93,8 @@ function CommentCard({ comment, onView, onDelete, onStatusChange, ...props }) {
   if (!comment) {
     return null;
   }
+
+  const statusConfig = getCommentStatusConfig(comment.status);
   
   const handleMenuOpen = (event) => {
     setAnchorEl(event.currentTarget);
@@ -102,12 +109,7 @@ function CommentCard({ comment, onView, onDelete, onStatusChange, ...props }) {
     handleMenuClose();
   };
   
-  const formatDate = (dateString) => {
-    if (!dateString) return '';
-    return new Date(dateString).toLocaleString('zh-CN');
-  };
-  
-  const statusConfig = comment.status ? STATUS_CONFIG[comment.status] || STATUS_CONFIG.NORMAL : STATUS_CONFIG.NORMAL;
+  const formatDate = (dateString) => formatDateTime(dateString);
   
   return (
     <Card sx={{ mb: 2, overflow: 'hidden' }} {...props}>
@@ -229,12 +231,7 @@ function CommentCard({ comment, onView, onDelete, onStatusChange, ...props }) {
 // 评论详情对话框
 function CommentDetailDialog({ comment, open, onClose }) {
   if (!comment) return null;
-  
-  const formatDate = (dateString) => {
-    if (!dateString) return '';
-    return new Date(dateString).toLocaleString('zh-CN');
-  };
-  
+
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle>评论详情</DialogTitle>
@@ -254,7 +251,7 @@ function CommentDetailDialog({ comment, open, onClose }) {
           </Grid>
           <Grid item xs={12} sm={6}>
             <Typography variant="subtitle2" color="text.secondary">评论时间</Typography>
-            <Typography variant="body1">{formatDate(comment.created_at)}</Typography>
+            <Typography variant="body1">{formatDateTime(comment.created_at)}</Typography>
           </Grid>
           <Grid item xs={12}>
             <Typography variant="subtitle2" color="text.secondary">所属文章</Typography>
@@ -298,8 +295,13 @@ const CommentsManager = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [commentToDelete, setCommentToDelete] = useState(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
-  const [snackbarOpen, setSnackbarOpen] = useState(false);
-  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const {
+    snackbarOpen,
+    snackbarMessage,
+    snackbarSeverity,
+    showNotification,
+    hideNotification,
+  } = useNotification();
 
   // 获取评论列表
   const fetchComments = useCallback(async () => {
@@ -345,12 +347,10 @@ const CommentsManager = () => {
         setComments(comments);
         setTotal(data.data.total || 0);
       } else {
-        setSnackbarMessage(data.msg || '获取评论列表失败');
-        setSnackbarOpen(true);
+        showNotification(data.msg || '获取评论列表失败', 'error');
       }
     } catch (error) {
-      setSnackbarMessage('获取评论列表失败: ' + error.message);
-      setSnackbarOpen(true);
+      showNotification('获取评论列表失败: ' + error.message, 'error');
     } finally {
       setLoading(false);
     }
@@ -358,8 +358,9 @@ const CommentsManager = () => {
 
   useEffect(() => {
     fetchComments();
-  }, [fetchComments, page, perPage, searchTerm, statusFilter]);
-  
+  }, [fetchComments]);
+
+
   // 删除评论
   const handleDeleteComment = async () => {
     if (!commentToDelete) return;
@@ -375,16 +376,13 @@ const CommentsManager = () => {
       
       const data = await response.json();
       if (data.code === 0) {
-        setSnackbarMessage('评论删除成功');
-        setSnackbarOpen(true);
+        showNotification('评论删除成功', 'success');
         fetchComments();
       } else {
-        setSnackbarMessage(data.msg || '删除评论失败');
-        setSnackbarOpen(true);
+        showNotification(data.msg || '删除评论失败', 'error');
       }
     } catch (error) {
-      setSnackbarMessage('删除评论失败: ' + error.message);
-      setSnackbarOpen(true);
+      showNotification('删除评论失败: ' + error.message, 'error');
     } finally {
       setDeleteDialogOpen(false);
       setCommentToDelete(null);
@@ -406,16 +404,13 @@ const CommentsManager = () => {
       
       const data = await response.json();
       if (data.code === 0) {
-        setSnackbarMessage('评论状态更新成功');
-        setSnackbarOpen(true);
+        showNotification('评论状态更新成功', 'success');
         fetchComments();
       } else {
-        setSnackbarMessage(data.msg || '更新评论状态失败');
-        setSnackbarOpen(true);
+        showNotification(data.msg || '更新评论状态失败', 'error');
       }
     } catch (error) {
-      setSnackbarMessage('更新评论状态失败: ' + error.message);
-      setSnackbarOpen(true);
+      showNotification('更新评论状态失败: ' + error.message, 'error');
     }
   };
   
@@ -443,15 +438,12 @@ const CommentsManager = () => {
         a.click();
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
-        setSnackbarMessage('评论数据导出成功');
-        setSnackbarOpen(true);
+        showNotification('评论数据导出成功', 'success');
       } else {
-        setSnackbarMessage('导出失败');
-        setSnackbarOpen(true);
+        showNotification('导出失败', 'error');
       }
     } catch (error) {
-      setSnackbarMessage('导出失败: ' + error.message);
-      setSnackbarOpen(true);
+      showNotification('导出失败: ' + error.message, 'error');
     }
   };
   
@@ -635,11 +627,11 @@ const CommentsManager = () => {
       />
       
       {/* 提示消息 */}
-      <Snackbar
+      <NotificationSnackbar
         open={snackbarOpen}
-        autoHideDuration={3000}
-        onClose={() => setSnackbarOpen(false)}
+        onClose={hideNotification}
         message={snackbarMessage}
+        severity={snackbarSeverity}
       />
     </Container>
   );

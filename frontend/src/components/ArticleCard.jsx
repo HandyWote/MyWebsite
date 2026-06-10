@@ -1,23 +1,14 @@
 // ArticleCard组件 - Terminal Aesthetics 风格
-import { memo, useMemo } from 'react';
+import { memo } from 'react';
 import { motion } from 'framer-motion';
 import { Box, Typography } from '@mui/material';
 import { Link } from 'react-router-dom';
 import { Calendar } from 'lucide-react';
 import { PixelCard, PixelChip, PixelTypography } from './pixel';
 import LazyImage from './LazyImage';
+import { formatDate } from '../utils/formatDate';
 
 const ArticleCard = ({ article, index }) => {
-  const formatDate = useMemo(() => (dateString) => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('zh-CN', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit'
-    });
-  }, []);
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}

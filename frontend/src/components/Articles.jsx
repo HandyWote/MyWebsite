@@ -8,6 +8,7 @@ import { PixelContainer, PixelCard, PixelButton, PixelTypography, TerminalLine }
 import ArticleCard from './ArticleCard';
 import ArticlePagination from './ArticlePagination';
 import { getApiUrl, unwrapApiPayload } from '../config/api';
+import { normalizeTags } from '../utils/normalizeTags';
 
 const Articles = () => {
   const [articles, setArticles] = useState([]);
@@ -28,9 +29,7 @@ const Articles = () => {
       const items = payload?.items || payload?.articles || [];
       const processedArticles = items.map(article => ({
         ...article,
-        tags: typeof article.tags === 'string'
-          ? article.tags.split(',').filter(t => t.trim())
-          : article.tags || []
+        tags: normalizeTags(article.tags),
       }));
       setArticles(processedArticles);
       setTotalPages(payload?.total_pages || 1);

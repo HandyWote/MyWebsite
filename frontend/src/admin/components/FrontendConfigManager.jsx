@@ -21,6 +21,28 @@ const normalizeBlocksToForm = (blocks) => ({
   sidebar: getBlockContent(blocks, 'sidebar'),
 });
 
+/**
+ * 通用数组字段更新函数。
+ * 替代 setSidebarSocialField/setSidebarEducationField/setSidebarTechField 三组重复逻辑。
+ */
+const updateArrayField = (section, arrayKey, index, field, value) => (prev) => {
+  const nextItems = [...(prev[section]?.[arrayKey] || [])];
+  nextItems[index] = { ...(nextItems[index] || {}), [field]: value };
+  return { ...prev, [section]: { ...prev[section], [arrayKey]: nextItems } };
+};
+
+/**
+ * 通用数组项追加函数。
+ * 替代 addSidebarSocialLink/addSidebarEducationItem/addSidebarTechItem 三组重复逻辑。
+ */
+const addArrayItem = (section, arrayKey, defaultItem) => (prev) => ({
+  ...prev,
+  [section]: {
+    ...prev[section],
+    [arrayKey]: [...(prev[section]?.[arrayKey] || []), defaultItem],
+  },
+});
+
 export default function FrontendConfigManager() {
   const [form, setForm] = useState(createInitialForm());
   const [saving, setSaving] = useState(false);
@@ -51,95 +73,17 @@ export default function FrontendConfigManager() {
     }));
   };
 
-  const setSidebarSocialField = (index, field, value) => {
-    setForm((prev) => {
-      const nextLinks = [...(prev.sidebar.social_links || [])];
-      nextLinks[index] = {
-        ...(nextLinks[index] || {}),
-        [field]: value,
-      };
-      return {
-        ...prev,
-        sidebar: {
-          ...prev.sidebar,
-          social_links: nextLinks,
-        },
-      };
-    });
-  };
+  const setSidebarSocialField = (index, field, value) => setForm(updateArrayField('sidebar', 'social_links', index, field, value));
 
-  const addSidebarSocialLink = () => {
-    setForm((prev) => ({
-      ...prev,
-      sidebar: {
-        ...prev.sidebar,
-        social_links: [
-          ...(prev.sidebar.social_links || []),
-          { type: 'other', label: '', href: '', value: '' },
-        ],
-      },
-    }));
-  };
+  const addSidebarSocialLink = () => setForm(addArrayItem('sidebar', 'social_links', { type: 'other', label: '', href: '', value: '' }));
 
-  const setSidebarEducationField = (index, field, value) => {
-    setForm((prev) => {
-      const nextItems = [...(prev.sidebar.education || [])];
-      nextItems[index] = {
-        ...(nextItems[index] || {}),
-        [field]: value,
-      };
-      return {
-        ...prev,
-        sidebar: {
-          ...prev.sidebar,
-          education: nextItems,
-        },
-      };
-    });
-  };
+  const setSidebarEducationField = (index, field, value) => setForm(updateArrayField('sidebar', 'education', index, field, value));
 
-  const addSidebarEducationItem = () => {
-    setForm((prev) => ({
-      ...prev,
-      sidebar: {
-        ...prev.sidebar,
-        education: [
-          ...(prev.sidebar.education || []),
-          { school: '', period: '', desc: '' },
-        ],
-      },
-    }));
-  };
+  const addSidebarEducationItem = () => setForm(addArrayItem('sidebar', 'education', { school: '', period: '', desc: '' }));
 
-  const setSidebarTechField = (index, field, value) => {
-    setForm((prev) => {
-      const nextItems = [...(prev.sidebar.tech_stack || [])];
-      nextItems[index] = {
-        ...(nextItems[index] || {}),
-        [field]: value,
-      };
-      return {
-        ...prev,
-        sidebar: {
-          ...prev.sidebar,
-          tech_stack: nextItems,
-        },
-      };
-    });
-  };
+  const setSidebarTechField = (index, field, value) => setForm(updateArrayField('sidebar', 'tech_stack', index, field, value));
 
-  const addSidebarTechItem = () => {
-    setForm((prev) => ({
-      ...prev,
-      sidebar: {
-        ...prev.sidebar,
-        tech_stack: [
-          ...(prev.sidebar.tech_stack || []),
-          { name: '', level: '' },
-        ],
-      },
-    }));
-  };
+  const addSidebarTechItem = () => setForm(addArrayItem('sidebar', 'tech_stack', { name: '', level: '' }));
 
   const handleSave = async () => {
     setSaving(true);
