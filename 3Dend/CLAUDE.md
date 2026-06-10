@@ -11,10 +11,18 @@ just discuss with me, dont eddit the code without my accept
 
 ## Overview
 
-This is a Three.js 3D portfolio scene focused on:
+This is the root entry experience for the website. Users first enter this Three.js scene, see an interactive computer model, and then interact with the main `frontend` website inside the computer monitor iframe.
+
+Core responsibilities:
 - mouse-driven camera movement
 - office/computer model rendering
 - monitor iframe display (`MonitorScreen`)
+- embedding the main React frontend in the computer screen
+
+Runtime relationship:
+- production iframe target: `/app/`
+- development iframe target with `?dev`: `http://localhost:3131/`
+- backend API remains behind `/api` and `/uploads`
 
 Removed features:
 - loading screen and UI overlays
