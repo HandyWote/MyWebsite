@@ -18,7 +18,7 @@ FROM docker.1ms.run/nginx:alpine
 
 RUN rm -rf /etc/nginx/conf.d/*
 
-COPY deploy/nginx.web.conf /etc/nginx/nginx.conf
+COPY nginx.web.conf /etc/nginx/nginx.conf
 COPY frontend/mime.types /etc/nginx/mime.types
 
 COPY --from=scene-builder /build/3Dend/dist/ /usr/share/nginx/html/
