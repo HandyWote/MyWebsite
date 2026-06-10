@@ -1,5 +1,9 @@
 FROM docker.1ms.run/node:18-alpine AS frontend-builder
 
+# 前端构建时环境变量（从 docker-compose build args 传入）
+ARG VITE_API_BASE_URL
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+
 WORKDIR /build/frontend
 COPY frontend/package*.json ./
 RUN npm config set registry https://registry.npmmirror.com && npm ci
