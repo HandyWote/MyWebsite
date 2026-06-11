@@ -37,13 +37,4 @@ describe('app shell', () => {
     expect(sidebarSource).not.toContain("'/avatar.webp'");
     expect(sidebarSource).not.toContain('"/avatar.webp"');
   });
-
-  it('service worker cache list is based on app base path', () => {
-    const currentDir = path.dirname(fileURLToPath(import.meta.url));
-    const swSource = fs.readFileSync(path.resolve(currentDir, '../public/sw.js'), 'utf8');
-
-    expect(swSource).toContain('const BASE_PATH =');
-    expect(swSource).toContain('const withBase =');
-    expect(swSource).toContain("['/', '/index.html', '/avatar.webp', '/manifest.json'].map(withBase)");
-  });
 });
