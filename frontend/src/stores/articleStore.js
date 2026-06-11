@@ -14,6 +14,9 @@ const useArticleStore = create((set, get) => ({
     total: 0,
   },
 
+  // ========== 当前文章（SEO 数据注入用） ==========
+  currentArticle: null,
+
   // ========== AI 分析状态 ==========
   aiAnalysis: null,
   aiLoading: false,
@@ -238,6 +241,29 @@ const useArticleStore = create((set, get) => ({
     } catch (err) {
       set({ error: err.message, aiSettingsLoading: false });
       throw err;
+    }
+  },
+
+  // ========== SEO 数据注入 ==========
+  setCurrentArticle: (article) => set({ currentArticle: article }),
+
+  /**
+   * 从 Go SEO 模板注入的 __INITIAL_DATA__ 读取文章数据。
+   * 如果存在初始数据，直接注入 store，跳过 API 调用。
+   */
+  injectInitialData: () => {
+    const el = document.getElementById('__INITIAL_DATA__');
+    if (!el) return null;
+
+    try {
+      const article = JSON.parse(el.textContent);
+      set({ currentArticle: article });
+      // 清理 DOM，避免重复读取
+      el.remove();
+      return article;
+    } catch (e) {
+      console.error('[SEO] 解析 __INITIAL_DATA__ 失败:', e);
+      return null;
     }
   },
 

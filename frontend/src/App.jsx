@@ -1,8 +1,9 @@
 // 导入所需的组件
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { Box, CircularProgress } from '@mui/material';
 import { PixelProvider } from './components/pixel';
+import useArticleStore from './stores/articleStore';
 
 // 路由级别懒加载
 const MainLayout = lazy(() => import('./components/layout/MainLayout'));
@@ -11,9 +12,9 @@ const ArticleList = lazy(() => import('./components/ArticleList'));
 const ProjectList = lazy(() => import('./components/ProjectList'));
 const ArticleDetail = lazy(() => import('./components/ArticleDetail'));
 const AdminRoutes = lazy(() => import('./admin/routes'));
-const routerBasename = ['/', './'].includes(import.meta.env.BASE_URL)
-  ? undefined
-  : import.meta.env.BASE_URL.replace(/\/$/, '');
+
+// 动态 basename：/app/ 下使用 '/app'，SEO 路径（/articles/:id）下使用空字符串
+const basename = window.location.pathname.startsWith('/app') ? '/app' : undefined;
 
 function AppContent() {
   return (
@@ -51,9 +52,14 @@ function AppContent() {
 }
 
 function App() {
+  // 注入 SEO 初始数据（如果有）
+  useEffect(() => {
+    useArticleStore.getState().injectInitialData();
+  }, []);
+
   return (
     <PixelProvider>
-      <Router basename={routerBasename}>
+      <Router basename={basename}>
         <Box sx={{
           minHeight: 'calc(100vh - 24px)',
           backgroundColor: 'background.default',

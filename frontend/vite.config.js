@@ -2,10 +2,51 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import process from 'process'
 import path from 'path'
+import fs from 'fs'
+
+// 自定义插件：构建时生成 .vite/manifest.json，供 Go 后端读取 CSS/JS hash
+function viteBuildManifest() {
+  return {
+    name: 'vite-build-manifest',
+    writeBundle(options) {
+      const outDir = options.dir || path.resolve(process.cwd(), 'dist');
+      const assetsDir = path.join(outDir, 'assets');
+      if (!fs.existsSync(assetsDir)) return;
+
+      // 扫描 assets 目录，找到入口 JS 和关联 CSS
+      // Vite 6 将入口命名为 index-<hash>（基于 index.html 入口点）
+      let entryJs = '';
+      const entryCss = [];
+
+      for (const file of fs.readdirSync(assetsDir)) {
+        if (file.startsWith('index-') && file.endsWith('.js')) {
+          entryJs = 'assets/' + file;
+        }
+        if (file.startsWith('index-') && file.endsWith('.css')) {
+          entryCss.push('assets/' + file);
+        }
+      }
+
+      const manifest = {
+        'src/main.jsx': {
+          file: entryJs,
+          css: entryCss,
+        },
+      };
+
+      const manifestDir = path.join(outDir, '.vite');
+      fs.mkdirSync(manifestDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(manifestDir, 'manifest.json'),
+        JSON.stringify(manifest, null, 2),
+      );
+    },
+  };
+}
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), viteBuildManifest()],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
