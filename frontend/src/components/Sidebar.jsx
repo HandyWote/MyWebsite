@@ -24,30 +24,9 @@ const itemVariants = {
   hidden: { opacity: 0, x: -20 },
   visible: { opacity: 1, x: 0 }
 };
+import { normalizeGitHubUsername } from '../utils/github';
+
 const AVATAR_FALLBACK = `${import.meta.env.BASE_URL}avatar.webp`;
-
-function normalizeGitHubUsername(value) {
-  if (typeof value !== 'string') {
-    return 'HandyWote';
-  }
-
-  const input = value.trim();
-  if (!input) {
-    return 'HandyWote';
-  }
-
-  let source = input;
-  try {
-    const parsed = new URL(input);
-    source = parsed.pathname;
-  } catch {
-    // keep original input when it is already a username
-  }
-
-  const withoutQuery = source.split('?')[0].split('#')[0];
-  const segments = withoutQuery.split('/').filter(Boolean);
-  return segments[segments.length - 1] || input;
-}
 
 function Sidebar() {
   const [siteBlock, setSiteBlock] = useState(null);

@@ -1,5 +1,5 @@
 // 导入所需的组件
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { lazy, Suspense, useEffect } from 'react';
 import { Box, CircularProgress } from '@mui/material';
 import { PixelProvider } from './components/pixel';
@@ -7,7 +7,8 @@ import useArticleStore from './stores/articleStore';
 
 // 路由级别懒加载
 const MainLayout = lazy(() => import('./components/layout/MainLayout'));
-const ContentTabs = lazy(() => import('./components/ContentTabs'));
+const TerminalWelcome = lazy(() => import('./components/terminal/TerminalWelcome'));
+const TerminalShellLayout = lazy(() => import('./components/terminal/TerminalShellLayout'));
 const ArticleList = lazy(() => import('./components/ArticleList'));
 const ProjectList = lazy(() => import('./components/ProjectList'));
 const ArticleDetail = lazy(() => import('./components/ArticleDetail'));
@@ -29,12 +30,12 @@ function AppContent() {
           <MainLayout />
         </Suspense>
       }>
-        <Route element={<ContentTabs />}>
-          <Route index element={<Navigate to="articles" replace />} />
+        <Route index element={<TerminalWelcome />} />
+        <Route element={<TerminalShellLayout />}>
           <Route path="articles" element={<ArticleList />} />
           <Route path="projects" element={<ProjectList />} />
+          <Route path="articles/:id" element={<ArticleDetail />} />
         </Route>
-        <Route path="articles/:id" element={<ArticleDetail />} />
       </Route>
 
       {/* 后台管理 */}

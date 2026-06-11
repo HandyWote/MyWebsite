@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Box, Typography } from '@mui/material';
+import { ExternalLink } from 'lucide-react';
 import { motion } from 'framer-motion';
 import PixelCard from './pixel/ui/PixelCard';
 import PixelChip from './pixel/ui/PixelChip';
@@ -157,16 +158,27 @@ function ProjectList() {
   return (
     <Box>
       {/* Terminal header */}
-      <Box sx={{ mb: 3 }}>
+      <Box sx={{ mb: 1.5 }}>
         <Typography
           component="div"
-          sx={{ fontFamily: 'JetBrains Mono, monospace', color: 'text.secondary' }}
+          sx={{
+            fontFamily: 'JetBrains Mono, monospace',
+            color: 'text.secondary',
+            fontSize: '0.8125rem',
+            lineHeight: 1.5,
+          }}
         >
           $ ls -la ./projects/
         </Typography>
         <Typography
           component="div"
-          sx={{ fontFamily: 'JetBrains Mono, monospace', color: 'accent.green', mb: 2 }}
+          sx={{
+            fontFamily: 'JetBrains Mono, monospace',
+            color: '#3fb950',
+            fontSize: '0.8125rem',
+            lineHeight: 1.5,
+            mb: 1,
+          }}
         >
           {loading ? 'fetching repositories...' : `found ${projects.length} repositories`}
         </Typography>
@@ -201,7 +213,7 @@ function ProjectList() {
         sx={{
           display: 'grid',
           gridTemplateColumns: '1fr',
-          gap: 2,
+          gap: 0.75,
         }}
       >
         {projects.map((project, index) => (
@@ -209,7 +221,7 @@ function ProjectList() {
             key={project.id}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.08 }}
+            transition={{ delay: Math.min(index * 0.025, 0.35) }}
           >
             <ProjectCard project={project} />
           </MotionDiv>
@@ -227,94 +239,87 @@ function ProjectCard({ project }) {
       target="_blank"
       rel="noopener noreferrer"
       sx={{
+        display: 'block',
         textDecoration: 'none',
+        color: 'inherit',
         cursor: project.url ? 'pointer' : 'default',
         transition: 'all 0.15s ease',
         '&:hover': {
           borderColor: project.url ? 'accent.blue' : 'border.muted',
+          color: 'inherit',
+          textDecoration: 'none',
         },
       }}
     >
-      <Box sx={{ mb: 2 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-          <Box component="span" sx={{ color: 'accent.blue' }}>
-            ▸
-          </Box>
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 1.25,
+          minWidth: 0,
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
           <Typography
             component="h3"
             sx={{
               fontFamily: 'JetBrains Mono, monospace',
               color: 'text.primary',
-              fontWeight: 'bold',
+              fontSize: { xs: '1rem', sm: '1.125rem' },
+              fontWeight: 600,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              minWidth: 0,
             }}
           >
             {project.name}
           </Typography>
+          <ExternalLink size={14} aria-hidden="true" />
         </Box>
-        <Box sx={{ borderBottom: 1, borderColor: 'border.muted', mb: 2 }} />
+
         <Typography
           component="p"
           sx={{
-            fontFamily: 'JetBrains Mono, monospace',
             color: 'text.secondary',
             fontSize: '0.875rem',
-            mb: 2,
+            lineHeight: 1.6,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
           }}
         >
           {project.description}
         </Typography>
-      </Box>
 
-      {/* Tags */}
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
-        {project.tags.map((tag) => (
-          <PixelChip key={tag} label={tag} size="small" />
-        ))}
-      </Box>
-
-      {/* Stats */}
-      <Box sx={{ display: 'flex', gap: 2 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-          <Box component="span" sx={{ color: 'accent.yellow' }}>
-            ★
-          </Box>
-          <Typography
-            component="span"
-            sx={{
-              fontFamily: 'JetBrains Mono, monospace',
-              color: 'text.secondary',
-              fontSize: '0.75rem',
-            }}
-          >
-            {project.stars}
-          </Typography>
-        </Box>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-          <Box component="span" sx={{ color: 'text.muted' }}>
-            ⑂
-          </Box>
-          <Typography
-            component="span"
-            sx={{
-              fontFamily: 'JetBrains Mono, monospace',
-              color: 'text.secondary',
-              fontSize: '0.75rem',
-            }}
-          >
-            {project.forks}
-          </Typography>
-        </Box>
-        <Typography
-          component="span"
+        <Box
           sx={{
-            fontFamily: 'JetBrains Mono, monospace',
-            color: 'text.muted',
-            fontSize: '0.75rem',
-            ml: 'auto',
+            display: 'flex',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: 1,
           }}
         >
-          updated {project.updatedAt}
-        </Typography>
+          {project.tags.map((tag) => (
+            <PixelChip key={tag} label={tag} size="small" />
+          ))}
+
+          <Typography
+            component="span"
+            sx={{
+              fontFamily: 'JetBrains Mono, monospace',
+              color: 'text.muted',
+              fontSize: '0.7rem',
+              ml: { xs: 0, sm: 'auto' },
+              width: { xs: '100%', sm: 'auto' },
+              whiteSpace: { xs: 'normal', sm: 'nowrap' },
+            }}
+          >
+            ★ {project.stars} · ⑂ {project.forks} · updated {project.updatedAt}
+          </Typography>
+        </Box>
       </Box>
     </PixelCard>
   );

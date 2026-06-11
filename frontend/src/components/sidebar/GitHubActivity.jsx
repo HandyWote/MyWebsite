@@ -1,21 +1,33 @@
-import { Box, Link as MuiLink } from '@mui/material';
+import { Box } from '@mui/material';
 import { GitHubCalendar } from 'react-github-calendar';
+import useMediaQuery from '@mui/material/useMediaQuery';
+import { useTheme } from '@mui/material/styles';
 
 const RECENT_WEEKS = 18;
-const RECENT_DAYS = RECENT_WEEKS * 7;
+const TABLET_WEEKS = 30;
+const FULL_YEAR_WEEKS = 53;
 
-function GitHubActivity({ username = 'HandyWote' }) {
-  const fullCalendarUrl = `https://github.com/${username}`;
-  const transformData = (data) => data.slice(-RECENT_DAYS);
+function GitHubActivity({ username = 'HandyWote', compact = true }) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
+  const weeks = (compact || isMobile) ? RECENT_WEEKS : isTablet ? TABLET_WEEKS : FULL_YEAR_WEEKS;
+  const visibleDays = weeks * 7;
+  const transformData = (data) => data.slice(-visibleDays);
+  const calendarMinWidth = (compact || isMobile) ? '214px' : isTablet ? '360px' : '720px';
 
   return (
-    <Box>
+    <Box sx={{ maxWidth: '100%', minWidth: 0 }}>
       <SectionTitle>GitHub Activity</SectionTitle>
       <Box
         data-testid="github-calendar-scroll"
         sx={{
           width: '100%',
-          overflowX: 'auto',
+          maxWidth: '100%',
+          minWidth: 0,
+          display: 'flex',
+          justifyContent: compact ? 'flex-start' : { xs: 'flex-start', md: 'center' },
+          overflowX: compact ? 'auto' : 'hidden',
           overflowY: 'hidden',
           '& ::-webkit-scrollbar': {
             height: '6px',
@@ -40,7 +52,8 @@ function GitHubActivity({ username = 'HandyWote' }) {
           showTotalCount={false}
           colorScheme="dark"
           style={{
-            minWidth: '214px',
+            minWidth: calendarMinWidth,
+            maxWidth: '100%',
             fontFamily: 'var(--font-mono)',
           }}
         />

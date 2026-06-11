@@ -142,7 +142,7 @@ const ArticleDetail = () => {
   }
 
   return (
-    <Box sx={{ p: { xs: 1.5, sm: 3 } }}>
+    <Box sx={{ p: 0 }}>
       <TerminalLine>cat article/{id}.md</TerminalLine>
 
       {/* 边框容器 - 与列表页一致 */}
@@ -150,13 +150,13 @@ const ArticleDetail = () => {
         sx={{
           border: '1px dashed',
           borderColor: 'border.default',
-          p: { xs: 2, sm: 3 },
+          p: { xs: 1.25, sm: 3 },
           borderRadius: 0,
         }}
       >
-        {/* 返回按钮 */}
+        {/* 退出当前文章 buffer */}
         <PixelButton variant="ghost" startIcon={<ArrowBack />} component={Link} to="/articles">
-          返回文章列表
+          exit buffer
         </PixelButton>
 
         {/* 演示模式提示 */}
@@ -169,7 +169,11 @@ const ArticleDetail = () => {
         <PixelCard sx={{ mt: 2 }}>
             {/* 文章头部信息 */}
             <Box sx={{ mb: 4 }}>
-              <PixelTypography variant="h1" className="cursor-blink" sx={{ mb: 2 }}>
+              <PixelTypography
+                variant="h1"
+                className="cursor-blink"
+                sx={{ mb: 2, fontSize: { xs: '1.5rem', sm: '2rem', md: '3rem' }, overflowWrap: 'anywhere' }}
+              >
                 {article.title}
               </PixelTypography>
 
@@ -197,7 +201,7 @@ const ArticleDetail = () => {
                   </Box>
                 )}
 
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 'auto' }} onClick={handleShare} role="button" tabIndex={0} aria-label="分享文章">
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: { xs: 0, sm: 'auto' } }} onClick={handleShare} role="button" tabIndex={0} aria-label="分享文章">
                   <ShareIcon fontSize="small" sx={{ cursor: 'pointer' }} />
                 </Box>
               </Box>
