@@ -73,31 +73,31 @@ services:
       start_period: 40s
       
   # postgres（本地测试用，生产环境注释掉并使用外部数据库）
-  postgres:
-    image: docker.1ms.run/ankane/pgvector:latest
-    container_name: mywebsite-postgres
-    environment:
-      POSTGRES_DB: ${DB_NAME:-mywebsite}
-      POSTGRES_USER: ${DB_USER:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
-      TZ: ${TZ:-Asia/Shanghai}
-    ports:
-      - 5432:5432
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    networks:
-      - Web_network
-    restart: always
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d mywebsite"]
-      interval: 20s
-      timeout: 10s
-      retries: 5
-      start_period: 30s
+  # postgres:
+  #   image: docker.1ms.run/ankane/pgvector:latest
+  #   container_name: mywebsite-postgres
+  #   environment:
+  #     POSTGRES_DB: ${DB_NAME:-mywebsite}
+  #     POSTGRES_USER: ${DB_USER:-postgres}
+  #     POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
+  #     TZ: ${TZ:-Asia/Shanghai}
+  #   ports:
+  #     - 5432:5432
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   networks:
+  #     - Web_network
+  #   restart: always
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U postgres -d mywebsite"]
+  #     interval: 20s
+  #     timeout: 10s
+  #     retries: 5
+  #     start_period: 30s
 
 networks:
   Web_network:
     driver: bridge
 
-volumes:
-  postgres_data:
+# volumes:
+#   postgres_data:
