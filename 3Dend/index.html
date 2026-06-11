@@ -2,6 +2,14 @@
 <html lang="en">
 
 <head>
+  <!-- 移动端跳过 3D 场景，直接进入 /app/ -->
+  <script>
+    if (/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)
+        || window.innerWidth < 768) {
+      window.location.replace('/app/');
+    }
+  </script>
+  <!-- PREFETCH_INJECT -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
