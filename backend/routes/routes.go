@@ -18,6 +18,9 @@ func SetupRoutes(r *gin.Engine, cfg *config.Config) {
 	r.GET("/robots.txt", RobotsTxt)
 	r.GET("/sitemap.xml", SitemapXml)
 
+	// SEO routes（必须在 catch-all 之前注册）
+	r.GET("/articles/:id", ArticleSEO)
+
 	// Static files
 	r.Static("/uploads", cfg.UploadFolder)
 

@@ -21,7 +21,7 @@ func HealthCheck(c *gin.Context) {
 // RobotsTxt robots.txt
 func RobotsTxt(c *gin.Context) {
 	baseURL := c.Request.Host
-	c.String(200, "User-agent: *\nAllow: /\nSitemap: http://%s/sitemap.xml", baseURL)
+	c.String(200, "User-agent: *\nAllow: /\nSitemap: https://%s/sitemap.xml", baseURL)
 }
 
 // SitemapXml sitemap.xml
@@ -31,19 +31,18 @@ func SitemapXml(c *gin.Context) {
 	var articles []models.Article
 	database.GetDB().Where("deleted_at IS NULL").Find(&articles)
 
-	urls := []string{
-		fmt.Sprintf("%s/", baseURL),
-		fmt.Sprintf("%s/articles", baseURL),
-	}
-
-	for _, article := range articles {
-		urls = append(urls, fmt.Sprintf("%s/articles/%d", baseURL, article.ID))
-	}
-
 	xml := `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`
-	for _, url := range urls {
-		xml += fmt.Sprintf("<url><loc>%s</loc><lastmod>%s</lastmod></url>", url, time.Now().Format("2006-01-02"))
+
+	// 首页
+	xml += fmt.Sprintf("<url><loc>%s/</loc><priority>1.0</priority></url>", baseURL)
+
+	// 文章页
+	for _, article := range articles {
+		lastmod := article.UpdatedAt.Format("2006-01-02")
+		xml += fmt.Sprintf("<url><loc>%s/articles/%d</loc><lastmod>%s</lastmod><priority>0.8</priority></url>",
+			baseURL, article.ID, lastmod)
 	}
+
 	xml += `</urlset>`
 
 	c.Header("Content-Type", "application/xml")
