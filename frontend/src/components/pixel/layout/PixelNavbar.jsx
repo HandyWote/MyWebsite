@@ -1,6 +1,7 @@
-import { AppBar, Toolbar, Box, Tooltip } from '@mui/material';
+import { useState } from 'react';
+import { AppBar, Toolbar, Box, Tooltip, IconButton, Drawer, List, ListItemButton, ListItemText } from '@mui/material';
 import { Link, useLocation } from 'react-router-dom';
-import { Settings } from 'lucide-react';
+import { Settings, Menu as MenuIcon } from 'lucide-react';
 import { colors, typography, spacing } from '../tokens';
 
 /**
@@ -8,6 +9,7 @@ import { colors, typography, spacing } from '../tokens';
  */
 export function PixelNavbar({ title = 'HandyWote', routes = [] }) {
   const location = useLocation();
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   const defaultRoutes = [
     { path: '/', label: 'Home' },
@@ -16,7 +18,10 @@ export function PixelNavbar({ title = 'HandyWote', routes = [] }) {
 
   const navRoutes = routes.length > 0 ? routes : defaultRoutes;
 
+  const handleNavClick = () => setMobileOpen(false);
+
   return (
+    <>
     <AppBar position="sticky">
       <Toolbar
         sx={{
@@ -66,10 +71,10 @@ export function PixelNavbar({ title = 'HandyWote', routes = [] }) {
           </Box>
         </Box>
 
-        {/* Navigation */}
+        {/* 桌面端导航 */}
         <Box
           sx={{
-            display: 'flex',
+            display: { xs: 'none', sm: 'flex' },
             alignItems: 'center',
             gap: spacing.md,
           }}
@@ -119,8 +124,59 @@ export function PixelNavbar({ title = 'HandyWote', routes = [] }) {
             </Box>
           </Tooltip>
         </Box>
+
+        {/* 移动端汉堡按钮 */}
+        <IconButton
+          sx={{ display: { xs: 'flex', sm: 'none' }, color: colors.text.primary }}
+          onClick={() => setMobileOpen(true)}
+          aria-label="打开菜单"
+        >
+          <MenuIcon size={20} />
+        </IconButton>
       </Toolbar>
     </AppBar>
+
+    {/* 移动端抽屉菜单 */}
+    <Drawer
+      anchor="right"
+      open={mobileOpen}
+      onClose={() => setMobileOpen(false)}
+      PaperProps={{
+        sx: {
+          bgcolor: 'background.paper',
+          width: 240,
+        },
+      }}
+    >
+      <List>
+        {navRoutes.map((route) => (
+          <ListItemButton
+            key={route.path}
+            component={Link}
+            to={route.path}
+            selected={location.pathname === route.path}
+            onClick={handleNavClick}
+            sx={{
+              fontFamily: typography.fontFamily.mono,
+              color: location.pathname === route.path
+                ? colors.accent.blue
+                : colors.text.primary,
+            }}
+          >
+            <ListItemText primary={route.label} />
+          </ListItemButton>
+        ))}
+        <ListItemButton
+          component={Link}
+          to="/admin"
+          onClick={handleNavClick}
+        >
+          <Settings size={18} style={{ marginRight: 12, color: colors.text.muted }} />
+          <ListItemText primary="Admin" />
+        </ListItemButton>
+      </List>
+    </Drawer>
+    </>
   );
 }
 

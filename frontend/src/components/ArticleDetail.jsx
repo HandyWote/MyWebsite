@@ -142,7 +142,7 @@ const ArticleDetail = () => {
   }
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box sx={{ p: { xs: 1.5, sm: 3 } }}>
       <TerminalLine>cat article/{id}.md</TerminalLine>
 
       {/* 边框容器 - 与列表页一致 */}
@@ -150,7 +150,7 @@ const ArticleDetail = () => {
         sx={{
           border: '1px dashed',
           borderColor: 'border.default',
-          p: 3,
+          p: { xs: 2, sm: 3 },
           borderRadius: 0,
         }}
       >
@@ -180,7 +180,7 @@ const ArticleDetail = () => {
                 ))}
               </Box>
 
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 3 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, flexWrap: 'wrap', mb: 3 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <CalendarIcon fontSize="small" />
                   <Typography variant="body2" color="text.secondary">
@@ -197,7 +197,7 @@ const ArticleDetail = () => {
                   </Box>
                 )}
 
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }} onClick={handleShare} role="button" tabIndex={0} aria-label="分享文章">
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 'auto' }} onClick={handleShare} role="button" tabIndex={0} aria-label="分享文章">
                   <ShareIcon fontSize="small" sx={{ cursor: 'pointer' }} />
                 </Box>
               </Box>

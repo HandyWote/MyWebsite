@@ -50,7 +50,10 @@ export const ARTICLE_CONTENT_SX = {
   '& table': {
     width: '100%',
     borderCollapse: 'collapse',
-    mb: 3
+    mb: 3,
+    display: 'block',
+    overflowX: 'auto',
+    WebkitOverflowScrolling: 'touch',
   },
   '& th, & td': {
     border: '1px solid #30363d',

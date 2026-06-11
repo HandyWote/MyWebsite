@@ -4,9 +4,21 @@ import { Box } from '@mui/material';
 /**
  * 懒加载图片组件
  * 使用 Intersection Observer API 实现图片懒加载
- * 支持加载状态、错误处理和过渡动画
+ * 支持 srcset/sizes（响应式图片）、加载状态、错误处理和过渡动画
+ *
+ * CLS 防护：建议通过 sx 传入固定宽高或 aspect-ratio
+ *
+ * @example
+ * // 响应式图片
+ * <LazyImage
+ *   src="/uploads/cover.webp"
+ *   alt="文章封面"
+ *   srcSet="/uploads/cover-400w.webp 400w, /uploads/cover-800w.webp 800w"
+ *   sizes="(max-width: 600px) 100vw, 50vw"
+ *   sx={{ width: '100%', aspectRatio: '16/9', objectFit: 'cover' }}
+ * />
  */
-const LazyImage = ({ src, alt, fallbackSrc, ...props }) => {
+const LazyImage = ({ src, alt, fallbackSrc, srcSet, sizes, ...props }) => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
   const imgRef = useRef();
@@ -35,7 +47,6 @@ const LazyImage = ({ src, alt, fallbackSrc, ...props }) => {
       props.onError(event);
     }
     if (fallbackSrc) {
-      // 如果有备用图片，尝试加载备用图片
       const fallbackImg = new Image();
       fallbackImg.onload = () => {
         setIsLoaded(true);
@@ -52,6 +63,8 @@ const LazyImage = ({ src, alt, fallbackSrc, ...props }) => {
       component="img"
       src={imageSrc}
       alt={alt}
+      srcSet={isLoaded ? srcSet : undefined}
+      sizes={sizes}
       onLoad={() => setIsLoaded(true)}
       onError={handleImageError}
       sx={{

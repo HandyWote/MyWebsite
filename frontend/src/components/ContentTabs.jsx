@@ -15,8 +15,8 @@ function ContentTabs() {
   const activeTab = location.pathname.startsWith('/projects') ? 'projects' : 'articles';
 
   return (
-    <Box sx={{ p: 3 }}>
-      {/* Tab 切换栏 */}
+    <Box sx={{ p: { xs: 1.5, sm: 3 } }}>
+      {/* Tab 切换栏 — 移动端可横向滚动 */}
       <Box
         sx={{
           display: 'flex',
@@ -25,6 +25,12 @@ function ContentTabs() {
           borderColor: 'border.default',
           pb: 1,
           mb: 3,
+          overflowX: 'auto',
+          flexWrap: 'nowrap',
+          WebkitOverflowScrolling: 'touch',
+          // 隐藏滚动条但保留功能
+          scrollbarWidth: 'none',
+          '&::-webkit-scrollbar': { display: 'none' },
         }}
       >
         {TABS.map((tab) => (
@@ -42,7 +48,7 @@ function ContentTabs() {
         sx={{
           border: '1px dashed',
           borderColor: 'border.default',
-          p: 3,
+          p: { xs: 1.5, sm: 3 },
           borderRadius: 0,
         }}
       >
