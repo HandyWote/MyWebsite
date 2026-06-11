@@ -15,8 +15,16 @@ FROM docker.1ms.run/node:18-alpine AS scene-builder
 WORKDIR /build/3Dend
 COPY 3Dend/package*.json ./
 RUN npm config set registry https://registry.npmmirror.com && npm install
+
+# 从 frontend 构建产物中提取 manifest，注入 prefetch 链接到 3Dend/index.html
+COPY --from=frontend-builder /build/frontend/dist/.vite/manifest.json /tmp/manifest.json
+COPY 3Dend/index.html /tmp/index.html.bak
+COPY scripts/inject-prefetch.cjs /tmp/inject-prefetch.cjs
+RUN node /tmp/inject-prefetch.cjs
+
 COPY 3Dend/ ./
-RUN npm run build
+# 用注入了 prefetch 的 index.html 覆盖构建前的 index.html
+RUN cp /tmp/index.html.bak index.html && npm run build
 
 FROM docker.1ms.run/nginx:alpine
 
