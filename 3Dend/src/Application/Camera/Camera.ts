@@ -148,7 +148,7 @@ export default class Camera extends EventEmitter {
     }
 
     setPostLoadTransition() {
-        this.resources.on('ready', () => {
+        this.resources.on('geometryReady', () => {
             this.transition(CameraKey.IDLE, 2500, TWEEN.Easing.Exponential.Out);
         });
     }

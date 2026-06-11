@@ -2,7 +2,6 @@ import * as THREE from 'three';
 import Application from '../Application';
 import BakedModel from '../Utils/BakedModel';
 import Resources from '../Utils/Resources';
-
 export default class Computer {
     application: Application;
     scene: THREE.Scene;
@@ -21,7 +20,7 @@ export default class Computer {
     bakeModel() {
         this.bakedModel = new BakedModel(
             this.resources.items.gltfModel.computerSetupModel,
-            this.resources.items.texture.computerSetupTexture,
+            undefined,  // 纹理延迟加载，通过 applyTexture() 应用
             900
         );
     }

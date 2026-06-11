@@ -8,18 +8,21 @@ type TextureResource = {
     name: string;
     type: 'texture';
     path: string;
+    group: 'geometry' | 'texture';
 };
 
 type CubeTextureResource = {
     name: string;
     type: 'cubeTexture';
     path: string[];
+    group?: 'geometry' | 'texture';
 };
 
 type ModelResource = {
     name: string;
     type: 'gltfModel';
     path: string;
+    group: 'geometry' | 'texture';
 };
 
 type EnclosingPlane = {

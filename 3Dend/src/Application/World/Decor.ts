@@ -2,7 +2,6 @@ import * as THREE from 'three';
 import Application from '../Application';
 import BakedModel from '../Utils/BakedModel';
 import Resources from '../Utils/Resources';
-
 export default class Decor {
     application: Application;
     scene: THREE.Scene;
@@ -21,7 +20,7 @@ export default class Decor {
     bakeModel() {
         this.bakedModel = new BakedModel(
             this.resources.items.gltfModel.decorModel,
-            this.resources.items.texture.decorTexture,
+            undefined,  // 纹理延迟加载，通过 applyTexture() 应用
             900
         );
     }

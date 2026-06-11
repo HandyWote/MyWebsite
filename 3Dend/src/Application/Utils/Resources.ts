@@ -13,6 +13,8 @@ export default class Resources extends EventEmitter {
     };
     toLoad: number;
     loaded: number;
+    geometryToLoad: number;
+    geometryLoaded: number;
     loaders: {
         gltfLoader: GLTFLoader;
         textureLoader: THREE.TextureLoader;
@@ -29,6 +31,10 @@ export default class Resources extends EventEmitter {
         this.items = { texture: {}, cubeTexture: {}, gltfModel: {} };
         this.toLoad = this.sources.length;
         this.loaded = 0;
+        this.geometryToLoad = this.sources.filter(
+            (s) => s.group === 'geometry'
+        ).length;
+        this.geometryLoaded = 0;
         this.application = new Application();
         this.loading = this.application.loading;
 
@@ -67,6 +73,18 @@ export default class Resources extends EventEmitter {
         this.items[source.type][source.name] = file;
 
         this.loaded++;
+
+        // Two-phase events
+        if (source.group === 'texture') {
+            this.trigger('textureLoaded', [source.name, file]);
+        }
+
+        if (source.group === 'geometry') {
+            this.geometryLoaded++;
+            if (this.geometryLoaded === this.geometryToLoad) {
+                this.trigger('geometryReady');
+            }
+        }
 
         this.loading.trigger('loadedSource', [
             source.name,

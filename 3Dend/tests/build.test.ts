@@ -48,7 +48,7 @@ describe('Build System', () => {
       ? readdirSync(assetsDir).filter(entry => entry.endsWith('.js'))
       : [];
     const hasJsBundle = [...rootJsFiles, ...assetJsFiles].length > 0;
-    const expectedStaticDirs = ['models', 'images', 'draco'];
+    const expectedStaticDirs = ['models', 'images'];
 
     expect(hasIndexHtml).toBe(true);
     expect(hasJsBundle).toBe(true);

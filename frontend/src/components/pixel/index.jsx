@@ -9,4 +9,3 @@ export { PixelTypography, CodeBlock, TerminalLine } from './ui/PixelTypography';
 export { PixelContainer } from './layout/PixelContainer';
 export { PixelSidebar } from './layout/PixelSidebar';
 export { PixelNavbar } from './layout/PixelNavbar';
-export { PixelFooter } from './layout/PixelFooter';

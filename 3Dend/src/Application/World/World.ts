@@ -24,13 +24,37 @@ export default class World {
         this.scene = this.application.scene;
         this.resources = this.application.resources;
 
-        this.resources.on('ready', () => {
+        // 阶段1：几何就绪 → 创建场景（无纹理占位）
+        this.resources.on('geometryReady', () => {
             this.environment = new Environment();
             this.decor = new Decor();
             this.computerSetup = new ComputerSetup();
             this.monitorScreen = new MonitorScreen();
             // const hb = new Hitboxes();
             // this.cursor = new Cursor();
+        });
+
+        // 阶段2：纹理逐个就绪 → 无感贴图
+        this.resources.on('textureLoaded', (sourceName: string, texture: LoadedTexture) => {
+            if (!this.computerSetup) return; // 场景尚未创建
+
+            switch (sourceName) {
+                case 'computerSetupTexture':
+                    this.computerSetup.bakedModel.applyTexture(texture);
+                    break;
+                case 'environmentTexture':
+                    this.environment.bakedModel.applyTexture(texture);
+                    break;
+                case 'decorTexture':
+                    this.decor.bakedModel.applyTexture(texture);
+                    break;
+                case 'monitorSmudgeTexture':
+                    this.monitorScreen.addSmudgeLayer(texture);
+                    break;
+                case 'monitorShadowTexture':
+                    this.monitorScreen.addShadowLayer(texture);
+                    break;
+            }
         });
     }
 

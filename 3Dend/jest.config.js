@@ -11,4 +11,17 @@ module.exports = {
   moduleNameMapper: {
     '^three$': '<rootDir>/node_modules/three',
   },
+  transform: {
+    '^.+\\.ts$': ['ts-jest', {
+      tsconfig: {
+        target: 'es2018',
+        module: 'commonjs',
+        moduleResolution: 'node',
+        esModuleInterop: true,
+        strict: false,
+        noEmit: true,
+        typeRoots: ['node_modules/@types'],
+      },
+    }],
+  },
 };

@@ -14,6 +14,10 @@ const IFRAME_SIZE = {
     h: SCREEN_SIZE.h - IFRAME_PADDING,
 };
 
+const SCALE_FACTOR = 4;
+const SMUDGE_OFFSET = 96;  // 24 × SCALE_FACTOR
+const SHADOW_OFFSET = 20;   // 5 × SCALE_FACTOR
+
 export default class MonitorScreen extends EventEmitter {
     application: Application;
     scene: THREE.Scene;
@@ -46,12 +50,11 @@ export default class MonitorScreen extends EventEmitter {
         this.mouseClickInProgress = false;
         this.shouldLeaveMonitor = false;
 
-        // Create screen
+        // Create screen (no texture layers yet)
         this.initializeScreenEvents();
         this.createIframe();
-        const maxOffset = this.createTextureLayers();
-        this.createEnclosingPlanes(maxOffset);
-        this.createPerspectiveDimmer(maxOffset);
+        this.createEnclosingPlanes(SMUDGE_OFFSET);
+        this.createPerspectiveDimmer(SMUDGE_OFFSET);
     }
 
     initializeScreenEvents() {
@@ -250,51 +253,6 @@ export default class MonitorScreen extends EventEmitter {
         this.scene.add(mesh);
     }
 
-    /**
-     * Creates the texture layers for the computer screen
-     * @returns the maximum offset of the texture layers
-     */
-    createTextureLayers() {
-        const textures = this.resources.items.texture;
-
-        // Scale factor to multiply depth offset by
-        const scaleFactor = 4;
-
-        // Construct the texture layers
-        const layers = {
-            smudge: {
-                texture: textures.monitorSmudgeTexture,
-                blending: THREE.AdditiveBlending,
-                opacity: 0.12,
-                offset: 24,
-            },
-            innerShadow: {
-                texture: textures.monitorShadowTexture,
-                blending: THREE.NormalBlending,
-                opacity: 1,
-                offset: 5,
-            },
-        };
-
-        // Declare max offset
-        let maxOffset = -1;
-
-        // Add the texture layers to the screen
-        for (const [_, layer] of Object.entries(layers)) {
-            const offset = layer.offset * scaleFactor;
-            this.addTextureLayer(
-                layer.texture,
-                layer.blending,
-                layer.opacity,
-                offset
-            );
-            // Calculate the max offset
-            if (offset > maxOffset) maxOffset = offset;
-        }
-
-        // Return the max offset
-        return maxOffset;
-    }
 
     /**
      * Adds a texture layer to the screen
@@ -302,13 +260,14 @@ export default class MonitorScreen extends EventEmitter {
      * @param blending the blending mode
      * @param opacity the opacity of the texture
      * @param offset the offset of the texture, higher values are further from the screen
+     * @returns the created material
      */
     addTextureLayer(
         texture: THREE.Texture,
         blendingMode: THREE.Blending,
         opacity: number,
         offset: number
-    ) {
+    ): THREE.MeshBasicMaterial {
         // Create material
         const material = new THREE.MeshBasicMaterial({
             map: texture,
@@ -336,6 +295,46 @@ export default class MonitorScreen extends EventEmitter {
         mesh.rotation.copy(this.rotation);
 
         this.scene.add(mesh);
+
+        return material;
+    }
+
+    /**
+     * Adds a texture layer with a fade-in animation
+     */
+    addTextureLayerWithFade(
+        texture: THREE.Texture,
+        blendingMode: THREE.Blending,
+        targetOpacity: number,
+        offset: number,
+        duration = 500,
+    ): void {
+        const material = this.addTextureLayer(texture, blendingMode, 0, offset);
+        this.fadeInMaterial(material, targetOpacity, duration);
+    }
+
+    private fadeInMaterial(
+        material: THREE.MeshBasicMaterial,
+        targetOpacity: number,
+        duration: number,
+    ): void {
+        const startTime = performance.now();
+        const fadeIn = () => {
+            const progress = Math.min((performance.now() - startTime) / duration, 1);
+            material.opacity = targetOpacity * progress;
+            if (progress < 1) {
+                requestAnimationFrame(fadeIn);
+            }
+        };
+        requestAnimationFrame(fadeIn);
+    }
+
+    addSmudgeLayer(texture: LoadedTexture) {
+        this.addTextureLayerWithFade(texture, THREE.AdditiveBlending, 0.12, SMUDGE_OFFSET);
+    }
+
+    addShadowLayer(texture: LoadedTexture) {
+        this.addTextureLayerWithFade(texture, THREE.NormalBlending, 1, SHADOW_OFFSET);
     }
 
     /**
