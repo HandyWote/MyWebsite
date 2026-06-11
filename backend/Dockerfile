@@ -10,6 +10,8 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o server .
 
 FROM docker.1ms.run/alpine:latest
 
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g' /etc/apk/repositories
+
 WORKDIR /app
 
 RUN apk --no-cache add ca-certificates curl
