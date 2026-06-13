@@ -7,7 +7,7 @@ import {
 } from '@mui/material';
 import { getAndClearRedirectPath } from '../utils/auth';
 import { getApiMessage, getApiUrl, unwrapApiPayload } from '../../config/api';
-import { PixelCard, PixelButton, PixelInput } from '../../components/pixel';
+import { PixelCard, PixelButton } from '../../components/pixel';
 
 const Login = () => {
   const [username, setUsername] = useState('');

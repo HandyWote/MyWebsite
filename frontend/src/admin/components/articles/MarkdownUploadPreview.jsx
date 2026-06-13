@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { Box, Button, Chip, Stack, Typography} from '@mui/material';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import 'katex/dist/katex.min.css';

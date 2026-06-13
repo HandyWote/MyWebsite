@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
   Box,
   Button,
@@ -19,7 +19,7 @@ import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import { getApiUrl } from '../../config/api'; // 导入API配置
 
-const DataImportExport = () => {
+export default function DataImportExport() {
   const [loading, setLoading] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
@@ -58,7 +58,6 @@ const DataImportExport = () => {
         showSnackbar('数据导出失败: ' + data.msg, 'error');
       }
     } catch (error) {
-      console.error('导出失败:', error);
       showSnackbar('数据导出失败', 'error');
     } finally {
       setLoading(false);
@@ -97,7 +96,6 @@ const DataImportExport = () => {
         showSnackbar('数据导入失败: ' + data.msg, 'error');
       }
     } catch (error) {
-      console.error('导入失败:', error);
       showSnackbar('数据导入失败: ' + error.message, 'error');
     } finally {
       setLoading(false);
@@ -198,6 +196,4 @@ const DataImportExport = () => {
       </Snackbar>
     </Container>
   );
-};
-
-export default DataImportExport;
+}

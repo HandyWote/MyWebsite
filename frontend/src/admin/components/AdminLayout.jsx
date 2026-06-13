@@ -1,5 +1,5 @@
 // AdminLayout组件 - Terminal Aesthetics 风格
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { Box, AppBar, Toolbar, Typography, Tabs, Tab, Button, useMediaQuery, Divider } from '@mui/material';
 import { FileText, MessageSquare, Settings, LogOut } from 'lucide-react';
@@ -12,7 +12,7 @@ const tabList = [
   { label: 'Comments', path: '/admin/comments', icon: MessageSquare },
 ];
 
-const AdminLayout = () => {
+export default function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const isMobile = useMediaQuery('(max-width:900px)');
@@ -190,6 +190,4 @@ const AdminLayout = () => {
       </Box>
     </Box>
   );
-};
-
-export default AdminLayout;
+}

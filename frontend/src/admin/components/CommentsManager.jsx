@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -282,13 +282,13 @@ function CommentDetailDialog({ comment, open, onClose }) {
   );
 }
 
-const CommentsManager = () => {
+export default function CommentsManager() {
   const navigate = useNavigate();
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [perPage, _setPerPage] = useState(10);
+  const PER_PAGE = 10;
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [selectedComment, setSelectedComment] = useState(null);
@@ -310,7 +310,7 @@ const CommentsManager = () => {
     try {
       const params = new URLSearchParams({
         page: page.toString(),
-        per_page: perPage.toString()
+        per_page: PER_PAGE.toString()
       });
 
       if (searchTerm) {
@@ -354,7 +354,7 @@ const CommentsManager = () => {
     } finally {
       setLoading(false);
     }
-  }, [navigate, page, perPage, searchTerm, statusFilter]);
+  }, [navigate, page, PER_PAGE, searchTerm, statusFilter]);
 
   useEffect(() => {
     fetchComments();
@@ -572,7 +572,7 @@ const CommentsManager = () => {
           {/* 分页 */}
           <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
             <Pagination
-              count={Math.ceil(total / perPage)}
+              count={Math.ceil(total / PER_PAGE)}
               page={page}
               onChange={(_, newPage) => setPage(newPage)}
               color="primary"
@@ -635,6 +635,4 @@ const CommentsManager = () => {
       />
     </Container>
   );
-};
-
-export default CommentsManager;
+}

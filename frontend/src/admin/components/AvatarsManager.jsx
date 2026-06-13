@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Box, Button, Avatar, Paper, IconButton, Stack, Snackbar, Tooltip, Typography } from '@mui/material';
 import Card from '@mui/material/Card';
@@ -88,7 +88,7 @@ function SortableAvatarCard({ avatar, index, onDelete, onSetCurrent, ...props })
   );
 }
 
-const AvatarsManager = () => {
+export default function AvatarsManager() {
   const navigate = useNavigate();
   const [avatars, setAvatars] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -271,6 +271,4 @@ const AvatarsManager = () => {
       />
     </Box>
   );
-};
-
-export default AvatarsManager;
+}
