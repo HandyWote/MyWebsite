@@ -1,41 +1,12 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Box, Button, Chip, Stack, Typography, Paper, Alert } from '@mui/material';
+import { Box, Button, Chip, Stack, Typography} from '@mui/material';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import 'katex/dist/katex.min.css';
-import ArticleMarkdownContent from '../../../components/articles/ArticleMarkdownContent';
 
-class MarkdownPreviewBoundary extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = { hasError: false, message: '' };
-  }
-
-  static getDerivedStateFromError(error) {
-    return { hasError: true, message: error?.message || '未知错误' };
-  }
-
-  componentDidCatch(error) {
-    console.error('Markdown预览渲染失败:', error);
-    this.props.onError?.(`Markdown预览失败：${error.message || '未知错误'}`, 'error');
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <Alert severity="error" sx={{ mb: 1 }}>
-          Markdown 预览失败：{this.state.message}
-        </Alert>
-      );
-    }
-    return this.props.children;
-  }
-}
 
 const MarkdownUploadPreview = ({
   content,
   onContentChange,
-  previewContent,
-  onPreviewContentChange,
   onError,
   onFileNameChange
 }) => {
@@ -65,7 +36,6 @@ const MarkdownUploadPreview = ({
     reader.onload = event => {
       const text = typeof event.target?.result === 'string' ? event.target.result : '';
       onContentChange(text);
-      onPreviewContentChange(text);
 
       // 提取文件名作为标题（去掉 .md 后缀）
       const nameWithoutExt = file.name.replace(/\.md$/i, '');
@@ -83,7 +53,6 @@ const MarkdownUploadPreview = ({
 
   const handleClear = () => {
     onContentChange('');
-    onPreviewContentChange('');
     setFileName('');
     if (inputRef.current) {
       inputRef.current.value = '';
@@ -110,9 +79,6 @@ const MarkdownUploadPreview = ({
             <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
               Markdown 文件
             </Typography>
-            <Typography variant="body2" color="text.secondary">
-              上传 .md 文件自动填充正文内容，不再支持在线编辑。如需更新请重新上传。
-            </Typography>
           </Box>
           <Box>
             <Button variant="outlined" component="label" startIcon={<UploadFileIcon />}>
@@ -131,11 +97,7 @@ const MarkdownUploadPreview = ({
           {fileName ? (
             <Chip label={fileName} onDelete={handleClear} color="primary" variant="outlined" />
           ) : (
-            content && (
-              <Typography variant="body2" color="text.secondary">
-                已加载数据库中的正文内容，如需替换请上传新的 Markdown 文件。
-              </Typography>
-            )
+            content && null
           )}
           {!content && (
             <Typography variant="body2" color="error.main">

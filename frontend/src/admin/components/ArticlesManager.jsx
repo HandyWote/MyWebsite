@@ -1,7 +1,7 @@
 // frontend/src/admin/components/ArticlesManager.jsx
-import { useState, useEffect, useCallback } from 'react';
-import { Box, Button, Snackbar, Alert, CircularProgress, Typography } from '@mui/material';
-import { Add, Upload, SettingsSuggest, AutoAwesome, Delete } from '@mui/icons-material';
+import { useState, useEffect } from 'react';
+import { Box, Button, Snackbar, Alert, Typography } from '@mui/material';
+import { Add, Upload, SettingsSuggest, Delete } from '@mui/icons-material';
 
 // Store
 import useArticleStore from '@/stores/articleStore';
@@ -37,11 +37,9 @@ export default function ArticlesManager() {
   const {
     articles,
     loading,
-    error,
     pagination,
     aiAnalysis,
     aiLoading,
-    aiSettings,
     aiSettingsLoading,
     fetchArticles,
     fetchArticleById,
@@ -63,7 +61,6 @@ export default function ArticlesManager() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingArticle, setEditingArticle] = useState(defaultArticle);
   const [editId, setEditId] = useState(null);
-  const [previewContent, setPreviewContent] = useState('');
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [aiSettingsOpen, setAiSettingsOpen] = useState(false);
   const [aiSettingsForm, setAiSettingsForm] = useState(null); // AI 设置表单（本地编辑状态）
@@ -121,7 +118,6 @@ export default function ArticlesManager() {
   const handleCreate = () => {
     setEditingArticle(defaultArticle);
     setEditId(null);
-    setPreviewContent('');
     clearAiAnalysis();
     setEditDialogOpen(true);
   };
@@ -138,7 +134,6 @@ export default function ArticlesManager() {
           : (fullArticle.tags || []).join(','),
       });
       setEditId(article.id);
-      setPreviewContent(fullArticle.content || '');
       clearAiAnalysis();
       setEditDialogOpen(true);
     } catch (err) {
@@ -380,8 +375,6 @@ export default function ArticlesManager() {
         aiSuggestions={aiAnalysis}
         onAiAnalyze={handleAiAnalyze}
         onApplySuggestions={handleApplyAiSuggestions}
-        previewContent={previewContent}
-        onPreviewContentChange={setPreviewContent}
         onMarkdownError={(message, severity) => showSnackbar(message, severity)}
         onUploadPdf={handleUploadPdf}
         pdfUploading={pdfUploading}

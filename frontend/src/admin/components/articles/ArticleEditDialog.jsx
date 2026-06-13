@@ -14,7 +14,6 @@ import {
   Paper,
   Grid,
   FormControl,
-  FormLabel,
   RadioGroup,
   FormControlLabel,
   Radio
@@ -86,8 +85,6 @@ const ArticleEditDialog = ({
   aiSuggestions,
   onAiAnalyze,
   onApplySuggestions,
-  previewContent,
-  onPreviewContentChange,
   onMarkdownError,
   onUploadPdf,
   pdfUploading
@@ -253,11 +250,6 @@ const ArticleEditDialog = ({
             icon={<SmartToyIcon color="primary" sx={{ fontSize: 28 }} />}
           >
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ xs: 'stretch', sm: 'center' }}>
-              <Box sx={{ flex: 1 }}>
-                <Typography variant="body2" color="text.secondary">
-                  AI 将基于当前输入内容提出建议，您可以在右侧一键应用。
-                </Typography>
-              </Box>
               <Tooltip title="需要填写标题和内容才能进行AI分析">
                 <span>
                   <Button
@@ -319,8 +311,6 @@ const ArticleEditDialog = ({
               <MarkdownUploadPreview
                 content={currentArticle.content || ''}
                 onContentChange={value => onArticleChange(prev => ({ ...prev, content: value }))}
-                previewContent={previewContent}
-                onPreviewContentChange={onPreviewContentChange}
                 onError={onMarkdownError}
                 onFileNameChange={nameWithoutExt => {
                   // 仅在新建文章且标题为空时自动填充标题
