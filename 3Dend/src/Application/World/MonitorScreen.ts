@@ -14,9 +14,8 @@ const IFRAME_SIZE = {
     h: SCREEN_SIZE.h - IFRAME_PADDING,
 };
 
-const SCALE_FACTOR = 4;
-const SMUDGE_OFFSET = 96;  // 24 × SCALE_FACTOR
-const SHADOW_OFFSET = 20;   // 5 × SCALE_FACTOR
+const SMUDGE_OFFSET = 96;
+const SHADOW_OFFSET = 20;
 
 export default class MonitorScreen extends EventEmitter {
     application: Application;
@@ -35,6 +34,9 @@ export default class MonitorScreen extends EventEmitter {
     inComputer: boolean;
     mouseClickInProgress: boolean;
     dimmingPlane: THREE.Mesh;
+    iframe: HTMLIFrameElement | null;
+    iframeWheelCleanup: (() => void) | null;
+    cachedIframeScrollTarget: HTMLElement | null;
 
     constructor() {
         super();
@@ -49,6 +51,9 @@ export default class MonitorScreen extends EventEmitter {
         this.rotation = new THREE.Euler(-3 * THREE.MathUtils.DEG2RAD, 0, 0);
         this.mouseClickInProgress = false;
         this.shouldLeaveMonitor = false;
+        this.iframe = null;
+        this.iframeWheelCleanup = null;
+        this.cachedIframeScrollTarget = null;
 
         // Create screen (no texture layers yet)
         this.initializeScreenEvents();
@@ -130,6 +135,128 @@ export default class MonitorScreen extends EventEmitter {
         );
     }
 
+    attachIframeWheelBridge() {
+        this.iframeWheelCleanup?.();
+        this.iframeWheelCleanup = null;
+
+        const doc = this.getIframeDocument();
+        if (!doc) return;
+        this.cachedIframeScrollTarget = null;
+
+        const handleWheel = (event: WheelEvent) => {
+            const { deltaX, deltaY } = this.getWheelDelta(event);
+            if (deltaX === 0 && deltaY === 0) return;
+
+            const target = this.findScrollTarget(event, doc);
+            if (!target) return;
+
+            event.preventDefault();
+            target.scrollBy({ top: deltaY, left: deltaX, behavior: 'auto' });
+        };
+
+        doc.addEventListener('wheel', handleWheel, { passive: false });
+        this.iframeWheelCleanup = () => {
+            doc.removeEventListener('wheel', handleWheel);
+        };
+    }
+
+    getWheelDelta(event: WheelEvent) {
+        let { deltaX, deltaY } = event;
+
+        if (event.deltaMode === WheelEvent.DOM_DELTA_LINE) {
+            deltaX *= 40;
+            deltaY *= 40;
+        } else if (event.deltaMode === WheelEvent.DOM_DELTA_PAGE) {
+            // DOM_DELTA_PAGE is extremely rare; approximate with 800px
+            deltaX *= 800;
+            deltaY *= 800;
+        }
+
+        return { deltaX, deltaY };
+    }
+
+    findScrollTarget(event: WheelEvent, doc: Document): HTMLElement | null {
+        let element = this.getEventElement(event, doc);
+
+        while (element && element !== doc.documentElement) {
+            if (this.isScrollableElement(element, doc)) {
+                this.cachedIframeScrollTarget = element;
+                return element;
+            }
+
+            element = element.parentElement;
+        }
+
+        if (this.isCachedScrollTargetValid(doc)) {
+            return this.cachedIframeScrollTarget;
+        }
+
+        return this.findFallbackScrollTarget(doc);
+    }
+
+    findFallbackScrollTarget(doc: Document): HTMLElement | null {
+        const main = doc.querySelector('main');
+        const candidates = [
+            ...(main ? [main] : []),
+            ...Array.from(doc.body?.querySelectorAll('*') || []),
+        ];
+
+        for (const candidate of candidates) {
+            if (this.isHTMLElement(candidate, doc) && this.isScrollableElement(candidate, doc)) {
+                this.cachedIframeScrollTarget = candidate;
+                return candidate;
+            }
+        }
+
+        const root = doc.scrollingElement || doc.documentElement;
+        if (this.isHTMLElement(root, doc) && this.isScrollableElement(root, doc)) {
+            this.cachedIframeScrollTarget = root;
+            return root;
+        }
+
+        this.cachedIframeScrollTarget = null;
+        return null;
+    }
+
+    isScrollableElement(element: HTMLElement, doc: Document): boolean {
+        const style = doc.defaultView?.getComputedStyle(element);
+        const canScrollY =
+            style &&
+            /(auto|scroll)/.test(style.overflowY) &&
+            element.scrollHeight > element.clientHeight;
+        const canScrollX =
+            style &&
+            /(auto|scroll)/.test(style.overflowX) &&
+            element.scrollWidth > element.clientWidth;
+
+        return Boolean(canScrollY || canScrollX);
+    }
+
+    isCachedScrollTargetValid(doc: Document): boolean {
+        return Boolean(
+            this.cachedIframeScrollTarget?.isConnected &&
+            this.isScrollableElement(this.cachedIframeScrollTarget, doc)
+        );
+    }
+
+    getEventElement(event: WheelEvent, doc: Document): HTMLElement | null {
+        const target = event.target;
+        return this.isHTMLElement(target, doc) ? target : null;
+    }
+
+    isHTMLElement(value: unknown, doc: Document): value is HTMLElement {
+        const HTMLElementCtor = doc.defaultView?.HTMLElement;
+        return Boolean(HTMLElementCtor && value instanceof HTMLElementCtor);
+    }
+
+    getIframeDocument(): Document | null {
+        try {
+            return this.iframe?.contentDocument || null;
+        } catch {
+            return null;
+        }
+    }
+
     /**
      * Creates the iframe for the computer screen
      */
@@ -146,6 +273,8 @@ export default class MonitorScreen extends EventEmitter {
 
         // Bubble mouse move events to the main application, so we can affect the camera
         iframe.onload = () => {
+            this.attachIframeWheelBridge();
+
             if (iframe.contentWindow) {
                 window.addEventListener('message', (event) => {
                     var evt = new CustomEvent(event.data.type, {
@@ -202,8 +331,8 @@ export default class MonitorScreen extends EventEmitter {
         iframe.style.boxSizing = 'border-box';
         iframe.style.opacity = '1';
         iframe.id = 'computer-screen';
-        iframe.frameBorder = '0';
         iframe.title = 'HandyOS';
+        this.iframe = iframe;
 
         // Add iframe to container
         container.appendChild(iframe);

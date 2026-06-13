@@ -32,11 +32,7 @@ function GitHubActivity({ username = 'HandyWote', compact = true }) {
           '& ::-webkit-scrollbar': {
             height: '6px',
           },
-          '& ::-webkit-scrollbar-track': {
-            background: 'var(--bg-secondary)',
-          },
           '& ::-webkit-scrollbar-thumb': {
-            background: 'var(--border-default)',
             borderRadius: '3px',
           },
         }}

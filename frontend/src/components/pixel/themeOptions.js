@@ -105,19 +105,6 @@ export const createPixelThemeOptions = (themeColors = colors) => {
             backgroundColor: colors.accent.blue,
             color: colors.bg.primary,
           },
-          '::-webkit-scrollbar': {
-            width: '8px',
-            height: '8px',
-          },
-          '::-webkit-scrollbar-track': {
-            background: colors.bg.secondary,
-          },
-          '::-webkit-scrollbar-thumb': {
-            background: colors.border.default,
-            '&:hover': {
-              background: colors.text.muted,
-            },
-          },
         },
       },
       MuiButton: {
