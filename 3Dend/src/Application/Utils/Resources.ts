@@ -15,6 +15,9 @@ export default class Resources extends EventEmitter {
     loaded: number;
     geometryToLoad: number;
     geometryLoaded: number;
+    // 纹理缓冲机制：保证 textureLoaded 事件在 geometryReady 之后触发
+    pendingTextures: Array<{ name: string; file: LoadedTexture }>;
+    geometryReadyFired: boolean;
     loaders: {
         gltfLoader: GLTFLoader;
         textureLoader: THREE.TextureLoader;
@@ -35,6 +38,8 @@ export default class Resources extends EventEmitter {
             (s) => s.group === 'geometry'
         ).length;
         this.geometryLoaded = 0;
+        this.pendingTextures = [];
+        this.geometryReadyFired = false;
         this.application = new Application();
         this.loading = this.application.loading;
 
@@ -76,13 +81,25 @@ export default class Resources extends EventEmitter {
 
         // Two-phase events
         if (source.group === 'texture') {
-            this.trigger('textureLoaded', [source.name, file]);
+            if (this.geometryReadyFired) {
+                // geometryReady 已触发，立即发射 textureLoaded
+                this.trigger('textureLoaded', [source.name, file]);
+            } else {
+                // geometryReady 尚未触发，缓冲纹理事件
+                this.pendingTextures.push({ name: source.name, file: file as LoadedTexture });
+            }
         }
 
         if (source.group === 'geometry') {
             this.geometryLoaded++;
             if (this.geometryLoaded === this.geometryToLoad) {
+                this.geometryReadyFired = true;
                 this.trigger('geometryReady');
+                // 释放所有缓冲的纹理事件（按原始加载顺序）
+                for (const pending of this.pendingTextures) {
+                    this.trigger('textureLoaded', [pending.name, pending.file]);
+                }
+                this.pendingTextures = [];
             }
         }
 
