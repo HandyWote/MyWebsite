@@ -1,9 +1,9 @@
 // Login组件 - Terminal Aesthetics 风格
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
-  Box, TextField, Button, Typography,
-  Alert, CircularProgress, Checkbox, FormControlLabel
+  Box, TextField, Typography,
+  Alert, Checkbox, FormControlLabel
 } from '@mui/material';
 import { getAndClearRedirectPath } from '../utils/auth';
 import { getApiMessage, getApiUrl, unwrapApiPayload } from '../../config/api';
