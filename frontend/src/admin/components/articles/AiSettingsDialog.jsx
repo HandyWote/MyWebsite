@@ -5,7 +5,7 @@ import {
   DialogContent,
   DialogActions,
   TextField,
-  Grid,
+  Grid2,
   Stack,
   Button,
   Typography,
@@ -82,8 +82,8 @@ export default function AiSettingsDialog({ open, onClose }) {
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           前端仅负责提交请求，实际调用模型的代理由后端完成。请在此配置提示词、模型、Base URL 与 API Key。
         </Typography>
-        <Grid container spacing={2}>
-          <Grid item xs={12}>
+        <Grid2 container spacing={2}>
+          <Grid2 size={{ xs: 12 }}>
             <TextField
               label="提示词"
               placeholder="用于引导模型生成建议"
@@ -94,8 +94,8 @@ export default function AiSettingsDialog({ open, onClose }) {
               minRows={3}
               disabled={settingsLoading}
             />
-          </Grid>
-          <Grid item xs={12} sm={6}>
+          </Grid2>
+          <Grid2 size={{ xs: 12, sm: 6 }}>
             <TextField
               label="模型"
               placeholder="如 gpt-4o-mini"
@@ -104,8 +104,8 @@ export default function AiSettingsDialog({ open, onClose }) {
               fullWidth
               disabled={settingsLoading}
             />
-          </Grid>
-          <Grid item xs={12} sm={6}>
+          </Grid2>
+          <Grid2 size={{ xs: 12, sm: 6 }}>
             <TextField
               label="Base URL"
               placeholder="https://api.openai.com/v1"
@@ -114,8 +114,8 @@ export default function AiSettingsDialog({ open, onClose }) {
               fullWidth
               disabled={settingsLoading}
             />
-          </Grid>
-          <Grid item xs={12}>
+          </Grid2>
+          <Grid2 size={{ xs: 12 }}>
             <TextField
               label="API Key"
               type="password"
@@ -125,8 +125,8 @@ export default function AiSettingsDialog({ open, onClose }) {
               fullWidth
               disabled={settingsLoading}
             />
-          </Grid>
-        </Grid>
+          </Grid2>
+        </Grid2>
       </DialogContent>
       <DialogActions sx={{ p: 2 }}>
         <Stack direction="row" spacing={1} sx={{ flexGrow: 1 }}>

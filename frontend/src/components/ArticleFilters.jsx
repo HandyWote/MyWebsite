@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  Grid,
+  Grid2,
   TextField,
   FormControl,
   InputLabel,
@@ -55,9 +55,9 @@ const ArticleFilters = ({
         }
       }
     }}>
-      <Grid container spacing={3} alignItems="stretch">
+      <Grid2 container spacing={3} alignItems="stretch">
         {/* 搜索框 */}
-        <Grid item xs={12} md={6}>
+        <Grid2 size={{ xs: 12, md: 6 }}>
           <TextField
             fullWidth
             placeholder="搜索文章..."
@@ -96,10 +96,10 @@ const ArticleFilters = ({
               )
             }}
           />
-        </Grid>
+        </Grid2>
 
         {/* 分类筛选 */}
-        <Grid item xs={12} md={3}>
+        <Grid2 size={{ xs: 12, md: 3 }}>
           <FormControl fullWidth>
             <InputLabel sx={{ fontSize: '1rem' }}>分类</InputLabel>
             <Select
@@ -144,10 +144,10 @@ const ArticleFilters = ({
               ))}
             </Select>
           </FormControl>
-        </Grid>
+        </Grid2>
 
         {/* 清除筛选 */}
-        <Grid item xs={12} md={3}>
+        <Grid2 size={{ xs: 12, md: 3 }}>
           <Button
             variant="outlined"
             onClick={onClearFilters}
@@ -166,8 +166,8 @@ const ArticleFilters = ({
           >
             清除筛选
           </Button>
-        </Grid>
-      </Grid>
+        </Grid2>
+      </Grid2>
 
       {/* 标签筛选 */}
       {Object.keys(tags).length > 0 && (

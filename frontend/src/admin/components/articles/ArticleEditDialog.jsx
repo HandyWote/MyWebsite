@@ -13,7 +13,7 @@ import {
   CircularProgress,
   Alert,
   Paper,
-  Grid,
+  Grid2,
   FormControl,
   RadioGroup,
   FormControlLabel,
@@ -238,8 +238,8 @@ const ArticleEditDialog = ({ open, isEdit, article, onClose, onSave }) => {
         >
           <Stack spacing={3} sx={{ mt: 1 }}>
             <SectionCard title="基础信息" subtitle="文章标题、分类、标签与摘要">
-              <Grid container spacing={2}>
-                <Grid item xs={12}>
+              <Grid2 container spacing={2}>
+                <Grid2 size={{ xs: 12 }}>
                   <TextField
                     label="标题"
                     value={form.title || ''}
@@ -247,16 +247,16 @@ const ArticleEditDialog = ({ open, isEdit, article, onClose, onSave }) => {
                     fullWidth
                     required
                   />
-                </Grid>
-                <Grid item xs={12} md={6}>
+                </Grid2>
+                <Grid2 size={{ xs: 12, md: 6 }}>
                   <TextField
                     label="分类"
                     value={form.category || ''}
                     onChange={handleFieldChange('category')}
                     fullWidth
                   />
-                </Grid>
-                <Grid item xs={12} md={6}>
+                </Grid2>
+                <Grid2 size={{ xs: 12, md: 6 }}>
                   <TextField
                     label="标签（逗号分隔）"
                     value={form.tags || ''}
@@ -265,8 +265,8 @@ const ArticleEditDialog = ({ open, isEdit, article, onClose, onSave }) => {
                     error={!!form.tags && !validateTags(form.tags)}
                     helperText={!!form.tags && !validateTags(form.tags) ? '标签格式不合法' : ''}
                   />
-                </Grid>
-                <Grid item xs={12}>
+                </Grid2>
+                <Grid2 size={{ xs: 12 }}>
                   <TextField
                     label="摘要"
                     value={form.summary || ''}
@@ -275,8 +275,8 @@ const ArticleEditDialog = ({ open, isEdit, article, onClose, onSave }) => {
                     multiline
                     minRows={3}
                   />
-                </Grid>
-              </Grid>
+                </Grid2>
+              </Grid2>
             </SectionCard>
 
             <SectionCard title="内容类型" subtitle="选择文章的内容格式">

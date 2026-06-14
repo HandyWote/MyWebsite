@@ -5,7 +5,7 @@ import {
   TextField,
   Avatar,
   Divider,
-  Grid,
+  Grid2,
   Alert,
   Snackbar,
 } from '@mui/material';
@@ -103,8 +103,8 @@ export default function CommentSection({ articleId, demoMode = false }) {
             </Alert>
           )}
 
-          <Grid container spacing={2} sx={{ mb: 2 }}>
-            <Grid item xs={12} sm={6}>
+          <Grid2 container spacing={2} sx={{ mb: 2 }}>
+            <Grid2 size={{ xs: 12, sm: 6 }}>
               <TextField
                 fullWidth
                 size="small"
@@ -113,8 +113,8 @@ export default function CommentSection({ articleId, demoMode = false }) {
                 onChange={(e) => setCommentAuthor(e.target.value)}
                 disabled={demoMode}
               />
-            </Grid>
-          </Grid>
+            </Grid2>
+          </Grid2>
 
           <TextField
             fullWidth

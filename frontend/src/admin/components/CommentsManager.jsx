@@ -11,7 +11,7 @@ import {
   FormControl,
   InputLabel,
   Select,
-  Grid,
+  Grid2,
   MenuItem,
   Pagination,
   CircularProgress,
@@ -113,44 +113,44 @@ export default function CommentsManager() {
 
       {/* 统计信息 */}
       <Paper sx={{ p: 3, mb: 3 }}>
-        <Grid container spacing={2}>
-          <Grid item xs={12} sm={3}>
+        <Grid2 container spacing={2}>
+          <Grid2 size={{ xs: 12, sm: 3 }}>
             <Box textAlign="center">
               <Typography variant="h4" color="primary">{total}</Typography>
               <Typography variant="body2" color="text.secondary">总评论数</Typography>
             </Box>
-          </Grid>
-          <Grid item xs={12} sm={3}>
+          </Grid2>
+          <Grid2 size={{ xs: 12, sm: 3 }}>
             <Box textAlign="center">
               <Typography variant="h4" color="success.main">
                 {comments.filter(c => c && c.status === COMMENT_STATUS.NORMAL).length}
               </Typography>
               <Typography variant="body2" color="text.secondary">正常评论</Typography>
             </Box>
-          </Grid>
-          <Grid item xs={12} sm={3}>
+          </Grid2>
+          <Grid2 size={{ xs: 12, sm: 3 }}>
             <Box textAlign="center">
               <Typography variant="h4" color="warning.main">
                 {comments.filter(c => c && c.status === COMMENT_STATUS.PENDING).length}
               </Typography>
               <Typography variant="body2" color="text.secondary">待审核</Typography>
             </Box>
-          </Grid>
-          <Grid item xs={12} sm={3}>
+          </Grid2>
+          <Grid2 size={{ xs: 12, sm: 3 }}>
             <Box textAlign="center">
               <Typography variant="h4" color="error.main">
                 {comments.filter(c => c && c.status === COMMENT_STATUS.SPAM).length}
               </Typography>
               <Typography variant="body2" color="text.secondary">垃圾评论</Typography>
             </Box>
-          </Grid>
-        </Grid>
+          </Grid2>
+        </Grid2>
       </Paper>
 
       {/* 搜索和过滤 */}
       <Paper sx={{ p: 2, mb: 3 }}>
-        <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} sm={6}>
+        <Grid2 container spacing={2} alignItems="center">
+          <Grid2 size={{ xs: 12, sm: 6 }}>
             <TextField
               fullWidth
               placeholder="搜索评论内容、作者、IP地址..."
@@ -164,8 +164,8 @@ export default function CommentsManager() {
                 ),
               }}
             />
-          </Grid>
-          <Grid item xs={12} sm={3}>
+          </Grid2>
+          <Grid2 size={{ xs: 12, sm: 3 }}>
             <FormControl fullWidth>
               <InputLabel>状态筛选</InputLabel>
               <Select
@@ -179,8 +179,8 @@ export default function CommentsManager() {
                 <MenuItem value={COMMENT_STATUS.SPAM}>垃圾评论</MenuItem>
               </Select>
             </FormControl>
-          </Grid>
-          <Grid item xs={12} sm={3}>
+          </Grid2>
+          <Grid2 size={{ xs: 12, sm: 3 }}>
             <Stack direction="row" spacing={1}>
               <Button
                 variant="outlined"
@@ -198,8 +198,8 @@ export default function CommentsManager() {
                 导出
               </Button>
             </Stack>
-          </Grid>
-        </Grid>
+          </Grid2>
+        </Grid2>
       </Paper>
 
       {/* 评论列表 */}
