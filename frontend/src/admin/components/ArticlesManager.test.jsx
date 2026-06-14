@@ -64,17 +64,6 @@ vi.mock('./articles', () => ({
       ))}
     </div>
   ),
-  ArticleEditDialog: ({ open, article, onSave, onClose }) => (
-    <div data-testid="article-editor" data-open={open}>
-      {open && (
-        <>
-          <span>{article?.id ? 'Edit' : 'Create'}</span>
-          <button onClick={() => onSave({ title: 'Test' })}>Save</button>
-          <button onClick={onClose}>Close</button>
-        </>
-      )}
-    </div>
-  ),
   ArticleImporter: ({ open, onImport, onClose }) => (
     <div data-testid="article-importer" data-open={open}>
       {open && (
@@ -87,14 +76,14 @@ vi.mock('./articles', () => ({
   ),
 }));
 
-// Mock ArticleEditDialog 子模块
+// Mock ArticleEditDialog — 现在只有 5 个 props
 vi.mock('./articles/ArticleEditDialog', () => ({
   default: ({ open, onSave, onClose }) => (
     <div data-testid="article-editor" data-open={open}>
       {open && (
         <>
           <span>Edit Dialog</span>
-          <button onClick={() => onSave({ title: 'Test' })}>Save</button>
+          <button onClick={() => onSave({ title: 'Test', content: 'content', content_type: 'markdown' })}>Save</button>
           <button onClick={onClose}>Close</button>
         </>
       )}
@@ -108,6 +97,20 @@ vi.mock('./articles/AiSettingsDialog', () => ({
     <div data-testid="ai-settings-dialog" data-open={open}>
       {open && <span>AI Settings</span>}
       <button onClick={onClose}>Close Settings</button>
+    </div>
+  ),
+}));
+
+// Mock ConfirmDialog (imported from barrel './shared')
+vi.mock('./shared', () => ({
+  ConfirmDialog: ({ open, onConfirm, onCancel }) => (
+    <div data-testid="confirm-dialog" data-open={open}>
+      {open && (
+        <>
+          <button onClick={() => onConfirm()}>ConfirmDelete</button>
+          <button onClick={() => onCancel()}>CancelDelete</button>
+        </>
+      )}
     </div>
   ),
 }));
@@ -146,11 +149,6 @@ describe('ArticlesManager', () => {
     aiSuggestions: null,
     loading: false,
     settingsLoading: false,
-    analyzeContent: vi.fn().mockResolvedValue({ summary: 'test' }),
-    fetchAiSettings: vi.fn().mockResolvedValue({}),
-    updateAiSettings: vi.fn().mockResolvedValue({}),
-    testAiConnection: vi.fn().mockResolvedValue({}),
-    applySuggestions: vi.fn().mockReturnValue(null),
   };
 
   const createStoreMock = (store) => (selector) => {
@@ -196,16 +194,47 @@ describe('ArticlesManager', () => {
     });
   });
 
-  it('应该在删除按钮点击时调用 deleteArticle', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
+  it('应该在删除按钮点击时弹出确认对话框', async () => {
+    render(<ArticlesManager />);
 
+    const deleteButtons = screen.getAllByText('Delete');
+    fireEvent.click(deleteButtons[0]);
+
+    // ConfirmDialog 应该出现（替代 window.confirm）
+    await waitFor(() => {
+      expect(screen.getByTestId('confirm-dialog')).toHaveAttribute('data-open', 'true');
+    });
+  });
+
+  it('应该在确认删除后调用 deleteArticle', async () => {
     render(<ArticlesManager />);
 
     const deleteButtons = screen.getAllByText('Delete');
     fireEvent.click(deleteButtons[0]);
 
     await waitFor(() => {
+      expect(screen.getByText('ConfirmDelete')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('ConfirmDelete'));
+
+    await waitFor(() => {
       expect(mockArticleStore.deleteArticle).toHaveBeenCalledWith(1);
+    });
+  });
+
+  it('应该在批量删除按钮点击时弹出确认对话框', async () => {
+    render(<ArticlesManager />);
+
+    // 先选中一篇文章
+    fireEvent.click(screen.getByTestId('select-1'));
+
+    // 点击批量删除
+    const batchDeleteButton = screen.getByText(/删除选中/);
+    fireEvent.click(batchDeleteButton);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('confirm-dialog')).toHaveAttribute('data-open', 'true');
     });
   });
 

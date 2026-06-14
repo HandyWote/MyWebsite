@@ -6,283 +6,35 @@ import {
   Container,
   Paper,
   Stack,
-  IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogContentText,
-  DialogActions,
   TextField,
   InputAdornment,
-  Chip,
-  Menu,
-  MenuItem,
   FormControl,
   InputLabel,
   Select,
   Grid,
-  Card,
-  CardContent,
-  CardActions,
-  Avatar,
-  Badge,
-  Tooltip,
+  MenuItem,
   Pagination,
-  CircularProgress
+  CircularProgress,
 } from '@mui/material';
 import {
   Search as SearchIcon,
-  Delete as DeleteIcon,
-  FilterList as FilterIcon,
-  MoreVert as MoreVertIcon,
-  Visibility as VisibilityIcon,
-  Flag as FlagIcon,
-  CheckCircle as CheckCircleIcon,
-  Block as BlockIcon,
-  Schedule as ScheduleIcon,
-  Article as ArticleIcon,
-  Person as PersonIcon,
-  Public as PublicIcon,
-  CalendarToday as CalendarIcon,
   Download as DownloadIcon,
-  Refresh as RefreshIcon
+  Refresh as RefreshIcon,
 } from '@mui/icons-material';
 import useCommentStore from '@/stores/commentStore';
 import useNotification from '../../hooks/useNotification';
-import { formatDateTime } from '../../utils/formatDate';
+import { CommentCard, CommentDetailDialog, COMMENT_STATUS } from './comments';
+import { ConfirmDialog } from './shared';
 
-// 评论状态枚举
-const COMMENT_STATUS = {
-  NORMAL: 'normal',
-  PENDING: 'pending',
-  SPAM: 'spam'
-};
+const PER_PAGE = 10;
 
-// 评论状态配置
-const STATUS_CONFIG = {
-  [COMMENT_STATUS.NORMAL]: {
-    label: '正常',
-    color: 'success',
-    icon: <CheckCircleIcon fontSize="small" />
-  },
-  [COMMENT_STATUS.PENDING]: {
-    label: '待审核',
-    color: 'warning',
-    icon: <ScheduleIcon fontSize="small" />
-  },
-  [COMMENT_STATUS.SPAM]: {
-    label: '垃圾评论',
-    color: 'error',
-    icon: <BlockIcon fontSize="small" />
-  }
-};
-
-const getCommentStatusConfig = (status) => (
-  STATUS_CONFIG[status] || STATUS_CONFIG[COMMENT_STATUS.NORMAL]
-);
-
-// 评论卡片组件
-function CommentCard({ comment, onView, onDelete, onStatusChange, ...props }) {
-  const [anchorEl, setAnchorEl] = useState(null);
-  const [expanded, setExpanded] = useState(false);
-
-  // 确保comment对象存在
-  if (!comment) {
-    return null;
-  }
-
-  const statusConfig = getCommentStatusConfig(comment.status);
-
-  const handleMenuOpen = (event) => {
-    setAnchorEl(event.currentTarget);
-  };
-
-  const handleMenuClose = () => {
-    setAnchorEl(null);
-  };
-
-  const handleStatusChange = (status) => {
-    onStatusChange(comment.id, status);
-    handleMenuClose();
-  };
-
-  const formatDate = (dateString) => formatDateTime(dateString);
-
-  return (
-    <Card sx={{ mb: 2, overflow: 'hidden' }} {...props}>
-      <CardContent sx={{ pb: 1 }}>
-        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
-          <Avatar sx={{ bgcolor: 'primary.main' }}>
-            {comment.author.charAt(0)}
-          </Avatar>
-
-          <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-              <Typography variant="subtitle1" fontWeight="bold" noWrap>
-                {comment.author}
-              </Typography>
-              <Chip
-                icon={statusConfig.icon}
-                label={statusConfig.label}
-                color={statusConfig.color}
-                size="small"
-                variant="outlined"
-              />
-            </Box>
-
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1, color: 'text.secondary' }}>
-              <Tooltip title="评论时间">
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                  <CalendarIcon fontSize="small" />
-                  <Typography variant="caption">
-                    {formatDate(comment.created_at)}
-                  </Typography>
-                </Box>
-              </Tooltip>
-
-              <Tooltip title="IP地址">
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                  <PublicIcon fontSize="small" />
-                  <Typography variant="caption">
-                    {comment.ip_address}
-                  </Typography>
-                </Box>
-              </Tooltip>
-
-              <Tooltip title="所属文章">
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                  <ArticleIcon fontSize="small" />
-                  <Typography variant="caption" noWrap sx={{ maxWidth: 150 }}>
-                    {comment.article_title}
-                  </Typography>
-                </Box>
-              </Tooltip>
-            </Box>
-
-            <Typography
-              variant="body2"
-              color="text.primary"
-              sx={{
-                display: '-webkit-box',
-                WebkitLineClamp: expanded ? 'none' : 2,
-                WebkitBoxOrient: 'vertical',
-                overflow: 'hidden',
-                cursor: 'pointer',
-                '&:hover': { color: 'primary.main' }
-              }}
-              onClick={() => setExpanded(!expanded)}
-            >
-              {comment.content}
-            </Typography>
-
-            {comment.email && (
-              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-                邮箱: {comment.email}
-              </Typography>
-            )}
-          </Box>
-
-          <Box>
-            <IconButton size="small" onClick={handleMenuOpen}>
-              <MoreVertIcon />
-            </IconButton>
-            <Menu
-              anchorEl={anchorEl}
-              open={Boolean(anchorEl)}
-              onClose={handleMenuClose}
-            >
-              <MenuItem onClick={() => onView(comment)}>
-                <VisibilityIcon fontSize="small" sx={{ mr: 1 }} />
-                查看详情
-              </MenuItem>
-              <MenuItem onClick={() => handleStatusChange(COMMENT_STATUS.NORMAL)}>
-                <CheckCircleIcon fontSize="small" sx={{ mr: 1 }} />
-                标记为正常
-              </MenuItem>
-              <MenuItem onClick={() => handleStatusChange(COMMENT_STATUS.PENDING)}>
-                <ScheduleIcon fontSize="small" sx={{ mr: 1 }} />
-                标记为待审核
-              </MenuItem>
-              <MenuItem onClick={() => handleStatusChange(COMMENT_STATUS.SPAM)}>
-                <BlockIcon fontSize="small" sx={{ mr: 1 }} />
-                标记为垃圾评论
-              </MenuItem>
-              <MenuItem onClick={() => onDelete(comment)} sx={{ color: 'error.main' }}>
-                <DeleteIcon fontSize="small" sx={{ mr: 1 }} />
-                删除评论
-              </MenuItem>
-            </Menu>
-          </Box>
-        </Box>
-      </CardContent>
-
-      <CardActions sx={{ px: 2, py: 1, bgcolor: 'action.hover' }}>
-        <Typography variant="caption" color="text.secondary">
-          ID: {comment.id}
-        </Typography>
-      </CardActions>
-    </Card>
-  );
-}
-
-// 评论详情对话框
-function CommentDetailDialog({ comment, open, onClose }) {
-  if (!comment) return null;
-
-  return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogTitle>评论详情</DialogTitle>
-      <DialogContent>
-        <Grid container spacing={2}>
-          <Grid item xs={12} sm={6}>
-            <Typography variant="subtitle2" color="text.secondary">作者</Typography>
-            <Typography variant="body1">{comment.author}</Typography>
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <Typography variant="subtitle2" color="text.secondary">邮箱</Typography>
-            <Typography variant="body1">{comment.email || '未提供'}</Typography>
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <Typography variant="subtitle2" color="text.secondary">IP地址</Typography>
-            <Typography variant="body1">{comment.ip_address}</Typography>
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <Typography variant="subtitle2" color="text.secondary">评论时间</Typography>
-            <Typography variant="body1">{formatDateTime(comment.created_at)}</Typography>
-          </Grid>
-          <Grid item xs={12}>
-            <Typography variant="subtitle2" color="text.secondary">所属文章</Typography>
-            <Typography variant="body1">{comment.article_title}</Typography>
-          </Grid>
-          <Grid item xs={12}>
-            <Typography variant="subtitle2" color="text.secondary">评论内容</Typography>
-            <Paper variant="outlined" sx={{ p: 2, mt: 1, bgcolor: 'background.default' }}>
-              <Typography variant="body1" style={{ whiteSpace: 'pre-wrap' }}>
-                {comment.content}
-              </Typography>
-            </Paper>
-          </Grid>
-          {comment.user_agent && (
-            <Grid item xs={12}>
-              <Typography variant="subtitle2" color="text.secondary">用户代理</Typography>
-              <Typography variant="body2" sx={{ fontFamily: 'monospace', wordBreak: 'break-all' }}>
-                {comment.user_agent}
-              </Typography>
-            </Grid>
-          )}
-        </Grid>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>关闭</Button>
-      </DialogActions>
-    </Dialog>
-  );
-}
-
+/**
+ * CommentsManager - 评论管理页面编排器
+ * 职责：UI 状态管理、子组件组合、事件协调。
+ * 数据状态已迁移到 commentStore，仅保留 UI 交互状态。
+ */
 export default function CommentsManager() {
-  const PER_PAGE = 10;
-
-  // Store 数据状态（从 commentStore 获取）
+  // Store 数据状态
   const {
     comments,
     total,
@@ -315,7 +67,7 @@ export default function CommentsManager() {
     } catch (error) {
       notify.notify().error('获取评论列表失败: ' + error.message);
     }
-  }, [fetchComments]);
+  }, [fetchComments]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     handleFetchComments();
@@ -330,9 +82,6 @@ export default function CommentsManager() {
       notify.notify().success('评论删除成功');
     } catch (error) {
       notify.notify().error('删除评论失败: ' + error.message);
-    } finally {
-      setDeleteDialogOpen(false);
-      setCommentToDelete(null);
     }
   };
 
@@ -412,7 +161,7 @@ export default function CommentsManager() {
                   <InputAdornment position="start">
                     <SearchIcon />
                   </InputAdornment>
-                )
+                ),
               }}
             />
           </Grid>
@@ -460,7 +209,7 @@ export default function CommentsManager() {
         </Box>
       ) : comments.length > 0 ? (
         <Box>
-          {comments.map((comment) => (
+          {comments.map((comment) =>
             comment && (
               <CommentCard
                 key={comment.id}
@@ -476,7 +225,7 @@ export default function CommentsManager() {
                 onStatusChange={handleStatusChange}
               />
             )
-          ))}
+          )}
 
           {/* 分页 */}
           <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
@@ -499,31 +248,22 @@ export default function CommentsManager() {
       )}
 
       {/* 删除确认对话框 */}
-      <Dialog
+      <ConfirmDialog
         open={deleteDialogOpen}
+        title="确认删除"
+        message="确定要删除这条评论吗？此操作不可撤销。"
+        confirmText="确认删除"
+        severity="error"
+        onConfirm={handleDeleteComment}
+        onCancel={() => {
+          setDeleteDialogOpen(false);
+          setCommentToDelete(null);
+        }}
         onClose={() => {
           setDeleteDialogOpen(false);
           setCommentToDelete(null);
         }}
-      >
-        <DialogTitle>确认删除</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            确定要删除这条评论吗？此操作不可撤销。
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => {
-            setDeleteDialogOpen(false);
-            setCommentToDelete(null);
-          }}>
-            取消
-          </Button>
-          <Button onClick={handleDeleteComment} color="error">
-            确认删除
-          </Button>
-        </DialogActions>
-      </Dialog>
+      />
 
       {/* 评论详情对话框 */}
       <CommentDetailDialog

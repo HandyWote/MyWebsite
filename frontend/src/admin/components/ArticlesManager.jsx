@@ -1,4 +1,3 @@
-// frontend/src/admin/components/ArticlesManager.jsx
 import { useState, useEffect } from 'react';
 import { Box, Button, Typography } from '@mui/material';
 import { Add, Upload, SettingsSuggest, Delete } from '@mui/icons-material';
@@ -6,15 +5,12 @@ import { Add, Upload, SettingsSuggest, Delete } from '@mui/icons-material';
 // Store
 import useArticleStore from '@/stores/articleStore';
 import useUploadStore from '@/stores/uploadStore';
-import useAiStore from '@/stores/aiStore';
-
-// 配置
-import { getApiUrl } from '@/config/api';
 
 // 子组件
 import { ArticleList, ArticleImporter } from './articles';
 import ArticleEditDialog from './articles/ArticleEditDialog';
 import AiSettingsDialog from './articles/AiSettingsDialog';
+import { ConfirmDialog } from './shared';
 
 // Hook
 import useNotification from '../../hooks/useNotification';
@@ -31,11 +27,10 @@ const defaultArticle = {
   pdf_filename: '',
 };
 
-const DEFAULT_COVER = `${import.meta.env.BASE_URL}default-cover.svg`;
-
 /**
  * 文章管理容器组件
- * 职责：UI 状态管理、子组件组合、事件协调
+ * 职责：UI 状态管理、子组件组合、事件协调。
+ * 子组件内部通过 store 自取上传/AI 状态，不再需要透传中间操作 props。
  */
 export default function ArticlesManager() {
   // ========== Store 状态和方法 ==========
@@ -52,25 +47,8 @@ export default function ArticlesManager() {
   } = useArticleStore();
 
   const {
-    coverPreview,
-    coverUploading,
-    pdfUploading,
-    uploadCover,
-    uploadPdf,
     importMarkdown,
   } = useUploadStore();
-
-  const {
-    aiAnalysis,
-    aiSuggestions,
-    loading: aiLoading,
-    settingsLoading,
-    analyzeContent,
-    fetchAiSettings,
-    updateAiSettings,
-    testAiConnection,
-    applySuggestions,
-  } = useAiStore();
 
   // ========== UI 状态（局部）==========
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -78,8 +56,10 @@ export default function ArticlesManager() {
   const [editId, setEditId] = useState(null);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [aiSettingsOpen, setAiSettingsOpen] = useState(false);
-  const [aiSettingsForm, setAiSettingsForm] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
+
+  // 删除确认对话框
+  const [deleteConfirm, setDeleteConfirm] = useState(null); // null | { type: 'single', id } | { type: 'batch' }
 
   // 通知
   const notify = useNotification();
@@ -88,15 +68,6 @@ export default function ArticlesManager() {
   useEffect(() => {
     fetchArticles();
   }, [fetchArticles]);
-
-  // ========== 辅助函数 ==========
-  const getCoverUrl = (cover) => {
-    if (!cover) return DEFAULT_COVER;
-    if (/^https?:\/\//.test(cover)) return cover;
-    return `${getApiUrl.baseUrl()}${cover}`;
-  };
-
-  const validateTags = (tags) => /^[一-龥a-zA-Z0-9_,\-\s]+$/.test(tags);
 
   // ========== 文章列表操作 ==========
   const handleCreate = () => {
@@ -107,7 +78,6 @@ export default function ArticlesManager() {
 
   const handleEdit = async (article) => {
     try {
-      // 获取完整文章详情
       const fullArticle = await fetchArticleById(article.id);
       setEditingArticle({
         ...defaultArticle,
@@ -123,31 +93,31 @@ export default function ArticlesManager() {
     }
   };
 
-  const handleSave = async () => {
+  const handleSave = async (formData) => {
     // 验证
-    if (!editingArticle.title) {
+    if (!formData.title) {
       notify.notify().error('标题必填');
       return;
     }
-    if (editingArticle.content_type === 'markdown' && !editingArticle.content) {
+    if (formData.content_type === 'markdown' && !formData.content) {
       notify.notify().error('Markdown 内容必填');
       return;
     }
-    if (editingArticle.content_type === 'pdf' && !editingArticle.pdf_filename) {
+    if (formData.content_type === 'pdf' && !formData.pdf_filename) {
       notify.notify().error('PDF 文件必填');
       return;
     }
-    if (editingArticle.tags && !validateTags(editingArticle.tags)) {
+    if (formData.tags && !/^[一-龥a-zA-Z0-9_,\-\s]+$/.test(formData.tags)) {
       notify.notify().error('标签格式不合法');
       return;
     }
 
     try {
       if (editId) {
-        await updateArticle(editId, editingArticle);
+        await updateArticle(editId, formData);
         notify.notify().success('文章更新成功');
       } else {
-        await createArticle(editingArticle);
+        await createArticle(formData);
         notify.notify().success('文章创建成功');
       }
       setEditDialogOpen(false);
@@ -158,113 +128,30 @@ export default function ArticlesManager() {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm('确定删除该文章？')) return;
+  const handleDeleteConfirm = async () => {
+    if (!deleteConfirm) return;
+
     try {
-      await deleteArticle(id);
-      notify.notify().success('文章删除成功');
+      if (deleteConfirm.type === 'single') {
+        await deleteArticle(deleteConfirm.id);
+        notify.notify().success('文章删除成功');
+      } else if (deleteConfirm.type === 'batch') {
+        await batchDeleteArticles(selectedIds);
+        setSelectedIds([]);
+        notify.notify().success('批量删除成功');
+      }
     } catch (err) {
       notify.notify().error(err.message);
     }
   };
 
-  const handleBatchDelete = async () => {
+  const handleDelete = (id) => {
+    setDeleteConfirm({ type: 'single', id });
+  };
+
+  const handleBatchDelete = () => {
     if (!selectedIds.length) return;
-    if (!confirm(`确定删除选中的 ${selectedIds.length} 篇文章？`)) return;
-    try {
-      await batchDeleteArticles(selectedIds);
-      setSelectedIds([]);
-      notify.notify().success('批量删除成功');
-    } catch (err) {
-      notify.notify().error(err.message);
-    }
-  };
-
-  // ========== 文件上传 ==========
-  const handleUploadCover = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    try {
-      const url = await uploadCover(file);
-      setEditingArticle((prev) => ({ ...prev, cover: url }));
-      notify.notify().success('封面上传成功');
-    } catch (err) {
-      notify.notify().error(err.message);
-    }
-  };
-
-  const handleUploadPdf = async (file) => {
-    if (!file) return;
-
-    try {
-      const filename = await uploadPdf(file);
-      setEditingArticle((prev) => ({ ...prev, pdf_filename: filename }));
-      notify.notify().success('PDF 上传成功');
-    } catch (err) {
-      notify.notify().error(err.message);
-    }
-  };
-
-  // ========== AI 分析 ==========
-  const handleAiAnalyze = async () => {
-    if (!editingArticle.title?.trim() || !editingArticle.content?.trim()) {
-      notify.notify().warning('请先填写标题和内容');
-      return;
-    }
-
-    try {
-      await analyzeContent(
-        editingArticle.title,
-        editingArticle.content,
-        editingArticle.summary || ''
-      );
-      notify.notify().success('AI 分析完成！请查看建议');
-    } catch (err) {
-      notify.notify().error(err.message);
-    }
-  };
-
-  const handleApplyAiSuggestions = () => {
-    const normalized = applySuggestions();
-    if (!normalized) return;
-
-    setEditingArticle((prev) => ({
-      ...prev,
-      category: normalized.category || prev.category,
-      tags: normalized.tags.length > 0 ? normalized.tags.join(',') : prev.tags,
-      summary: normalized.summary || prev.summary,
-    }));
-    notify.notify().success('AI 建议已应用');
-  };
-
-  // ========== AI 设置 ==========
-  const handleOpenAiSettings = async () => {
-    setAiSettingsOpen(true);
-    try {
-      const settings = await fetchAiSettings();
-      setAiSettingsForm(settings);
-    } catch (err) {
-      notify.notify().error(err.message);
-    }
-  };
-
-  const handleSaveAiSettings = async () => {
-    try {
-      await updateAiSettings(aiSettingsForm);
-      notify.notify().success('AI 设置保存成功');
-    } catch (err) {
-      notify.notify().error(err.message);
-    }
-  };
-
-  const handleTestAiSettings = async () => {
-    try {
-      await testAiConnection(aiSettingsForm);
-      notify.notify().success('AI 连接测试成功');
-    } catch (err) {
-      notify.notify().error(err.message);
-    }
+    setDeleteConfirm({ type: 'batch' });
   };
 
   // ========== 批量导入 ==========
@@ -299,7 +186,7 @@ export default function ArticlesManager() {
         <Button
           variant="outlined"
           startIcon={<SettingsSuggest />}
-          onClick={handleOpenAiSettings}
+          onClick={() => setAiSettingsOpen(true)}
         >
           AI 设置
         </Button>
@@ -328,10 +215,9 @@ export default function ArticlesManager() {
         onRowsPerPageChange={(perPage) => fetchArticles({ page: 1, perPage })}
       />
 
-      {/* 编辑对话框 */}
+      {/* 编辑对话框（精简为 5 个 props）*/}
       <ArticleEditDialog
         open={editDialogOpen}
-        loading={loading}
         isEdit={Boolean(editId)}
         article={editingArticle}
         onClose={() => {
@@ -340,31 +226,12 @@ export default function ArticlesManager() {
           setEditId(null);
         }}
         onSave={handleSave}
-        onArticleChange={setEditingArticle}
-        validateTags={validateTags}
-        fileUploading={coverUploading}
-        onUploadCover={handleUploadCover}
-        coverPreview={getCoverUrl(editingArticle.cover)}
-        aiAnalyzing={aiLoading}
-        aiSuggestions={aiSuggestions}
-        onAiAnalyze={handleAiAnalyze}
-        onApplySuggestions={handleApplyAiSuggestions}
-        onMarkdownError={(message, severity) => notify.notify()[severity](message)}
-        onUploadPdf={handleUploadPdf}
-        pdfUploading={pdfUploading}
       />
 
-      {/* AI 设置对话框 */}
+      {/* AI 设置对话框（仅 2 个 props）*/}
       <AiSettingsDialog
         open={aiSettingsOpen}
-        loading={settingsLoading}
-        saving={settingsLoading}
-        testing={settingsLoading}
-        settings={aiSettingsForm || {}}
         onClose={() => setAiSettingsOpen(false)}
-        onChange={setAiSettingsForm}
-        onSave={handleSaveAiSettings}
-        onTest={handleTestAiSettings}
       />
 
       {/* 批量导入对话框 */}
@@ -372,6 +239,20 @@ export default function ArticlesManager() {
         open={importDialogOpen}
         onImport={handleImport}
         onClose={() => setImportDialogOpen(false)}
+      />
+
+      {/* 删除确认对话框 */}
+      <ConfirmDialog
+        open={Boolean(deleteConfirm)}
+        title={deleteConfirm?.type === 'batch' ? '批量删除确认' : '确认删除'}
+        message={deleteConfirm?.type === 'batch'
+          ? `确定删除选中的 ${selectedIds.length} 篇文章？`
+          : '确定删除该文章？'}
+        confirmText="确认删除"
+        severity="error"
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setDeleteConfirm(null)}
+        onClose={() => setDeleteConfirm(null)}
       />
 
       {/* 全局加载遮罩 */}

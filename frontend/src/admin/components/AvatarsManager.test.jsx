@@ -36,6 +36,20 @@ vi.mock('@dnd-kit/utilities', () => ({
   },
 }));
 
+// Mock ConfirmDialog (imported from barrel './shared')
+vi.mock('./shared', () => ({
+  ConfirmDialog: ({ open, onConfirm, onCancel }) => (
+    <div data-testid="confirm-dialog" data-open={open}>
+      {open && (
+        <>
+          <button onClick={() => onConfirm()}>ConfirmDelete</button>
+          <button onClick={() => onCancel()}>CancelDelete</button>
+        </>
+      )}
+    </div>
+  ),
+}));
+
 // Mock the unified api module
 vi.mock('../../config/api', () => ({
   getApiUrl: {

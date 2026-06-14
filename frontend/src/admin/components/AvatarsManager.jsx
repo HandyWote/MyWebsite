@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Box, Button, Avatar, Paper, IconButton, Stack, Tooltip, Typography } from '@mui/material';
+import { Box, Button, Avatar, Paper, IconButton, Stack, Typography } from '@mui/material';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import CardActions from '@mui/material/CardActions';
@@ -13,6 +13,7 @@ import { CSS } from '@dnd-kit/utilities';
 import useAvatarStore from '@/stores/avatarStore';
 import useNotification from '../../hooks/useNotification';
 import { colors } from '../../components/pixel/tokens';
+import { ConfirmDialog } from './shared';
 
 function SortableAvatarCard({ avatar, index, onDelete, onSetCurrent, ...props }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: avatar.id });
@@ -103,6 +104,9 @@ export default function AvatarsManager() {
   const notify = useNotification();
   const sensors = useSensors(useSensor(PointerSensor));
 
+  // 删除确认对话框
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+
   useEffect(() => {
     fetchAvatars();
   }, []);
@@ -135,13 +139,20 @@ export default function AvatarsManager() {
     }
   };
 
-  // 删除头像
-  const handleDelete = async (avatarId) => {
+  // 删除头像（弹出确认对话框）
+  const handleDeleteRequest = (avatarId) => {
+    setDeleteConfirmId(avatarId);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteConfirmId) return;
     try {
-      const data = await deleteAvatar(avatarId);
+      const data = await deleteAvatar(deleteConfirmId);
       notify.notify().success(data?.msg || '已删除头像');
     } catch (error) {
       notify.notify().error('删除失败: ' + error.message);
+    } finally {
+      setDeleteConfirmId(null);
     }
   };
 
@@ -181,7 +192,7 @@ export default function AvatarsManager() {
                     key={avatar.id}
                     avatar={avatar}
                     index={index}
-                    onDelete={handleDelete}
+                    onDelete={handleDeleteRequest}
                     onSetCurrent={handleSetCurrent}
                   />
                 ))
@@ -190,6 +201,18 @@ export default function AvatarsManager() {
           </SortableContext>
         </DndContext>
       </Paper>
+
+      {/* 删除确认对话框 */}
+      <ConfirmDialog
+        open={Boolean(deleteConfirmId)}
+        title="确认删除"
+        message="确定要删除该头像吗？此操作不可撤销。"
+        confirmText="确认删除"
+        severity="error"
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setDeleteConfirmId(null)}
+        onClose={() => setDeleteConfirmId(null)}
+      />
     </Box>
   );
 }

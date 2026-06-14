@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -7,24 +8,68 @@ import {
   Grid,
   Stack,
   Button,
-  Typography
+  Typography,
 } from '@mui/material';
 import SettingsSuggestIcon from '@mui/icons-material/SettingsSuggest';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import useAiStore from '@/stores/aiStore';
+import useNotification from '../../../hooks/useNotification';
 
-const AiSettingsDialog = ({
-  open,
-  loading,
-  saving,
-  testing,
-  settings,
-  onClose,
-  onChange,
-  onSave,
-  onTest
-}) => {
-  const handleFieldChange = field => e => {
-    onChange(prev => ({ ...prev, [field]: e.target.value }));
+/**
+ * AiSettingsDialog - AI 服务设置对话框
+ * 直接从 aiStore 读取状态和操作，仅需 open/onClose 两个 props。
+ */
+export default function AiSettingsDialog({ open, onClose }) {
+  const {
+    aiSettings: storeSettings,
+    settingsLoading,
+    settingsSaving,
+    settingsTesting,
+    fetchAiSettings,
+    updateAiSettings,
+    testAiConnection,
+  } = useAiStore();
+
+  const notify = useNotification();
+
+  // 本地表单状态
+  const [form, setForm] = useState({});
+
+  // 打开时从 store 同步设置（仅依赖 open，避免 store 函数变更触发重复请求）
+  useEffect(() => {
+    if (open) {
+      // 先获取最新设置，再同步到本地表单
+      fetchAiSettings().then((settings) => {
+        if (settings) setForm(settings);
+      }).catch(() => {
+        // fetchAiSettings 失败时使用 store 中已有的值
+        if (storeSettings) setForm(storeSettings);
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  const handleFieldChange = (field) => (e) => {
+    setForm((prev) => ({ ...prev, [field]: e.target.value }));
+  };
+
+  const handleSave = async () => {
+    try {
+      await updateAiSettings(form);
+      notify.notify().success('AI 设置保存成功');
+      onClose?.();
+    } catch (err) {
+      notify.notify().error(err.message);
+    }
+  };
+
+  const handleTest = async () => {
+    try {
+      await testAiConnection(form);
+      notify.notify().success('AI 连接测试成功');
+    } catch (err) {
+      notify.notify().error(err.message);
+    }
   };
 
   return (
@@ -42,43 +87,43 @@ const AiSettingsDialog = ({
             <TextField
               label="提示词"
               placeholder="用于引导模型生成建议"
-              value={settings.prompt || ''}
+              value={form.prompt || ''}
               onChange={handleFieldChange('prompt')}
               fullWidth
               multiline
               minRows={3}
-              disabled={loading}
+              disabled={settingsLoading}
             />
           </Grid>
           <Grid item xs={12} sm={6}>
             <TextField
               label="模型"
               placeholder="如 gpt-4o-mini"
-              value={settings.model || ''}
+              value={form.model || ''}
               onChange={handleFieldChange('model')}
               fullWidth
-              disabled={loading}
+              disabled={settingsLoading}
             />
           </Grid>
           <Grid item xs={12} sm={6}>
             <TextField
               label="Base URL"
               placeholder="https://api.openai.com/v1"
-              value={settings.base_url || ''}
+              value={form.base_url || ''}
               onChange={handleFieldChange('base_url')}
               fullWidth
-              disabled={loading}
+              disabled={settingsLoading}
             />
           </Grid>
           <Grid item xs={12}>
             <TextField
               label="API Key"
               type="password"
-              placeholder={settings.api_key_masked || 'sk-xxxx'}
-              value={settings.api_key || ''}
+              placeholder={form.api_key_masked || 'sk-xxxx'}
+              value={form.api_key || ''}
               onChange={handleFieldChange('api_key')}
               fullWidth
-              disabled={loading}
+              disabled={settingsLoading}
             />
           </Grid>
         </Grid>
@@ -88,19 +133,17 @@ const AiSettingsDialog = ({
           <Button
             variant="outlined"
             startIcon={<PlayArrowIcon />}
-            onClick={onTest}
-            disabled={testing || loading}
+            onClick={handleTest}
+            disabled={settingsTesting || settingsLoading}
           >
-            {testing ? '测试中...' : '测试连接'}
+            {settingsTesting ? '测试中...' : '测试连接'}
           </Button>
         </Stack>
         <Button onClick={onClose}>取消</Button>
-        <Button variant="contained" onClick={onSave} disabled={saving}>
-          {saving ? '保存中...' : '保存设置'}
+        <Button variant="contained" onClick={handleSave} disabled={settingsSaving}>
+          {settingsSaving ? '保存中...' : '保存设置'}
         </Button>
       </DialogActions>
     </Dialog>
   );
-};
-
-export default AiSettingsDialog;
+}
