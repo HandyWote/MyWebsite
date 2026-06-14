@@ -45,4 +45,24 @@ describe('Admin Login', () => {
       expect(navigateMock).toHaveBeenCalledWith('/admin', { replace: true });
     });
   });
+
+  it('登录输入框空态标签保持垂直居中', () => {
+    render(<Login />);
+
+    const usernameLabel = screen.getByText('Username');
+    const usernameInput = document.querySelector('input[type="text"]');
+
+    expect(usernameLabel).toHaveStyle({
+      transform: 'translate(16px, 11px) scale(1)',
+    });
+    expect(usernameInput.closest('.MuiOutlinedInput-root')).toHaveStyle({
+      minHeight: '44px',
+    });
+
+    fireEvent.change(usernameInput, { target: { value: 'admin' } });
+
+    expect(usernameLabel).toHaveStyle({
+      transform: 'translate(16px, -9px) scale(0.75)',
+    });
+  });
 });

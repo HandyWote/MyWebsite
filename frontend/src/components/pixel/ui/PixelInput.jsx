@@ -21,6 +21,7 @@ export function PixelInput({
         '& .MuiOutlinedInput-root': {
           fontFamily: typography.fontFamily.mono,
           fontSize: typography.fontSize.sm,
+          minHeight: 44,
           borderRadius: 0,
           bgcolor: colors.bg.tertiary,
           '& fieldset': {
@@ -42,12 +43,16 @@ export function PixelInput({
           fontFamily: typography.fontFamily.mono,
           fontSize: typography.fontSize.sm,
           color: colors.text.secondary,
+          transform: `translate(${spacing.md}, 11px) scale(1)`,
           '&.Mui-focused': {
             color: colors.accent.blue,
           },
+          '&.MuiInputLabel-shrink': {
+            transform: `translate(${spacing.md}, -9px) scale(0.75)`,
+          },
         },
         '& .MuiOutlinedInput-input': {
-          padding: `${spacing.sm} ${spacing.md}`,
+          padding: `12px ${spacing.md}`,
         },
         ...props.sx,
       }}
