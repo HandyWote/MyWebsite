@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Box, Button, Avatar, Paper, IconButton, Stack, Snackbar, Tooltip, Typography } from '@mui/material';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
@@ -11,8 +10,7 @@ import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { getApiUrl } from '../../config/api';
-import { clearAuth } from '../utils/auth';
+import { getApiUrl, api } from '../../config/api';
 
 function SortableAvatarCard({ avatar, index, onDelete, onSetCurrent, ...props }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: avatar.id });
@@ -89,7 +87,6 @@ function SortableAvatarCard({ avatar, index, onDelete, onSetCurrent, ...props })
 }
 
 export default function AvatarsManager() {
-  const navigate = useNavigate();
   const [avatars, setAvatars] = useState([]);
   const [loading, setLoading] = useState(true);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
@@ -99,27 +96,10 @@ export default function AvatarsManager() {
   // 拉取头像数据
   const fetchAvatars = async () => {
     setLoading(true);
-    const token = localStorage.getItem('token');
     try {
-      const res = await fetch(getApiUrl.adminAvatars(), {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      if (!res.ok) {
-        if (res.status === 401) {
-          clearAuth();
-          navigate('/admin/login', { state: { message: '登录已过期，请重新登录' } });
-          return;
-        }
-        throw new Error(`HTTP ${res.status}`);
-      }
-      const data = await res.json();
-      if (data.code !== 0) {
-        throw new Error(data.msg || '获取头像列表失败');
-      }
-      // 兼容 data.data 和 data.avatars
-      const arr = (data.data || data.avatars || []).map(a => {
+      const data = await api.get(getApiUrl.adminAvatars());
+      // apiClient 自动解包了 data.data，兼容 data 和 avatars
+      const arr = (data || []).map(a => {
         const url = a.filename ? getApiUrl.avatarFile(a.filename) : undefined;
         return { ...a, url };
       });
@@ -156,15 +136,8 @@ export default function AvatarsManager() {
   };
 
   const handleSetCurrent = async (avatarId) => {
-    const token = localStorage.getItem('token');
     try {
-      const res = await fetch(`${getApiUrl.adminAvatars()}/${avatarId}/set_current`, {
-        method: 'PUT',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (!res.ok) {
-        throw new Error('设置当前头像失败');
-      }
+      await api.put(getApiUrl.adminAvatarSetCurrent(avatarId));
       setSnackbarMsg('已设为当前头像');
       setSnackbarOpen(true);
       fetchAvatars();
@@ -177,23 +150,10 @@ export default function AvatarsManager() {
   // 删除头像
   const handleDelete = async (avatarId) => {
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`${getApiUrl.adminAvatars()}/${avatarId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        setSnackbarMsg(data.msg || '已删除头像');
-        setSnackbarOpen(true);
-        fetchAvatars(); // 刷新列表
-      } else {
-        throw new Error(`删除失败: ${res.status} ${res.statusText}`);
-      }
+      const data = await api.del(getApiUrl.adminAvatarDelete(avatarId));
+      setSnackbarMsg(data?.msg || '已删除头像');
+      setSnackbarOpen(true);
+      fetchAvatars(); // 刷新列表
     } catch (error) {
       setSnackbarMsg('删除失败: ' + error.message);
       setSnackbarOpen(true);
@@ -204,26 +164,13 @@ export default function AvatarsManager() {
   const handleUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    const token = localStorage.getItem('token');
-    const formData = new FormData();
-    formData.append('file', file);
-    
+
     try {
-      const res = await fetch(getApiUrl.adminAvatars(), {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
-        body: formData
-      });
-      
-      const data = await res.json();
-      if (data.code === 0) {
-        setSnackbarMsg('上传成功');
-        setSnackbarOpen(true);
-        // 从服务器获取最新列表，确保数据一致性
-        fetchAvatars();
-      } else {
-        throw new Error(data.msg || '上传失败');
-      }
+      await api.upload(getApiUrl.adminAvatars(), file);
+      setSnackbarMsg('上传成功');
+      setSnackbarOpen(true);
+      // 从服务器获取最新列表，确保数据一致性
+      fetchAvatars();
     } catch (error) {
       setSnackbarMsg('上传失败: ' + error.message);
       setSnackbarOpen(true);

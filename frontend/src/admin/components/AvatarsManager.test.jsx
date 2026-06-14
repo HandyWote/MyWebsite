@@ -36,6 +36,36 @@ vi.mock('@dnd-kit/utilities', () => ({
   },
 }));
 
+// Mock the unified api module
+vi.mock('../../config/api', () => ({
+  getApiUrl: {
+    adminAvatars: () => '/api/admin/avatars',
+    adminAvatarSetCurrent: (id) => `/api/admin/avatars/${id}/set_current`,
+    adminAvatarDelete: (id) => `/api/admin/avatars/${id}`,
+    avatarFile: (filename) => `/api/avatars/file/${filename}`,
+  },
+  api: {
+    get: vi.fn(),
+    put: vi.fn(),
+    del: vi.fn(),
+    post: vi.fn(),
+    upload: vi.fn(),
+  },
+  apiClient: vi.fn(),
+  uploadFile: vi.fn(),
+  ApiError: class ApiError extends Error {
+    constructor(status, message) { super(message); this.status = status; this.name = 'ApiError'; }
+  },
+  buildApiUrl: (ep) => ep,
+  unwrapApiPayload: (r) => r?.data ?? r,
+  getApiMessage: (r, fb) => r?.msg || r?.message || fb,
+  API_ENDPOINTS: { PUBLIC: {}, ADMIN: {} },
+  API_CONFIG: { BASE_URL: '', TIMEOUT: 10000 },
+  default: {},
+}));
+
+import { api } from '../../config/api';
+
 describe('AvatarsManager', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -43,16 +73,10 @@ describe('AvatarsManager', () => {
   });
 
   it('uses avatar.is_current instead of list index to mark current avatar', async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        code: 0,
-        data: [
-          { id: 1, filename: 'newer.webp', is_current: false, uploaded_at: '2026-03-23T10:00:00Z' },
-          { id: 2, filename: 'older.webp', is_current: true, uploaded_at: '2026-03-22T10:00:00Z' },
-        ],
-      }),
-    });
+    api.get.mockResolvedValue([
+      { id: 1, filename: 'newer.webp', is_current: false, uploaded_at: '2026-03-23T10:00:00Z' },
+      { id: 2, filename: 'older.webp', is_current: true, uploaded_at: '2026-03-22T10:00:00Z' },
+    ]);
 
     render(<AvatarsManager />);
 

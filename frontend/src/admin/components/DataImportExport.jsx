@@ -17,7 +17,7 @@ import {
 import CloudDownloadIcon from '@mui/icons-material/CloudDownload';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import RefreshIcon from '@mui/icons-material/Refresh';
-import { getApiUrl } from '../../config/api'; // 导入API配置
+import { getApiUrl, api } from '../../config/api';
 
 export default function DataImportExport() {
   const [loading, setLoading] = useState(false);
@@ -35,28 +35,18 @@ export default function DataImportExport() {
   const handleExport = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(getApiUrl.adminExport(), {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      const data = await res.json();
-      if (data.code === 0) {
-        // 创建并下载文件
-        const blob = new Blob([JSON.stringify(data.data, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `handywrite_backup_${new Date().toISOString().slice(0, 10)}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        showSnackbar('数据导出成功');
-      } else {
-        showSnackbar('数据导出失败: ' + data.msg, 'error');
-      }
+      const data = await api.get(getApiUrl.adminExport());
+      // 创建并下载文件
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `handywrite_backup_${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showSnackbar('数据导出成功');
     } catch (error) {
       showSnackbar('数据导出失败', 'error');
     } finally {
@@ -78,23 +68,9 @@ export default function DataImportExport() {
     try {
       const text = await file.text();
       const jsonData = JSON.parse(text);
-      
-      const token = localStorage.getItem('token');
-      const res = await fetch(getApiUrl.adminImport(), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(jsonData)
-      });
-      
-      const data = await res.json();
-      if (data.code === 0) {
-        showSnackbar('数据导入成功');
-      } else {
-        showSnackbar('数据导入失败: ' + data.msg, 'error');
-      }
+
+      await api.post(getApiUrl.adminImport(), jsonData);
+      showSnackbar('数据导入成功');
     } catch (error) {
       showSnackbar('数据导入失败: ' + error.message, 'error');
     } finally {

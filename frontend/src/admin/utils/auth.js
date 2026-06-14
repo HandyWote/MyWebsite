@@ -1,31 +1,25 @@
-import { getApiUrl, unwrapApiPayload } from '../../config/api'; // 导入API配置
+import { apiClient, getApiUrl } from '../../config/api';
 
 export const verifyToken = async () => {
   const token = localStorage.getItem('token');
-  
+
   if (!token) {
     return { valid: false, error: 'Token不存在' };
   }
 
   try {
-    const response = await fetch(getApiUrl.adminVerify(), {
-      method: 'GET',
+    // 使用 noAuth 避免双重注入——我们需要手动控制 credentials
+    const payload = await apiClient('/api/admin/verify', {
+      noAuth: true,
       headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
       },
-      credentials: 'include'
+      credentials: 'include',
     });
-
-    if (response.ok) {
-      const data = await response.json();
-      const payload = unwrapApiPayload(data);
-      return { valid: data.code === 0 && !!payload?.valid };
-    } else {
-      return { valid: false, error: 'Token已过期或无效' };
-    }
+    return { valid: !!payload?.valid };
   } catch {
-    return { valid: false, error: '网络错误' };
+    return { valid: false, error: 'Token已过期或无效' };
   }
 };
 

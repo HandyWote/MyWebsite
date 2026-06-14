@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Box, Button, Paper, Stack, TextField, Typography } from '@mui/material';
-import { getApiUrl, unwrapApiPayload } from '../../config/api';
+import { getApiUrl, api, unwrapApiPayload } from '../../config/api';
 import { getBlockContent, SITE_BLOCK_DEFAULTS } from '../../config/siteBlocks';
 import AvatarsManager from './AvatarsManager';
 
@@ -47,14 +47,8 @@ export default function FrontendConfigManager() {
   const [form, setForm] = useState(createInitialForm());
   const [saving, setSaving] = useState(false);
 
-  const token = useMemo(() => localStorage.getItem('token'), []);
-
   const fetchBlocks = async () => {
-    const res = await fetch(getApiUrl.adminSiteBlocks(), {
-      method: 'GET',
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const data = await res.json();
+    const data = await api.get(getApiUrl.adminSiteBlocks());
     const blocks = unwrapApiPayload(data) || [];
     setForm(normalizeBlocksToForm(blocks));
   };
@@ -95,14 +89,7 @@ export default function FrontendConfigManager() {
         ],
       };
 
-      await fetch(getApiUrl.adminSiteBlocks(), {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
+      await api.put(getApiUrl.adminSiteBlocks(), payload);
     } finally {
       setSaving(false);
     }

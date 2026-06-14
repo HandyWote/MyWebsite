@@ -4,6 +4,7 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { Box, AppBar, Toolbar, Typography, Tabs, Tab, Button, useMediaQuery, Divider } from '@mui/material';
 import { FileText, MessageSquare, Settings, LogOut } from 'lucide-react';
 import { verifyToken, clearAuth, saveRedirectPath } from '../utils/auth';
+import { getApiUrl, api } from '../../config/api';
 import { colors, typography, spacing } from '../../components/pixel/tokens';
 
 const tabList = [
@@ -40,7 +41,12 @@ export default function AdminLayout() {
     navigate(tabList[idx].path);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await api.post(getApiUrl.adminLogout());
+    } catch {
+      // 即使后端登出失败，前端也清除认证
+    }
     clearAuth();
     navigate('/admin/login', { replace: true });
   };

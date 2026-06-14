@@ -33,6 +33,19 @@ vi.mock('../utils/auth', () => ({
   saveRedirectPath: vi.fn(),
 }));
 
+vi.mock('../../config/api', () => ({
+  getApiUrl: {
+    adminLogout: () => '/api/admin/logout',
+  },
+  api: {
+    get: vi.fn(),
+    put: vi.fn(),
+    del: vi.fn(),
+    post: vi.fn().mockResolvedValue(null),
+    upload: vi.fn(),
+  },
+}));
+
 describe('AdminLayout', () => {
   beforeEach(() => {
     vi.clearAllMocks();

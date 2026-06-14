@@ -1,7 +1,20 @@
 // frontend/src/stores/articleStore.js
 import { create } from 'zustand';
-import { api, uploadFile, API_ENDPOINTS } from '@/utils/apiClient';
+import { api, uploadFile, API_ENDPOINTS } from '@/config/api';
 import { normalizeTags } from '@/utils/normalizeTags';
+
+// 从 ADMIN 端点中解构，保持 store 内部代码简洁
+const {
+  ARTICLES,
+  ARTICLE_DETAIL,
+  ARTICLE_COVER,
+  ARTICLE_PDF_UPLOAD,
+  ARTICLE_AI_ANALYZE,
+  ARTICLE_BATCH_DELETE,
+  ARTICLE_IMPORT_MD,
+  AI_SETTINGS,
+  AI_SETTINGS_TEST,
+} = API_ENDPOINTS.ADMIN;
 
 const useArticleStore = create((set, get) => ({
   // ========== 文章列表状态 ==========
@@ -35,12 +48,11 @@ const useArticleStore = create((set, get) => ({
     set({ loading: true, error: null });
     try {
       const query = new URLSearchParams({ page, per_page: perPage, search }).toString();
-      const data = await api.get(`${API_ENDPOINTS.ARTICLES}?${query}`);
+      const data = await api.get(`${ARTICLES}?${query}`);
 
-      // 处理响应格式 { code, data: { articles, total } }
-      const payload = data.data || data;
-      const articles = payload.articles || [];
-      const total = payload.total || 0;
+      // apiClient 自动解包了 data.data
+      const articles = data.articles || [];
+      const total = data.total || 0;
 
       set({
         articles: articles.map(article => ({
@@ -58,8 +70,7 @@ const useArticleStore = create((set, get) => ({
   fetchArticleById: async (id) => {
     set({ loading: true, error: null });
     try {
-      const data = await api.get(API_ENDPOINTS.ARTICLE_DETAIL(id));
-      const article = data.data || data;
+      const article = await api.get(ARTICLE_DETAIL(id));
       return article;
     } catch (err) {
       set({ error: err.message });
@@ -72,10 +83,9 @@ const useArticleStore = create((set, get) => ({
   createArticle: async (article) => {
     set({ loading: true, error: null });
     try {
-      const data = await api.post(API_ENDPOINTS.ARTICLES, article);
-      // 刷新列表
+      const data = await api.post(ARTICLES, article);
       get().fetchArticles();
-      return data.data || data;
+      return data;
     } catch (err) {
       set({ error: err.message, loading: false });
       throw err;
@@ -85,10 +95,9 @@ const useArticleStore = create((set, get) => ({
   updateArticle: async (id, article) => {
     set({ loading: true, error: null });
     try {
-      const data = await api.put(API_ENDPOINTS.ARTICLE_DETAIL(id), article);
-      // 刷新列表
+      const data = await api.put(ARTICLE_DETAIL(id), article);
       get().fetchArticles();
-      return data.data || data;
+      return data;
     } catch (err) {
       set({ error: err.message, loading: false });
       throw err;
@@ -98,8 +107,7 @@ const useArticleStore = create((set, get) => ({
   deleteArticle: async (id) => {
     set({ loading: true, error: null });
     try {
-      await api.del(API_ENDPOINTS.ARTICLE_DETAIL(id));
-      // 刷新列表
+      await api.del(ARTICLE_DETAIL(id));
       get().fetchArticles();
     } catch (err) {
       set({ error: err.message, loading: false });
@@ -110,8 +118,7 @@ const useArticleStore = create((set, get) => ({
   batchDeleteArticles: async (ids) => {
     set({ loading: true, error: null });
     try {
-      await api.post(API_ENDPOINTS.ARTICLE_BATCH_DELETE, { ids });
-      // 刷新列表
+      await api.post(ARTICLE_BATCH_DELETE, { ids });
       get().fetchArticles();
     } catch (err) {
       set({ error: err.message, loading: false });
@@ -123,10 +130,9 @@ const useArticleStore = create((set, get) => ({
   uploadCover: async (file) => {
     set({ loading: true, error: null });
     try {
-      const data = await uploadFile(API_ENDPOINTS.ARTICLE_COVER, file);
-      const payload = data.data || data;
+      const data = await uploadFile(ARTICLE_COVER, file);
       set({ loading: false });
-      return payload.url;
+      return data.url;
     } catch (err) {
       set({ error: err.message, loading: false });
       throw err;
@@ -136,10 +142,9 @@ const useArticleStore = create((set, get) => ({
   uploadPdf: async (file) => {
     set({ loading: true, error: null });
     try {
-      const data = await uploadFile(API_ENDPOINTS.ARTICLE_PDF_UPLOAD, file);
-      const payload = data.data || data;
+      const data = await uploadFile(ARTICLE_PDF_UPLOAD, file);
       set({ loading: false });
-      return payload.filename;
+      return data.filename;
     } catch (err) {
       set({ error: err.message, loading: false });
       throw err;
@@ -154,7 +159,7 @@ const useArticleStore = create((set, get) => ({
       files.forEach(f => formData.append('files', f));
 
       const token = localStorage.getItem('token');
-      const response = await fetch(`${API_ENDPOINTS.ARTICLE_IMPORT_MD}`, {
+      const response = await fetch(ARTICLE_IMPORT_MD, {
         method: 'POST',
         headers: {
           ...(token && { Authorization: `Bearer ${token}` }),
@@ -183,12 +188,11 @@ const useArticleStore = create((set, get) => ({
   analyzeContent: async (title, content, summary = '') => {
     set({ aiLoading: true, error: null });
     try {
-      const data = await api.post(API_ENDPOINTS.ARTICLE_AI_ANALYZE, {
+      const result = await api.post(ARTICLE_AI_ANALYZE, {
         title,
         content,
         summary,
       });
-      const result = data.data || data;
       set({ aiAnalysis: result, aiLoading: false });
       return result;
     } catch (err) {
@@ -198,7 +202,6 @@ const useArticleStore = create((set, get) => ({
   },
 
   analyzeArticle: async (id) => {
-    // 首先获取文章详情
     const article = await get().fetchArticleById(id);
     return get().analyzeContent(article.title, article.content, article.summary);
   },
@@ -209,8 +212,7 @@ const useArticleStore = create((set, get) => ({
   fetchAiSettings: async () => {
     set({ aiSettingsLoading: true, error: null });
     try {
-      const data = await api.get(API_ENDPOINTS.AI_SETTINGS);
-      const settings = data.data || data;
+      const settings = await api.get(AI_SETTINGS);
       set({ aiSettings: settings, aiSettingsLoading: false });
       return settings;
     } catch (err) {
@@ -222,8 +224,7 @@ const useArticleStore = create((set, get) => ({
   updateAiSettings: async (settings) => {
     set({ aiSettingsLoading: true, error: null });
     try {
-      const data = await api.put(API_ENDPOINTS.AI_SETTINGS, settings);
-      const updated = data.data || data;
+      const updated = await api.put(AI_SETTINGS, settings);
       set({ aiSettings: updated, aiSettingsLoading: false });
       return updated;
     } catch (err) {
@@ -235,9 +236,9 @@ const useArticleStore = create((set, get) => ({
   testAiConnection: async (settings) => {
     set({ aiSettingsLoading: true, error: null });
     try {
-      const data = await api.post(API_ENDPOINTS.AI_SETTINGS_TEST, settings);
+      const result = await api.post(AI_SETTINGS_TEST, settings);
       set({ aiSettingsLoading: false });
-      return data.data || data;
+      return result;
     } catch (err) {
       set({ error: err.message, aiSettingsLoading: false });
       throw err;
@@ -258,7 +259,6 @@ const useArticleStore = create((set, get) => ({
     try {
       const article = JSON.parse(el.textContent);
       set({ currentArticle: article });
-      // 清理 DOM，避免重复读取
       el.remove();
       return article;
     } catch (e) {

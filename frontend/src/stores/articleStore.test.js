@@ -3,17 +3,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { act } from '@testing-library/react';
 import useArticleStore from './articleStore';
 
-// Mock apiClient
-vi.mock('@/utils/apiClient', () => ({
-  api: {
-    get: vi.fn(),
-    post: vi.fn(),
-    put: vi.fn(),
-    del: vi.fn(),
-    upload: vi.fn(),
-  },
-  uploadFile: vi.fn(),
-  API_ENDPOINTS: {
+// Mock config/api
+vi.mock('@/config/api', () => {
+  const adminEndpoints = {
     ARTICLES: '/api/admin/articles',
     ARTICLE_DETAIL: (id) => `/api/admin/articles/${id}`,
     ARTICLE_COVER: '/api/admin/articles/cover',
@@ -23,11 +15,30 @@ vi.mock('@/utils/apiClient', () => ({
     ARTICLE_IMPORT_MD: '/api/admin/articles/import-md',
     AI_SETTINGS: '/api/admin/ai-settings',
     AI_SETTINGS_TEST: '/api/admin/ai-settings/test',
-    ARTICLE_PDF: (filename) => `/api/articles/pdf/${filename}`,
-  },
-}));
+  };
+  return {
+    api: {
+      get: vi.fn(),
+      post: vi.fn(),
+      put: vi.fn(),
+      del: vi.fn(),
+      upload: vi.fn(),
+    },
+    uploadFile: vi.fn(),
+    API_ENDPOINTS: {
+      PUBLIC: {},
+      ADMIN: adminEndpoints,
+    },
+    default: {
+      API_ENDPOINTS: {
+        PUBLIC: {},
+        ADMIN: adminEndpoints,
+      },
+    },
+  };
+});
 
-import { api, uploadFile, API_ENDPOINTS } from '@/utils/apiClient';
+import { api, uploadFile, API_ENDPOINTS } from '@/config/api';
 
 // Mock fetch for importMarkdown
 global.fetch = vi.fn();
@@ -61,7 +72,7 @@ describe('articleStore', () => {
         { id: 1, title: 'Article 1', tags: 'tag1,tag2' },
         { id: 2, title: 'Article 2', tags: ['tag3'] },
       ];
-      api.get.mockResolvedValueOnce({ data: { articles: mockArticles, total: 2 } });
+      api.get.mockResolvedValueOnce({ articles: mockArticles, total: 2 });
 
       await act(async () => {
         await useArticleStore.getState().fetchArticles();
@@ -89,7 +100,7 @@ describe('articleStore', () => {
     });
 
     it('应该支持分页参数', async () => {
-      api.get.mockResolvedValueOnce({ data: { articles: [], total: 100 } });
+      api.get.mockResolvedValueOnce({ articles: [], total: 100 });
 
       await act(async () => {
         await useArticleStore.getState().fetchArticles({ page: 2, perPage: 20, search: 'test' });
@@ -103,7 +114,7 @@ describe('articleStore', () => {
 
   describe('fetchArticleById', () => {
     it('成功获取详情后应该重置 loading', async () => {
-      api.get.mockResolvedValueOnce({ data: { id: 1, title: 'Article 1' } });
+      api.get.mockResolvedValueOnce({ id: 1, title: 'Article 1' });
 
       await act(async () => {
         await useArticleStore.getState().fetchArticleById(1);
@@ -119,8 +130,8 @@ describe('articleStore', () => {
     it('应该成功创建文章', async () => {
       const newArticle = { title: 'New Article', content: 'Content' };
       const createdArticle = { id: 1, ...newArticle };
-      api.post.mockResolvedValueOnce({ data: createdArticle });
-      api.get.mockResolvedValueOnce({ data: { articles: [createdArticle], total: 1 } });
+      api.post.mockResolvedValueOnce(createdArticle);
+      api.get.mockResolvedValueOnce({ articles: [createdArticle], total: 1 });
 
       const result = await act(async () => {
         return await useArticleStore.getState().createArticle(newArticle);
@@ -137,8 +148,8 @@ describe('articleStore', () => {
       });
 
       const updatedArticle = { id: 1, title: 'New Title', content: 'New Content' };
-      api.put.mockResolvedValueOnce({ data: updatedArticle });
-      api.get.mockResolvedValueOnce({ data: { articles: [updatedArticle], total: 1 } });
+      api.put.mockResolvedValueOnce(updatedArticle);
+      api.get.mockResolvedValueOnce({ articles: [updatedArticle], total: 1 });
 
       await act(async () => {
         await useArticleStore.getState().updateArticle(1, { title: 'New Title', content: 'New Content' });
@@ -159,7 +170,7 @@ describe('articleStore', () => {
       });
 
       api.del.mockResolvedValueOnce({});
-      api.get.mockResolvedValueOnce({ data: { articles: [{ id: 2, title: 'Article 2' }], total: 1 } });
+      api.get.mockResolvedValueOnce({ articles: [{ id: 2, title: 'Article 2' }], total: 1 });
 
       await act(async () => {
         await useArticleStore.getState().deleteArticle(1);
@@ -173,13 +184,13 @@ describe('articleStore', () => {
   describe('batchDeleteArticles', () => {
     it('应该成功批量删除文章', async () => {
       api.post.mockResolvedValueOnce({});
-      api.get.mockResolvedValueOnce({ data: { articles: [], total: 0 } });
+      api.get.mockResolvedValueOnce({ articles: [], total: 0 });
 
       await act(async () => {
         await useArticleStore.getState().batchDeleteArticles([1, 2, 3]);
       });
 
-      expect(api.post).toHaveBeenCalledWith(API_ENDPOINTS.ARTICLE_BATCH_DELETE, { ids: [1, 2, 3] });
+      expect(api.post).toHaveBeenCalledWith(API_ENDPOINTS.ADMIN.ARTICLE_BATCH_DELETE, { ids: [1, 2, 3] });
     });
   });
 
@@ -189,7 +200,7 @@ describe('articleStore', () => {
         ok: true,
         json: vi.fn().mockResolvedValue({ data: { markdown: 1, pdf: 0, failed: [] } }),
       });
-      api.get.mockResolvedValueOnce({ data: { articles: [], total: 0 } });
+      api.get.mockResolvedValueOnce({ articles: [], total: 0 });
 
       const files = [new File(['# hello'], 'a.md', { type: 'text/markdown' })];
       await act(async () => {
@@ -197,7 +208,7 @@ describe('articleStore', () => {
       });
 
       const [requestUrl] = global.fetch.mock.calls[0];
-      expect(requestUrl).toBe(API_ENDPOINTS.ARTICLE_IMPORT_MD);
+      expect(requestUrl).toBe(API_ENDPOINTS.ADMIN.ARTICLE_IMPORT_MD);
       expect(requestUrl).not.toContain('localhost:5000');
     });
   });
@@ -205,14 +216,14 @@ describe('articleStore', () => {
   describe('uploadCover', () => {
     it('应该成功上传封面', async () => {
       const mockFile = new File(['test'], 'cover.jpg', { type: 'image/jpeg' });
-      uploadFile.mockResolvedValueOnce({ data: { url: '/uploads/cover.jpg' } });
+      uploadFile.mockResolvedValueOnce({ url: '/uploads/cover.jpg' });
 
       const result = await act(async () => {
         return await useArticleStore.getState().uploadCover(mockFile);
       });
 
       expect(result).toBe('/uploads/cover.jpg');
-      expect(uploadFile).toHaveBeenCalledWith(API_ENDPOINTS.ARTICLE_COVER, mockFile);
+      expect(uploadFile).toHaveBeenCalledWith(API_ENDPOINTS.ADMIN.ARTICLE_COVER, mockFile);
     });
 
     it('应该处理上传失败', async () => {
@@ -230,14 +241,14 @@ describe('articleStore', () => {
   describe('uploadPdf', () => {
     it('应该成功上传PDF', async () => {
       const mockFile = new File(['test'], 'doc.pdf', { type: 'application/pdf' });
-      uploadFile.mockResolvedValueOnce({ data: { filename: 'doc.pdf' } });
+      uploadFile.mockResolvedValueOnce({ filename: 'doc.pdf' });
 
       const result = await act(async () => {
         return await useArticleStore.getState().uploadPdf(mockFile);
       });
 
       expect(result).toBe('doc.pdf');
-      expect(uploadFile).toHaveBeenCalledWith(API_ENDPOINTS.ARTICLE_PDF_UPLOAD, mockFile);
+      expect(uploadFile).toHaveBeenCalledWith(API_ENDPOINTS.ADMIN.ARTICLE_PDF_UPLOAD, mockFile);
     });
   });
 
@@ -248,7 +259,7 @@ describe('articleStore', () => {
         tags: ['React', 'Zustand'],
         suggested_summary: '这是一篇关于状态管理的文章',
       };
-      api.post.mockResolvedValueOnce({ data: mockAnalysis });
+      api.post.mockResolvedValueOnce(mockAnalysis);
 
       const result = await act(async () => {
         return await useArticleStore.getState().analyzeContent('标题', '内容', '摘要');
@@ -278,7 +289,7 @@ describe('articleStore', () => {
   describe('fetchAiSettings', () => {
     it('应该成功获取AI设置', async () => {
       const mockSettings = { model: 'gpt-4', base_url: 'https://api.openai.com' };
-      api.get.mockResolvedValueOnce({ data: mockSettings });
+      api.get.mockResolvedValueOnce(mockSettings);
 
       const result = await act(async () => {
         return await useArticleStore.getState().fetchAiSettings();
@@ -293,7 +304,7 @@ describe('articleStore', () => {
   describe('updateAiSettings', () => {
     it('应该成功更新AI设置', async () => {
       const updatedSettings = { model: 'gpt-4-turbo', base_url: 'https://api.openai.com' };
-      api.put.mockResolvedValueOnce({ data: updatedSettings });
+      api.put.mockResolvedValueOnce(updatedSettings);
 
       const result = await act(async () => {
         return await useArticleStore.getState().updateAiSettings(updatedSettings);
@@ -307,7 +318,7 @@ describe('articleStore', () => {
 
   describe('testAiConnection', () => {
     it('应该成功测试AI连接', async () => {
-      api.post.mockResolvedValueOnce({ data: { message: 'Connection successful' } });
+      api.post.mockResolvedValueOnce({ message: 'Connection successful' });
 
       const result = await act(async () => {
         return await useArticleStore.getState().testAiConnection({ api_key: 'test' });

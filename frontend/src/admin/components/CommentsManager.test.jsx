@@ -14,19 +14,55 @@ const commentPayload = {
   created_at: '2024-01-15T10:30:00Z',
 };
 
+// Mock the unified api module
+vi.mock('../../config/api', () => ({
+  getApiUrl: {
+    adminComments: () => '/api/admin/comments',
+    adminCommentExport: () => '/api/admin/comments/export',
+    deleteComment: (id) => `/api/admin/comments/${id}`,
+    adminCommentStatus: (id) => `/api/admin/comments/${id}/status`,
+  },
+  api: {
+    get: vi.fn(),
+    put: vi.fn(),
+    del: vi.fn(),
+    post: vi.fn(),
+    upload: vi.fn(),
+  },
+  apiClient: vi.fn(),
+  uploadFile: vi.fn(),
+  ApiError: class ApiError extends Error {
+    constructor(status, message) { super(message); this.status = status; this.name = 'ApiError'; }
+  },
+  buildApiUrl: (ep) => ep,
+  unwrapApiPayload: (r) => r?.data ?? r,
+  getApiMessage: (r, fb) => r?.msg || r?.message || fb,
+  API_ENDPOINTS: { PUBLIC: {}, ADMIN: {} },
+  API_CONFIG: { BASE_URL: '', TIMEOUT: 10000 },
+  default: {},
+}));
+
+// Mock useNotification hook
+vi.mock('../../hooks/useNotification', () => ({
+  default: () => ({
+    snackbarOpen: false,
+    snackbarMessage: '',
+    snackbarSeverity: 'success',
+    showNotification: vi.fn(),
+    hideNotification: vi.fn(),
+  }),
+}));
+
+import { api } from '../../config/api';
+
 describe('CommentsManager', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     window.localStorage.getItem.mockReturnValue('token');
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({
-        code: 0,
-        data: {
-          comments: [commentPayload],
-          total: 1,
-        },
-      }),
+    // api.get returns auto-unwrapped data (simulating apiClient behavior)
+    api.get.mockResolvedValue({
+      comments: [commentPayload],
+      total: 1,
     });
   });
 

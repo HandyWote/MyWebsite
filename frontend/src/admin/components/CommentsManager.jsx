@@ -1,5 +1,4 @@
 import { useEffect, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Button,
@@ -48,8 +47,7 @@ import {
   Download as DownloadIcon,
   Refresh as RefreshIcon
 } from '@mui/icons-material';
-import { getApiUrl } from '../../config/api';
-import { clearAuth } from '../utils/auth';
+import { getApiUrl, api } from '../../config/api';
 import { formatDateTime } from '../../utils/formatDate';
 import useNotification from '../../hooks/useNotification';
 import NotificationSnackbar from '../../components/NotificationSnackbar';
@@ -283,7 +281,6 @@ function CommentDetailDialog({ comment, open, onClose }) {
 }
 
 export default function CommentsManager() {
-  const navigate = useNavigate();
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
@@ -306,7 +303,6 @@ export default function CommentsManager() {
   // 获取评论列表
   const fetchComments = useCallback(async () => {
     setLoading(true);
-    const token = localStorage.getItem('token');
     try {
       const params = new URLSearchParams({
         page: page.toString(),
@@ -321,40 +317,22 @@ export default function CommentsManager() {
         params.append('status', statusFilter);
       }
 
-      const response = await fetch(`${getApiUrl.adminComments()}?${params}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      const data = await api.get(`${getApiUrl.adminComments()}?${params}`);
 
-      if (!response.ok) {
-        if (response.status === 401) {
-          clearAuth();
-          navigate('/admin/login', { state: { message: '登录已过期，请重新登录' } });
-          return;
-        }
-        throw new Error(`HTTP ${response.status}`);
-      }
-
-      const data = await response.json();
-      if (data.code === 0) {
-        // 确保评论数据有正确的结构
-        const comments = (data.data.comments || []).map(comment => ({
-          ...comment,
-          status: comment.status || 'normal',
-          article_title: comment.article_title || '未知文章'
-        }));
-        setComments(comments);
-        setTotal(data.data.total || 0);
-      } else {
-        showNotification(data.msg || '获取评论列表失败', 'error');
-      }
+      // apiClient 自动解包了 data.data，这里 data 就是评论数据
+      const comments = (data.comments || []).map(comment => ({
+        ...comment,
+        status: comment.status || 'normal',
+        article_title: comment.article_title || '未知文章'
+      }));
+      setComments(comments);
+      setTotal(data.total || 0);
     } catch (error) {
       showNotification('获取评论列表失败: ' + error.message, 'error');
     } finally {
       setLoading(false);
     }
-  }, [navigate, page, PER_PAGE, searchTerm, statusFilter]);
+  }, [page, PER_PAGE, searchTerm, statusFilter]);
 
   useEffect(() => {
     fetchComments();
@@ -364,23 +342,11 @@ export default function CommentsManager() {
   // 删除评论
   const handleDeleteComment = async () => {
     if (!commentToDelete) return;
-    
-    const token = localStorage.getItem('token');
+
     try {
-      const response = await fetch(getApiUrl.deleteComment(commentToDelete.id), {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      const data = await response.json();
-      if (data.code === 0) {
-        showNotification('评论删除成功', 'success');
-        fetchComments();
-      } else {
-        showNotification(data.msg || '删除评论失败', 'error');
-      }
+      await api.del(getApiUrl.deleteComment(commentToDelete.id));
+      showNotification('评论删除成功', 'success');
+      fetchComments();
     } catch (error) {
       showNotification('删除评论失败: ' + error.message, 'error');
     } finally {
@@ -391,43 +357,29 @@ export default function CommentsManager() {
   
   // 更改评论状态
   const handleStatusChange = async (commentId, status) => {
-    const token = localStorage.getItem('token');
     try {
-      const response = await fetch(`${getApiUrl.adminComments()}/${commentId}/status`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ status })
-      });
-      
-      const data = await response.json();
-      if (data.code === 0) {
-        showNotification('评论状态更新成功', 'success');
-        fetchComments();
-      } else {
-        showNotification(data.msg || '更新评论状态失败', 'error');
-      }
+      await api.put(getApiUrl.adminCommentStatus(commentId), { status });
+      showNotification('评论状态更新成功', 'success');
+      fetchComments();
     } catch (error) {
       showNotification('更新评论状态失败: ' + error.message, 'error');
     }
   };
   
-  // 导出评论数据
+  // 导出评论数据（blob 下载，保留 raw fetch）
   const handleExport = async () => {
-    const token = localStorage.getItem('token');
     try {
       const params = new URLSearchParams();
       if (searchTerm) params.append('search', searchTerm);
       if (statusFilter) params.append('status', statusFilter);
-      
-      const response = await fetch(`${getApiUrl.adminComments()}/export?${params}`, {
+
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${getApiUrl.adminCommentExport()}?${params}`, {
         headers: {
-          'Authorization': `Bearer ${token}`
+          Authorization: `Bearer ${token}`
         }
       });
-      
+
       if (response.ok) {
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
