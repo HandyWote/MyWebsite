@@ -1,4 +1,4 @@
-import { apiClient, getApiUrl } from '../../config/api';
+import { apiClient } from '../../config/api';
 
 export const verifyToken = async () => {
   const token = localStorage.getItem('token');
