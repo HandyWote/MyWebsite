@@ -179,6 +179,80 @@ func TestArticleSEO_T7_canonical动态化按Host(t *testing.T) {
 	assert.Contains(t, body, "test.example.com/articles/")
 }
 
+// T3: 注入有效 viteManifest 时，HTML 应注入正确的 <script src>（必须闭合）与 <link stylesheet>。
+//
+// 关键：用测试内直接赋值包级变量 viteManifest（不需调 FetchViteManifest、不发 HTTP）。
+// 断言 "<script src=...></script>" 的完整闭合标签，而非仅 "<script src" 子串——
+// 这能捕获模板 line 47 漏写 </script> 的回归（不闭合的 script 会导致浏览器把后续
+// 内容当 JS 解析，整页白屏，正是本任务要修的故障形态）。
+func TestArticleSEO_T3_注入有效manifest注入JS与CSS(t *testing.T) {
+	// 测试内直接注入有效 manifest
+	viteManifest = map[string]ManifestEntry{
+		"src/main.jsx": {
+			File: "assets/index-test.js",
+			CSS:  []string{"assets/index-test.css"},
+		},
+	}
+	// 用例结束（含失败提前退出）后还原 nil，避免污染后续用例
+	defer func() { viteManifest = nil }()
+
+	id := seedArticle(t, models.Article{
+		Title:   "Manifest 注入测试",
+		Summary: "验证 viteManifest 注入后 HTML 含正确的 JS/CSS 引用",
+		Tags:    "SEO,前端",
+		Content: "正文内容",
+	})
+
+	body, code := renderSEO(t, strconv.FormatUint(uint64(id), 10), "test.example.com")
+	assert.Equal(t, 200, code)
+
+	// JS：<script src> 必须完整闭合（验证修白屏的核心修复点）
+	assert.Contains(t, body, `<script src="/app/assets/index-test.js"></script>`,
+		"应注入闭合的 <script src> 标签，指向 manifest 的 File 路径")
+
+	// CSS：<link rel="stylesheet"> 指向 manifest CSS[0]
+	assert.Contains(t, body, `<link rel="stylesheet" href="/app/assets/index-test.css">`,
+		"应注入 <link rel=stylesheet> 标签，指向 manifest 的 CSS[0] 路径")
+}
+
+// T4: viteManifest=nil（manifest 加载失败/降级）时，HTML 不应注入 <script src>，
+// 但 T1 的全套 SEO 标签仍应完整——证明"manifest 降级不降 SEO"。
+//
+// 注意：JSON-LD（type=application/ld+json）与 __INITIAL_DATA__（type=application/json）
+// 都是内联 <script>，没有 src 属性，因此 NotContains("<script src") 不会误伤它们。
+func TestArticleSEO_T4_manifest为nil时降级且SEO不降级(t *testing.T) {
+	viteManifest = nil
+	defer func() { viteManifest = nil }()
+
+	id := seedArticle(t, models.Article{
+		Title:   "Manifest 降级测试",
+		Summary: "viteManifest 为 nil 时不应注入外部 JS/CSS，但 SEO 标签保持完整",
+		Tags:    "SEO,降级",
+		Content: "正文内容",
+	})
+
+	body, code := renderSEO(t, strconv.FormatUint(uint64(id), 10), "test.example.com")
+	assert.Equal(t, 200, code)
+
+	// 降级：不注入任何外部 JS 引用
+	assert.NotContains(t, body, "<script src",
+		"viteManifest=nil 时不应注入 <script src>（无外部 JS 引用）")
+	// 同理不注入 CSS link（基础 SEO 不含 stylesheet link，favicon 是 icon 不是 stylesheet）
+	assert.NotContains(t, body, `rel="stylesheet"`,
+		"viteManifest=nil 时不应注入 <link rel=stylesheet>")
+
+	// SEO 不降级：T1 全套 SEO 标签仍完整
+	assert.Contains(t, body, "<title>")
+	assert.Contains(t, body, `name="description"`)
+	assert.Contains(t, body, `rel="canonical"`)
+	assert.Contains(t, body, `property="og:title"`)
+	assert.Contains(t, body, `property="og:description"`)
+	assert.Contains(t, body, `name="twitter:title"`)
+	// JSON-LD 仍非空且可解析
+	ld := extractScriptJSON(t, body, "application/ld+json")
+	assert.Equal(t, "Article", ld["@type"], "降级时 JSON-LD 仍应完整可解析")
+}
+
 // extractMetaContent 粗略提取 HTML 中首个匹配 meta 标签的 content 属性值。
 // 仅用于测试断言辅助。
 func extractMetaContent(t *testing.T, html, nameMatch string) string {
