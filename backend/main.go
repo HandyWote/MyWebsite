@@ -45,9 +45,9 @@ func main() {
 	// Setup routes
 	routes.SetupRoutes(r, cfg)
 
-	// 拉取 Vite 构建产物映射，供 SEO HTML 注入正确的 JS/CSS 路径（修真人直接访问 /articles/:id 白屏）。
-	// 失败不阻塞启动（仅日志告警）：SEO 标签不依赖 manifest，降级时仍完整；真人首屏白屏由运维看日志修复。
-	routes.FetchViteManifest("")
+	// 后台拉取 Vite 构建产物映射，供 SEO HTML 注入正确的 JS/CSS 路径。
+	// frontend 容器可能晚于 backend 就绪，后台重试可避免启动顺序导致 manifest 永久缺失。
+	routes.StartViteManifestFetch("")
 
 	// Start server on configured port
 	port := cfg.Port

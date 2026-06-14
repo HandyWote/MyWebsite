@@ -2,6 +2,8 @@ package routes
 
 import (
 	"encoding/json"
+	"io"
+	"net/http"
 	"net/http/httptest"
 	"strconv"
 	"strings"
@@ -13,6 +15,12 @@ import (
 	"github.com/handywote/website/models"
 	"github.com/stretchr/testify/assert"
 )
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) {
+	return f(r)
+}
 
 // seedArticle 向 sqlite 内存库写入一篇文章，返回其 ID。
 func seedArticle(t *testing.T, article models.Article) uint {
@@ -254,6 +262,49 @@ func TestArticleSEO_T4_manifest为nil时降级且SEO不降级(t *testing.T) {
 	// JSON-LD 仍非空且可解析
 	ld := extractScriptJSON(t, body, "application/ld+json")
 	assert.Equal(t, "Article", ld["@type"], "降级时 JSON-LD 仍应完整可解析")
+}
+
+func TestResolveViteManifestURL_默认使用frontend服务名(t *testing.T) {
+	t.Setenv("SEO_MANIFEST_URL", "")
+
+	assert.Equal(t, defaultViteManifestURL, resolveViteManifestURL(""))
+	assert.Contains(t, resolveViteManifestURL(""), "http://frontend:80/")
+}
+
+func TestResolveViteManifestURL_环境变量可覆盖(t *testing.T) {
+	t.Setenv("SEO_MANIFEST_URL", "http://example.test/app/.vite/manifest.json")
+
+	assert.Equal(t, "http://example.test/app/.vite/manifest.json", resolveViteManifestURL(""))
+	assert.Equal(t, "http://explicit.test/manifest.json", resolveViteManifestURL("http://explicit.test/manifest.json"))
+}
+
+func TestFetchViteManifest_从HTTP加载并缓存(t *testing.T) {
+	viteManifest = nil
+	defer func() { viteManifest = nil }()
+
+	oldClient := http.DefaultClient
+	http.DefaultClient = &http.Client{
+		Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+			assert.Equal(t, "http://manifest.test/app/.vite/manifest.json", r.URL.String())
+			body := `{"src/main.jsx":{"file":"assets/index-test.js","css":["assets/index-test.css"]}}`
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body:       io.NopCloser(strings.NewReader(body)),
+				Header:     make(http.Header),
+			}, nil
+		}),
+	}
+	defer func() { http.DefaultClient = oldClient }()
+
+	fetchViteManifestWithRetry("http://manifest.test/app/.vite/manifest.json", 1, 0)
+
+	viteManifestMu.RLock()
+	entry, ok := viteManifest["src/main.jsx"]
+	viteManifestMu.RUnlock()
+
+	assert.True(t, ok, "应缓存 src/main.jsx manifest entry")
+	assert.Equal(t, "assets/index-test.js", entry.File)
+	assert.Equal(t, []string{"assets/index-test.css"}, entry.CSS)
 }
 
 // extractMetaContent 粗略提取 HTML 中首个匹配 meta 标签的 content 属性值。
