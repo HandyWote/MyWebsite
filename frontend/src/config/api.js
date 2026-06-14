@@ -317,6 +317,86 @@ export async function uploadFile(endpoint, file, fieldName = 'file') {
 }
 
 /**
+ * 下载文件（Blob 响应）
+ *
+ * 与 apiClient 不同，此函数不解析 JSON，直接返回 Blob，
+ * 适用于 CSV 导出、PDF 下载等二进制响应场景。
+ * 同样自动注入 Authorization 并处理 401。
+ */
+export async function downloadBlob(endpoint, options = {}) {
+  const token = localStorage.getItem('token');
+  const config = {
+    ...options,
+    headers: {
+      ...(token && { Authorization: `Bearer ${token}` }),
+      ...options.headers,
+    },
+  };
+
+  const response = await fetch(buildApiUrl(endpoint), config);
+
+  if (response.status === 401) {
+    clearAuth();
+    window.location.href = '/admin/login';
+  }
+
+  if (!response.ok) {
+    throw new ApiError(response.status, response.statusText);
+  }
+
+  return response.blob();
+}
+
+/**
+ * 上传多个文件（FormData，多文件字段）
+ *
+ * 与 uploadFile 类似，但接受 File[] 并使用指定的字段名
+ * 逐个 append。不设置 Content-Type，让浏览器自动生成
+ * multipart/form-data + boundary。
+ */
+export async function uploadFiles(endpoint, files, fieldName = 'files') {
+  const token = localStorage.getItem('token');
+
+  const formData = new FormData();
+  files.forEach((f) => formData.append(fieldName, f));
+
+  const config = {
+    method: 'POST',
+    headers: {
+      ...(token && { Authorization: `Bearer ${token}` }),
+    },
+    body: formData,
+  };
+
+  const response = await fetch(buildApiUrl(endpoint), config);
+  const payload = await response.json().catch(() => ({ message: response.statusText }));
+
+  if (!response.ok) {
+    throw new ApiError(response.status, payload.message || payload.msg || 'Upload failed');
+  }
+
+  // 业务错误码检查（与 apiClient 保持一致）
+  if (
+    payload &&
+    typeof payload === 'object' &&
+    Object.prototype.hasOwnProperty.call(payload, 'code') &&
+    payload.code !== 0
+  ) {
+    throw new ApiError(response.status || 400, payload.msg || payload.message || 'Request failed');
+  }
+
+  if (
+    payload &&
+    typeof payload === 'object' &&
+    Object.prototype.hasOwnProperty.call(payload, 'data')
+  ) {
+    return payload.data;
+  }
+
+  return payload;
+}
+
+/**
  * 便捷方法
  */
 export const api = {
@@ -325,6 +405,8 @@ export const api = {
   put: (endpoint, data) => apiClient(endpoint, { method: 'PUT', body: data }),
   del: (endpoint) => apiClient(endpoint, { method: 'DELETE' }),
   upload: uploadFile,
+  download: downloadBlob,
+  uploadFiles: uploadFiles,
 };
 
 // ==================== 默认导出 ====================
@@ -338,6 +420,8 @@ export default {
   getApiMessage,
   apiClient,
   uploadFile,
+  downloadBlob,
+  uploadFiles,
   api,
   ApiError,
   getBlockContent,

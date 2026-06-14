@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Box, Button, Avatar, Paper, IconButton, Stack, Snackbar, Tooltip, Typography } from '@mui/material';
+import { useState, useEffect } from 'react';
+import { Box, Button, Avatar, Paper, IconButton, Stack, Tooltip, Typography } from '@mui/material';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import CardActions from '@mui/material/CardActions';
@@ -10,7 +10,8 @@ import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { getApiUrl, api } from '../../config/api';
+import useAvatarStore from '@/stores/avatarStore';
+import useNotification from '../../hooks/useNotification';
 import { colors } from '../../components/pixel/tokens';
 
 function SortableAvatarCard({ avatar, index, onDelete, onSetCurrent, ...props }) {
@@ -88,30 +89,19 @@ function SortableAvatarCard({ avatar, index, onDelete, onSetCurrent, ...props })
 }
 
 export default function AvatarsManager() {
-  const [avatars, setAvatars] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [snackbarOpen, setSnackbarOpen] = useState(false);
-  const [snackbarMsg, setSnackbarMsg] = useState('');
-  const sensors = useSensors(useSensor(PointerSensor));
+  // Store 数据状态
+  const {
+    avatars,
+    loading,
+    fetchAvatars,
+    uploadAvatar,
+    deleteAvatar,
+    setCurrent,
+    reorderAvatars,
+  } = useAvatarStore();
 
-  // 拉取头像数据
-  const fetchAvatars = async () => {
-    setLoading(true);
-    try {
-      const data = await api.get(getApiUrl.adminAvatars());
-      // apiClient 自动解包了 data.data，兼容 data 和 avatars
-      const arr = (data || []).map(a => {
-        const url = a.filename ? getApiUrl.avatarFile(a.filename) : undefined;
-        return { ...a, url };
-      });
-      setAvatars(arr);
-    } catch (error) {
-      setSnackbarMsg('获取头像列表失败: ' + error.message);
-      setSnackbarOpen(true);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const notify = useNotification();
+  const sensors = useSensors(useSensor(PointerSensor));
 
   useEffect(() => {
     fetchAvatars();
@@ -127,37 +117,31 @@ export default function AvatarsManager() {
       const oldIndex = avatars.findIndex(a => a.id === active.id);
       const newIndex = avatars.findIndex(a => a.id === over.id);
       const newAvatars = arrayMove(avatars, oldIndex, newIndex);
-      setAvatars(newAvatars);
-      
-      // 设第一个为当前头像
-      if (newAvatars.length > 0) {
-        await handleSetCurrent(newAvatars[0].id);
+
+      try {
+        await reorderAvatars(newAvatars);
+      } catch (error) {
+        notify.notify().error('排序失败: ' + error.message);
       }
     }
   };
 
   const handleSetCurrent = async (avatarId) => {
     try {
-      await api.put(getApiUrl.adminAvatarSetCurrent(avatarId));
-      setSnackbarMsg('已设为当前头像');
-      setSnackbarOpen(true);
-      fetchAvatars();
+      await setCurrent(avatarId);
+      notify.notify().success('已设为当前头像');
     } catch (error) {
-      setSnackbarMsg('设置当前头像失败: ' + error.message);
-      setSnackbarOpen(true);
+      notify.notify().error('设置当前头像失败: ' + error.message);
     }
   };
 
   // 删除头像
   const handleDelete = async (avatarId) => {
     try {
-      const data = await api.del(getApiUrl.adminAvatarDelete(avatarId));
-      setSnackbarMsg(data?.msg || '已删除头像');
-      setSnackbarOpen(true);
-      fetchAvatars(); // 刷新列表
+      const data = await deleteAvatar(avatarId);
+      notify.notify().success(data?.msg || '已删除头像');
     } catch (error) {
-      setSnackbarMsg('删除失败: ' + error.message);
-      setSnackbarOpen(true);
+      notify.notify().error('删除失败: ' + error.message);
     }
   };
 
@@ -167,14 +151,10 @@ export default function AvatarsManager() {
     if (!file) return;
 
     try {
-      await api.upload(getApiUrl.adminAvatars(), file);
-      setSnackbarMsg('上传成功');
-      setSnackbarOpen(true);
-      // 从服务器获取最新列表，确保数据一致性
-      fetchAvatars();
+      await uploadAvatar(file);
+      notify.notify().success('上传成功');
     } catch (error) {
-      setSnackbarMsg('上传失败: ' + error.message);
-      setSnackbarOpen(true);
+      notify.notify().error('上传失败: ' + error.message);
     }
   };
 
@@ -185,7 +165,7 @@ export default function AvatarsManager() {
           上传新头像
           <input type="file" accept="image/*" hidden onChange={handleUpload} />
         </Button>
-        <Button variant="outlined" onClick={fetchAvatars} disabled={loading}>手动刷新</Button>
+        <Button variant="outlined" onClick={() => fetchAvatars()} disabled={loading}>手动刷新</Button>
       </Stack>
       <Paper sx={{ p: 3, maxWidth: 500, mx: 'auto' }}>
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
@@ -210,13 +190,6 @@ export default function AvatarsManager() {
           </SortableContext>
         </DndContext>
       </Paper>
-      <Snackbar
-        open={snackbarOpen}
-        autoHideDuration={1500}
-        onClose={() => setSnackbarOpen(false)}
-        message={snackbarMsg}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      />
     </Box>
   );
 }

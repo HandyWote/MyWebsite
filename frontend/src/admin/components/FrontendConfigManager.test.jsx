@@ -31,6 +31,18 @@ vi.mock('../../config/api', () => ({
   default: {},
 }));
 
+// Mock useNotification hook (Zustand-backed)
+vi.mock('../../hooks/useNotification', () => ({
+  default: () => ({
+    notify: () => ({
+      success: vi.fn(),
+      error: vi.fn(),
+      info: vi.fn(),
+      warning: vi.fn(),
+    }),
+  }),
+}));
+
 // Mock AvatarsManager (which also depends on config/api internally)
 vi.mock('./AvatarsManager', () => ({
   default: () => <div data-testid="avatars-manager">AvatarsManagerMock</div>,

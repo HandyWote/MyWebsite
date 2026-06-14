@@ -1,25 +1,8 @@
-import { useEffect, useState } from 'react';
-import { Box, Button, Paper, Stack, TextField, Typography, Snackbar, Alert } from '@mui/material';
-import { getApiUrl, api, unwrapApiPayload } from '../../config/api';
-import { getBlockContent, SITE_BLOCK_DEFAULTS } from '../../config/siteBlocks';
+import { useEffect } from 'react';
+import { Box, Button, Paper, Stack, TextField, Typography } from '@mui/material';
+import useSiteBlockStore from '@/stores/siteBlockStore';
+import useNotification from '../../hooks/useNotification';
 import AvatarsManager from './AvatarsManager';
-
-const HOME_FIELD_KEYS = ['title', 'subtitle', 'github_calendar_url'];
-
-const pickHomeFields = (source = {}) => HOME_FIELD_KEYS.reduce((acc, key) => {
-  acc[key] = source[key] ?? SITE_BLOCK_DEFAULTS.home[key] ?? '';
-  return acc;
-}, {});
-
-const createInitialForm = () => ({
-  home: pickHomeFields(SITE_BLOCK_DEFAULTS.home),
-  sidebar: { ...SITE_BLOCK_DEFAULTS.sidebar },
-});
-
-const normalizeBlocksToForm = (blocks) => ({
-  home: pickHomeFields(getBlockContent(blocks, 'home')),
-  sidebar: getBlockContent(blocks, 'sidebar'),
-});
 
 /**
  * 通用数组字段更新函数。
@@ -44,22 +27,23 @@ const addArrayItem = (section, arrayKey, defaultItem) => (prev) => ({
 });
 
 export default function FrontendConfigManager() {
-  const [form, setForm] = useState(createInitialForm());
-  const [saving, setSaving] = useState(false);
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  // Store 数据状态
+  const {
+    form,
+    saving,
+    fetchBlocks,
+    updateForm,
+    saveBlocks,
+  } = useSiteBlockStore();
 
-  const fetchBlocks = async () => {
-    const data = await api.get(getApiUrl.adminSiteBlocks());
-    const blocks = unwrapApiPayload(data) || [];
-    setForm(normalizeBlocksToForm(blocks));
-  };
+  const notify = useNotification();
 
   useEffect(() => {
-    fetchBlocks();
+    fetchBlocks().catch(() => {});
   }, []);
 
   const setField = (section, field, value) => {
-    setForm((prev) => ({
+    updateForm((prev) => ({
       ...prev,
       [section]: {
         ...prev[section],
@@ -68,34 +52,24 @@ export default function FrontendConfigManager() {
     }));
   };
 
-  const setSidebarSocialField = (index, field, value) => setForm(updateArrayField('sidebar', 'social_links', index, field, value));
+  const setSidebarSocialField = (index, field, value) => updateForm(updateArrayField('sidebar', 'social_links', index, field, value));
 
-  const addSidebarSocialLink = () => setForm(addArrayItem('sidebar', 'social_links', { type: 'other', label: '', href: '', value: '' }));
+  const addSidebarSocialLink = () => updateForm(addArrayItem('sidebar', 'social_links', { type: 'other', label: '', href: '', value: '' }));
 
-  const setSidebarEducationField = (index, field, value) => setForm(updateArrayField('sidebar', 'education', index, field, value));
+  const setSidebarEducationField = (index, field, value) => updateForm(updateArrayField('sidebar', 'education', index, field, value));
 
-  const addSidebarEducationItem = () => setForm(addArrayItem('sidebar', 'education', { school: '', period: '', desc: '' }));
+  const addSidebarEducationItem = () => updateForm(addArrayItem('sidebar', 'education', { school: '', period: '', desc: '' }));
 
-  const setSidebarTechField = (index, field, value) => setForm(updateArrayField('sidebar', 'tech_stack', index, field, value));
+  const setSidebarTechField = (index, field, value) => updateForm(updateArrayField('sidebar', 'tech_stack', index, field, value));
 
-  const addSidebarTechItem = () => setForm(addArrayItem('sidebar', 'tech_stack', { name: '', level: '' }));
+  const addSidebarTechItem = () => updateForm(addArrayItem('sidebar', 'tech_stack', { name: '', level: '' }));
 
   const handleSave = async () => {
-    setSaving(true);
     try {
-      const payload = {
-        blocks: [
-          { name: 'home', content: pickHomeFields(form.home) },
-          { name: 'sidebar', content: form.sidebar },
-        ],
-      };
-
-      await api.put(getApiUrl.adminSiteBlocks(), payload);
-      setSnackbar({ open: true, message: '保存成功', severity: 'success' });
+      await saveBlocks();
+      notify.notify().success('保存成功');
     } catch (error) {
-      setSnackbar({ open: true, message: '保存失败: ' + error.message, severity: 'error' });
-    } finally {
-      setSaving(false);
+      notify.notify().error('保存失败: ' + error.message);
     }
   };
 
@@ -230,17 +204,6 @@ export default function FrontendConfigManager() {
       <Button sx={{ mt: 2 }} variant="contained" onClick={handleSave} disabled={saving}>
         保存配置
       </Button>
-
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={3000}
-        onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-      >
-        <Alert onClose={() => setSnackbar(prev => ({ ...prev, open: false }))} severity={snackbar.severity} sx={{ width: '100%' }}>
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
     </Box>
   );
 }

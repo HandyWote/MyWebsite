@@ -6,6 +6,8 @@ import { FileText, MessageSquare, Settings, LogOut } from 'lucide-react';
 import { verifyToken, clearAuth, saveRedirectPath } from '../utils/auth';
 import { getApiUrl, api } from '../../config/api';
 import { colors, typography, spacing } from '../../components/pixel/tokens';
+import NotificationSnackbar from '../../components/NotificationSnackbar';
+import { useNotificationStore } from '@/stores/notificationStore';
 
 const tabList = [
   { label: 'Sidebar', path: '/admin/sidebar', icon: Settings },
@@ -18,6 +20,9 @@ export default function AdminLayout() {
   const location = useLocation();
   const isMobile = useMediaQuery('(max-width:900px)');
   const tabValue = tabList.findIndex(tab => location.pathname === tab.path) ?? 0;
+
+  // 全局通知
+  const { open, message, severity, hide } = useNotificationStore();
 
   useEffect(() => {
     const checkTokenPeriodically = async () => {
@@ -194,6 +199,14 @@ export default function AdminLayout() {
           </Box>
         </Box>
       </Box>
+
+      {/* 全局通知 */}
+      <NotificationSnackbar
+        open={open}
+        onClose={hide}
+        message={message}
+        severity={severity}
+      />
     </Box>
   );
 }

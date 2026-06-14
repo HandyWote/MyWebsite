@@ -28,6 +28,18 @@ vi.mock('../../config/api', () => ({
   default: {},
 }));
 
+// Mock useNotification hook (Zustand-backed)
+vi.mock('../../hooks/useNotification', () => ({
+  default: () => ({
+    notify: () => ({
+      success: vi.fn(),
+      error: vi.fn(),
+      info: vi.fn(),
+      warning: vi.fn(),
+    }),
+  }),
+}));
+
 import { api } from '../../config/api';
 
 describe('DataImportExport confirm dialog', () => {

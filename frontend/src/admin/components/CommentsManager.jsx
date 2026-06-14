@@ -47,10 +47,9 @@ import {
   Download as DownloadIcon,
   Refresh as RefreshIcon
 } from '@mui/icons-material';
-import { getApiUrl, api } from '../../config/api';
-import { formatDateTime } from '../../utils/formatDate';
+import useCommentStore from '@/stores/commentStore';
 import useNotification from '../../hooks/useNotification';
-import NotificationSnackbar from '../../components/NotificationSnackbar';
+import { formatDateTime } from '../../utils/formatDate';
 
 // 评论状态枚举
 const COMMENT_STATUS = {
@@ -86,29 +85,29 @@ const getCommentStatusConfig = (status) => (
 function CommentCard({ comment, onView, onDelete, onStatusChange, ...props }) {
   const [anchorEl, setAnchorEl] = useState(null);
   const [expanded, setExpanded] = useState(false);
-  
+
   // 确保comment对象存在
   if (!comment) {
     return null;
   }
 
   const statusConfig = getCommentStatusConfig(comment.status);
-  
+
   const handleMenuOpen = (event) => {
     setAnchorEl(event.currentTarget);
   };
-  
+
   const handleMenuClose = () => {
     setAnchorEl(null);
   };
-  
+
   const handleStatusChange = (status) => {
     onStatusChange(comment.id, status);
     handleMenuClose();
   };
-  
+
   const formatDate = (dateString) => formatDateTime(dateString);
-  
+
   return (
     <Card sx={{ mb: 2, overflow: 'hidden' }} {...props}>
       <CardContent sx={{ pb: 1 }}>
@@ -116,7 +115,7 @@ function CommentCard({ comment, onView, onDelete, onStatusChange, ...props }) {
           <Avatar sx={{ bgcolor: 'primary.main' }}>
             {comment.author.charAt(0)}
           </Avatar>
-          
+
           <Box sx={{ flex: 1, minWidth: 0 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
               <Typography variant="subtitle1" fontWeight="bold" noWrap>
@@ -130,7 +129,7 @@ function CommentCard({ comment, onView, onDelete, onStatusChange, ...props }) {
                 variant="outlined"
               />
             </Box>
-            
+
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1, color: 'text.secondary' }}>
               <Tooltip title="评论时间">
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -140,7 +139,7 @@ function CommentCard({ comment, onView, onDelete, onStatusChange, ...props }) {
                   </Typography>
                 </Box>
               </Tooltip>
-              
+
               <Tooltip title="IP地址">
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                   <PublicIcon fontSize="small" />
@@ -149,7 +148,7 @@ function CommentCard({ comment, onView, onDelete, onStatusChange, ...props }) {
                   </Typography>
                 </Box>
               </Tooltip>
-              
+
               <Tooltip title="所属文章">
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                   <ArticleIcon fontSize="small" />
@@ -159,9 +158,9 @@ function CommentCard({ comment, onView, onDelete, onStatusChange, ...props }) {
                 </Box>
               </Tooltip>
             </Box>
-            
-            <Typography 
-              variant="body2" 
+
+            <Typography
+              variant="body2"
               color="text.primary"
               sx={{
                 display: '-webkit-box',
@@ -175,14 +174,14 @@ function CommentCard({ comment, onView, onDelete, onStatusChange, ...props }) {
             >
               {comment.content}
             </Typography>
-            
+
             {comment.email && (
               <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
                 邮箱: {comment.email}
               </Typography>
             )}
           </Box>
-          
+
           <Box>
             <IconButton size="small" onClick={handleMenuOpen}>
               <MoreVertIcon />
@@ -216,7 +215,7 @@ function CommentCard({ comment, onView, onDelete, onStatusChange, ...props }) {
           </Box>
         </Box>
       </CardContent>
-      
+
       <CardActions sx={{ px: 2, py: 1, bgcolor: 'action.hover' }}>
         <Typography variant="caption" color="text.secondary">
           ID: {comment.id}
@@ -281,130 +280,88 @@ function CommentDetailDialog({ comment, open, onClose }) {
 }
 
 export default function CommentsManager() {
-  const [comments, setComments] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
   const PER_PAGE = 10;
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+
+  // Store 数据状态（从 commentStore 获取）
+  const {
+    comments,
+    total,
+    page,
+    searchTerm,
+    statusFilter,
+    loading,
+    fetchComments,
+    deleteComment,
+    updateCommentStatus,
+    exportComments,
+    setPage,
+    setSearchTerm,
+    setStatusFilter,
+  } = useCommentStore();
+
+  // UI 状态（保留在组件内）
   const [selectedComment, setSelectedComment] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [commentToDelete, setCommentToDelete] = useState(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
-  const {
-    snackbarOpen,
-    snackbarMessage,
-    snackbarSeverity,
-    showNotification,
-    hideNotification,
-  } = useNotification();
+
+  // 通知
+  const notify = useNotification();
 
   // 获取评论列表
-  const fetchComments = useCallback(async () => {
-    setLoading(true);
+  const handleFetchComments = useCallback(async () => {
     try {
-      const params = new URLSearchParams({
-        page: page.toString(),
-        per_page: PER_PAGE.toString()
-      });
-
-      if (searchTerm) {
-        params.append('search', searchTerm);
-      }
-
-      if (statusFilter) {
-        params.append('status', statusFilter);
-      }
-
-      const data = await api.get(`${getApiUrl.adminComments()}?${params}`);
-
-      // apiClient 自动解包了 data.data，这里 data 就是评论数据
-      const comments = (data.comments || []).map(comment => ({
-        ...comment,
-        status: comment.status || 'normal',
-        article_title: comment.article_title || '未知文章'
-      }));
-      setComments(comments);
-      setTotal(data.total || 0);
+      await fetchComments();
     } catch (error) {
-      showNotification('获取评论列表失败: ' + error.message, 'error');
-    } finally {
-      setLoading(false);
+      notify.notify().error('获取评论列表失败: ' + error.message);
     }
-  }, [page, PER_PAGE, searchTerm, statusFilter]);
-
-  useEffect(() => {
-    fetchComments();
   }, [fetchComments]);
 
+  useEffect(() => {
+    handleFetchComments();
+  }, [handleFetchComments]);
 
   // 删除评论
   const handleDeleteComment = async () => {
     if (!commentToDelete) return;
 
     try {
-      await api.del(getApiUrl.deleteComment(commentToDelete.id));
-      showNotification('评论删除成功', 'success');
-      fetchComments();
+      await deleteComment(commentToDelete.id);
+      notify.notify().success('评论删除成功');
     } catch (error) {
-      showNotification('删除评论失败: ' + error.message, 'error');
+      notify.notify().error('删除评论失败: ' + error.message);
     } finally {
       setDeleteDialogOpen(false);
       setCommentToDelete(null);
     }
   };
-  
+
   // 更改评论状态
   const handleStatusChange = async (commentId, status) => {
     try {
-      await api.put(getApiUrl.adminCommentStatus(commentId), { status });
-      showNotification('评论状态更新成功', 'success');
-      fetchComments();
+      await updateCommentStatus(commentId, status);
+      notify.notify().success('评论状态更新成功');
     } catch (error) {
-      showNotification('更新评论状态失败: ' + error.message, 'error');
+      notify.notify().error('更新评论状态失败: ' + error.message);
     }
   };
-  
-  // 导出评论数据（blob 下载，保留 raw fetch）
+
+  // 导出评论数据
   const handleExport = async () => {
     try {
-      const params = new URLSearchParams();
-      if (searchTerm) params.append('search', searchTerm);
-      if (statusFilter) params.append('status', statusFilter);
-
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${getApiUrl.adminCommentExport()}?${params}`, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
-
-      if (response.ok) {
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `comments_${new Date().toISOString().split('T')[0]}.csv`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-        showNotification('评论数据导出成功', 'success');
-      } else {
-        showNotification('导出失败', 'error');
-      }
+      await exportComments();
+      notify.notify().success('评论数据导出成功');
     } catch (error) {
-      showNotification('导出失败: ' + error.message, 'error');
+      notify.notify().error('导出失败: ' + error.message);
     }
   };
-  
+
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Typography variant="h4" align="center" gutterBottom>
         评论管理
       </Typography>
-      
+
       {/* 统计信息 */}
       <Paper sx={{ p: 3, mb: 3 }}>
         <Grid container spacing={2}>
@@ -440,7 +397,7 @@ export default function CommentsManager() {
           </Grid>
         </Grid>
       </Paper>
-      
+
       {/* 搜索和过滤 */}
       <Paper sx={{ p: 2, mb: 3 }}>
         <Grid container spacing={2} alignItems="center">
@@ -479,7 +436,7 @@ export default function CommentsManager() {
               <Button
                 variant="outlined"
                 startIcon={<RefreshIcon />}
-                onClick={fetchComments}
+                onClick={handleFetchComments}
                 disabled={loading}
               >
                 刷新
@@ -495,7 +452,7 @@ export default function CommentsManager() {
           </Grid>
         </Grid>
       </Paper>
-      
+
       {/* 评论列表 */}
       {loading ? (
         <Box textAlign="center" sx={{ py: 4 }}>
@@ -520,7 +477,7 @@ export default function CommentsManager() {
               />
             )
           ))}
-          
+
           {/* 分页 */}
           <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
             <Pagination
@@ -540,7 +497,7 @@ export default function CommentsManager() {
           </Typography>
         </Paper>
       )}
-      
+
       {/* 删除确认对话框 */}
       <Dialog
         open={deleteDialogOpen}
@@ -567,7 +524,7 @@ export default function CommentsManager() {
           </Button>
         </DialogActions>
       </Dialog>
-      
+
       {/* 评论详情对话框 */}
       <CommentDetailDialog
         comment={selectedComment}
@@ -576,14 +533,6 @@ export default function CommentsManager() {
           setDetailDialogOpen(false);
           setSelectedComment(null);
         }}
-      />
-      
-      {/* 提示消息 */}
-      <NotificationSnackbar
-        open={snackbarOpen}
-        onClose={hideNotification}
-        message={snackbarMessage}
-        severity={snackbarSeverity}
       />
     </Container>
   );

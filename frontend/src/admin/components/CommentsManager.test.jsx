@@ -37,12 +37,20 @@ vi.mock('../../config/api', () => ({
   buildApiUrl: (ep) => ep,
   unwrapApiPayload: (r) => r?.data ?? r,
   getApiMessage: (r, fb) => r?.msg || r?.message || fb,
-  API_ENDPOINTS: { PUBLIC: {}, ADMIN: {} },
+  API_ENDPOINTS: {
+    PUBLIC: {},
+    ADMIN: {
+      ADMIN_COMMENTS: '/api/admin/comments',
+      DELETE_COMMENT: (id) => `/api/admin/comments/${id}`,
+      COMMENT_STATUS: (id) => `/api/admin/comments/${id}/status`,
+      COMMENT_EXPORT: () => '/api/admin/comments/export',
+    },
+  },
   API_CONFIG: { BASE_URL: '', TIMEOUT: 10000 },
   default: {},
 }));
 
-// Mock useNotification hook
+// Mock useNotification hook (Zustand-backed)
 vi.mock('../../hooks/useNotification', () => ({
   default: () => ({
     snackbarOpen: false,
@@ -50,6 +58,12 @@ vi.mock('../../hooks/useNotification', () => ({
     snackbarSeverity: 'success',
     showNotification: vi.fn(),
     hideNotification: vi.fn(),
+    notify: () => ({
+      success: vi.fn(),
+      error: vi.fn(),
+      info: vi.fn(),
+      warning: vi.fn(),
+    }),
   }),
 }));
 

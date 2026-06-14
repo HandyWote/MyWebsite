@@ -16,14 +16,17 @@ Object.defineProperty(window, 'matchMedia', {
   })),
 })
 
-// 模拟 localStorage
-const localStorageMock = {
-  getItem: vi.fn(),
-  setItem: vi.fn(),
-  removeItem: vi.fn(),
-  clear: vi.fn(),
-}
-window.localStorage = localStorageMock
+// 模拟 localStorage（功能性 mock，支持 setItem/getItem/removeItem/clear）
+const createLocalStorageMock = () => {
+  let store = {};
+  return {
+    getItem: vi.fn((key) => store[key] ?? null),
+    setItem: vi.fn((key, value) => { store[key] = String(value); }),
+    removeItem: vi.fn((key) => { delete store[key]; }),
+    clear: vi.fn(() => { store = {}; }),
+  };
+};
+window.localStorage = createLocalStorageMock()
 
 // 模拟 IntersectionObserver
 class IntersectionObserverMock {

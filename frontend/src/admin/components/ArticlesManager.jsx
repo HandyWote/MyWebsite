@@ -1,10 +1,12 @@
 // frontend/src/admin/components/ArticlesManager.jsx
 import { useState, useEffect } from 'react';
-import { Box, Button, Snackbar, Alert, Typography } from '@mui/material';
+import { Box, Button, Typography } from '@mui/material';
 import { Add, Upload, SettingsSuggest, Delete } from '@mui/icons-material';
 
 // Store
 import useArticleStore from '@/stores/articleStore';
+import useUploadStore from '@/stores/uploadStore';
+import useAiStore from '@/stores/aiStore';
 
 // 配置
 import { getApiUrl } from '@/config/api';
@@ -13,6 +15,9 @@ import { getApiUrl } from '@/config/api';
 import { ArticleList, ArticleImporter } from './articles';
 import ArticleEditDialog from './articles/ArticleEditDialog';
 import AiSettingsDialog from './articles/AiSettingsDialog';
+
+// Hook
+import useNotification from '../../hooks/useNotification';
 
 // 默认文章结构
 const defaultArticle = {
@@ -38,24 +43,34 @@ export default function ArticlesManager() {
     articles,
     loading,
     pagination,
-    aiAnalysis,
-    aiLoading,
-    aiSettingsLoading,
     fetchArticles,
     fetchArticleById,
     createArticle,
     updateArticle,
     deleteArticle,
     batchDeleteArticles,
+  } = useArticleStore();
+
+  const {
+    coverPreview,
+    coverUploading,
+    pdfUploading,
     uploadCover,
     uploadPdf,
     importMarkdown,
+  } = useUploadStore();
+
+  const {
+    aiAnalysis,
+    aiSuggestions,
+    loading: aiLoading,
+    settingsLoading,
     analyzeContent,
-    clearAiAnalysis,
     fetchAiSettings,
     updateAiSettings,
     testAiConnection,
-  } = useArticleStore();
+    applySuggestions,
+  } = useAiStore();
 
   // ========== UI 状态（局部）==========
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -63,15 +78,11 @@ export default function ArticlesManager() {
   const [editId, setEditId] = useState(null);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [aiSettingsOpen, setAiSettingsOpen] = useState(false);
-  const [aiSettingsForm, setAiSettingsForm] = useState(null); // AI 设置表单（本地编辑状态）
+  const [aiSettingsForm, setAiSettingsForm] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
-  const [fileUploading, setFileUploading] = useState(false);
-  const [pdfUploading, setPdfUploading] = useState(false);
-  const [snackbar, setSnackbar] = useState({
-    open: false,
-    message: '',
-    severity: 'info',
-  });
+
+  // 通知
+  const notify = useNotification();
 
   // ========== 初始化 ==========
   useEffect(() => {
@@ -79,46 +90,18 @@ export default function ArticlesManager() {
   }, [fetchArticles]);
 
   // ========== 辅助函数 ==========
-  const showSnackbar = (message, severity = 'info') => {
-    setSnackbar({ open: true, message, severity });
-  };
-
   const getCoverUrl = (cover) => {
     if (!cover) return DEFAULT_COVER;
     if (/^https?:\/\//.test(cover)) return cover;
     return `${getApiUrl.baseUrl()}${cover}`;
   };
 
-  const validateTags = (tags) => /^[\u4e00-\u9fa5a-zA-Z0-9_,\-\s]+$/.test(tags);
-
-  const normalizeAiSuggestions = (suggestions) => {
-    if (!suggestions || typeof suggestions !== 'object') {
-      return { category: '', tags: [], summary: '' };
-    }
-
-    const category = (suggestions.category || '').toString().trim();
-    const summary = (suggestions.suggested_summary || suggestions.summary || '').toString().trim();
-
-    let tags = [];
-    if (Array.isArray(suggestions.tags)) {
-      tags = suggestions.tags
-        .map((item) => (item || '').toString().trim())
-        .filter(Boolean);
-    } else if (typeof suggestions.tags === 'string') {
-      tags = suggestions.tags
-        .split(',')
-        .map((item) => item.trim())
-        .filter(Boolean);
-    }
-
-    return { category, tags, summary };
-  };
+  const validateTags = (tags) => /^[一-龥a-zA-Z0-9_,\-\s]+$/.test(tags);
 
   // ========== 文章列表操作 ==========
   const handleCreate = () => {
     setEditingArticle(defaultArticle);
     setEditId(null);
-    clearAiAnalysis();
     setEditDialogOpen(true);
   };
 
@@ -134,46 +117,44 @@ export default function ArticlesManager() {
           : (fullArticle.tags || []).join(','),
       });
       setEditId(article.id);
-      clearAiAnalysis();
       setEditDialogOpen(true);
     } catch (err) {
-      showSnackbar(err.message, 'error');
+      notify.notify().error(err.message);
     }
   };
 
   const handleSave = async () => {
     // 验证
     if (!editingArticle.title) {
-      showSnackbar('标题必填', 'error');
+      notify.notify().error('标题必填');
       return;
     }
     if (editingArticle.content_type === 'markdown' && !editingArticle.content) {
-      showSnackbar('Markdown 内容必填', 'error');
+      notify.notify().error('Markdown 内容必填');
       return;
     }
     if (editingArticle.content_type === 'pdf' && !editingArticle.pdf_filename) {
-      showSnackbar('PDF 文件必填', 'error');
+      notify.notify().error('PDF 文件必填');
       return;
     }
     if (editingArticle.tags && !validateTags(editingArticle.tags)) {
-      showSnackbar('标签格式不合法', 'error');
+      notify.notify().error('标签格式不合法');
       return;
     }
 
     try {
       if (editId) {
         await updateArticle(editId, editingArticle);
-        showSnackbar('文章更新成功', 'success');
+        notify.notify().success('文章更新成功');
       } else {
         await createArticle(editingArticle);
-        showSnackbar('文章创建成功', 'success');
+        notify.notify().success('文章创建成功');
       }
       setEditDialogOpen(false);
       setEditingArticle(defaultArticle);
       setEditId(null);
-      clearAiAnalysis();
     } catch (err) {
-      showSnackbar(err.message, 'error');
+      notify.notify().error(err.message);
     }
   };
 
@@ -181,9 +162,9 @@ export default function ArticlesManager() {
     if (!confirm('确定删除该文章？')) return;
     try {
       await deleteArticle(id);
-      showSnackbar('文章删除成功', 'success');
+      notify.notify().success('文章删除成功');
     } catch (err) {
-      showSnackbar(err.message, 'error');
+      notify.notify().error(err.message);
     }
   };
 
@@ -193,9 +174,9 @@ export default function ArticlesManager() {
     try {
       await batchDeleteArticles(selectedIds);
       setSelectedIds([]);
-      showSnackbar('批量删除成功', 'success');
+      notify.notify().success('批量删除成功');
     } catch (err) {
-      showSnackbar(err.message, 'error');
+      notify.notify().error(err.message);
     }
   };
 
@@ -204,37 +185,31 @@ export default function ArticlesManager() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setFileUploading(true);
     try {
       const url = await uploadCover(file);
       setEditingArticle((prev) => ({ ...prev, cover: url }));
-      showSnackbar('封面上传成功', 'success');
+      notify.notify().success('封面上传成功');
     } catch (err) {
-      showSnackbar(err.message, 'error');
-    } finally {
-      setFileUploading(false);
+      notify.notify().error(err.message);
     }
   };
 
   const handleUploadPdf = async (file) => {
     if (!file) return;
 
-    setPdfUploading(true);
     try {
       const filename = await uploadPdf(file);
       setEditingArticle((prev) => ({ ...prev, pdf_filename: filename }));
-      showSnackbar('PDF 上传成功', 'success');
+      notify.notify().success('PDF 上传成功');
     } catch (err) {
-      showSnackbar(err.message, 'error');
-    } finally {
-      setPdfUploading(false);
+      notify.notify().error(err.message);
     }
   };
 
   // ========== AI 分析 ==========
   const handleAiAnalyze = async () => {
     if (!editingArticle.title?.trim() || !editingArticle.content?.trim()) {
-      showSnackbar('请先填写标题和内容', 'warning');
+      notify.notify().warning('请先填写标题和内容');
       return;
     }
 
@@ -244,15 +219,15 @@ export default function ArticlesManager() {
         editingArticle.content,
         editingArticle.summary || ''
       );
-      showSnackbar('AI 分析完成！请查看建议', 'success');
+      notify.notify().success('AI 分析完成！请查看建议');
     } catch (err) {
-      showSnackbar(err.message, 'error');
+      notify.notify().error(err.message);
     }
   };
 
   const handleApplyAiSuggestions = () => {
-    if (!aiAnalysis) return;
-    const normalized = normalizeAiSuggestions(aiAnalysis);
+    const normalized = applySuggestions();
+    if (!normalized) return;
 
     setEditingArticle((prev) => ({
       ...prev,
@@ -260,7 +235,7 @@ export default function ArticlesManager() {
       tags: normalized.tags.length > 0 ? normalized.tags.join(',') : prev.tags,
       summary: normalized.summary || prev.summary,
     }));
-    showSnackbar('AI 建议已应用', 'success');
+    notify.notify().success('AI 建议已应用');
   };
 
   // ========== AI 设置 ==========
@@ -270,25 +245,25 @@ export default function ArticlesManager() {
       const settings = await fetchAiSettings();
       setAiSettingsForm(settings);
     } catch (err) {
-      showSnackbar(err.message, 'error');
+      notify.notify().error(err.message);
     }
   };
 
   const handleSaveAiSettings = async () => {
     try {
       await updateAiSettings(aiSettingsForm);
-      showSnackbar('AI 设置保存成功', 'success');
+      notify.notify().success('AI 设置保存成功');
     } catch (err) {
-      showSnackbar(err.message, 'error');
+      notify.notify().error(err.message);
     }
   };
 
   const handleTestAiSettings = async () => {
     try {
       await testAiConnection(aiSettingsForm);
-      showSnackbar('AI 连接测试成功', 'success');
+      notify.notify().success('AI 连接测试成功');
     } catch (err) {
-      showSnackbar(err.message, 'error');
+      notify.notify().error(err.message);
     }
   };
 
@@ -298,10 +273,10 @@ export default function ArticlesManager() {
       const result = await importMarkdown(files);
       const stats = result || {};
       const successCount = (stats.markdown || 0) + (stats.pdf || 0);
-      showSnackbar(`成功导入 ${successCount} 篇文章`, 'success');
+      notify.notify().success(`成功导入 ${successCount} 篇文章`);
       return { success: successCount, failed: (stats.failed || []).length };
     } catch (err) {
-      showSnackbar(err.message, 'error');
+      notify.notify().error(err.message);
       return { success: 0, failed: files.length };
     }
   };
@@ -363,19 +338,18 @@ export default function ArticlesManager() {
           setEditDialogOpen(false);
           setEditingArticle(defaultArticle);
           setEditId(null);
-          clearAiAnalysis();
         }}
         onSave={handleSave}
         onArticleChange={setEditingArticle}
         validateTags={validateTags}
-        fileUploading={fileUploading}
+        fileUploading={coverUploading}
         onUploadCover={handleUploadCover}
         coverPreview={getCoverUrl(editingArticle.cover)}
         aiAnalyzing={aiLoading}
-        aiSuggestions={aiAnalysis}
+        aiSuggestions={aiSuggestions}
         onAiAnalyze={handleAiAnalyze}
         onApplySuggestions={handleApplyAiSuggestions}
-        onMarkdownError={(message, severity) => showSnackbar(message, severity)}
+        onMarkdownError={(message, severity) => notify.notify()[severity](message)}
         onUploadPdf={handleUploadPdf}
         pdfUploading={pdfUploading}
       />
@@ -383,9 +357,9 @@ export default function ArticlesManager() {
       {/* AI 设置对话框 */}
       <AiSettingsDialog
         open={aiSettingsOpen}
-        loading={aiSettingsLoading}
-        saving={aiSettingsLoading}
-        testing={aiSettingsLoading}
+        loading={settingsLoading}
+        saving={settingsLoading}
+        testing={settingsLoading}
         settings={aiSettingsForm || {}}
         onClose={() => setAiSettingsOpen(false)}
         onChange={setAiSettingsForm}
@@ -399,15 +373,6 @@ export default function ArticlesManager() {
         onImport={handleImport}
         onClose={() => setImportDialogOpen(false)}
       />
-
-      {/* 全局提示 */}
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={3000}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
-      >
-        <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
-      </Snackbar>
 
       {/* 全局加载遮罩 */}
       {loading && (

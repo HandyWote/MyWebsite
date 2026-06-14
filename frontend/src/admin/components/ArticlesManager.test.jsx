@@ -12,13 +12,37 @@ vi.mock('@/components/PdfViewerOnCanvas', () => ({
   default: () => null,
 }));
 
-// Mock Store
+// Mock Stores
 vi.mock('@/stores/articleStore', () => ({
   __esModule: true,
   default: vi.fn(),
 }));
 
+vi.mock('@/stores/uploadStore', () => ({
+  __esModule: true,
+  default: vi.fn(),
+}));
+
+vi.mock('@/stores/aiStore', () => ({
+  __esModule: true,
+  default: vi.fn(),
+}));
+
+// Mock useNotification
+vi.mock('../../hooks/useNotification', () => ({
+  default: () => ({
+    notify: () => ({
+      success: vi.fn(),
+      error: vi.fn(),
+      info: vi.fn(),
+      warning: vi.fn(),
+    }),
+  }),
+}));
+
 import useArticleStore from '@/stores/articleStore';
+import useUploadStore from '@/stores/uploadStore';
+import useAiStore from '@/stores/aiStore';
 
 // Mock 子组件
 vi.mock('./articles', () => ({
@@ -94,39 +118,53 @@ describe('ArticlesManager', () => {
     { id: 2, title: 'Article 2', tags: ['tag2'] },
   ];
 
-  const mockStore = {
+  const mockArticleStore = {
     articles: mockArticles,
     loading: false,
     error: null,
     pagination: { page: 1, perPage: 10, total: 2 },
-    aiAnalysis: null,
-    aiLoading: false,
-    aiSettings: null,
-    aiSettingsLoading: false,
     fetchArticles: vi.fn().mockResolvedValue(),
     fetchArticleById: vi.fn().mockResolvedValue(mockArticles[0]),
     createArticle: vi.fn().mockResolvedValue({ id: 3 }),
     updateArticle: vi.fn().mockResolvedValue(),
     deleteArticle: vi.fn().mockResolvedValue(),
     batchDeleteArticles: vi.fn().mockResolvedValue(),
+  };
+
+  const mockUploadStore = {
+    coverPreview: null,
+    coverUploading: false,
+    pdfUploading: false,
     uploadCover: vi.fn().mockResolvedValue('/cover.jpg'),
     uploadPdf: vi.fn().mockResolvedValue('doc.pdf'),
     importMarkdown: vi.fn().mockResolvedValue({ markdown: 1 }),
+    resetUploads: vi.fn(),
+  };
+
+  const mockAiStore = {
+    aiAnalysis: null,
+    aiSuggestions: null,
+    loading: false,
+    settingsLoading: false,
     analyzeContent: vi.fn().mockResolvedValue({ summary: 'test' }),
-    clearAiAnalysis: vi.fn(),
     fetchAiSettings: vi.fn().mockResolvedValue({}),
     updateAiSettings: vi.fn().mockResolvedValue({}),
     testAiConnection: vi.fn().mockResolvedValue({}),
+    applySuggestions: vi.fn().mockReturnValue(null),
+  };
+
+  const createStoreMock = (store) => (selector) => {
+    if (typeof selector === 'function') {
+      return selector(store);
+    }
+    return store;
   };
 
   beforeEach(() => {
     vi.clearAllMocks();
-    useArticleStore.mockImplementation((selector) => {
-      if (typeof selector === 'function') {
-        return selector(mockStore);
-      }
-      return mockStore;
-    });
+    useArticleStore.mockImplementation(createStoreMock(mockArticleStore));
+    useUploadStore.mockImplementation(createStoreMock(mockUploadStore));
+    useAiStore.mockImplementation(createStoreMock(mockAiStore));
   });
 
   it('应该渲染文章列表', async () => {
@@ -154,7 +192,7 @@ describe('ArticlesManager', () => {
     fireEvent.click(editButtons[0]);
 
     await waitFor(() => {
-      expect(mockStore.fetchArticleById).toHaveBeenCalledWith(1);
+      expect(mockArticleStore.fetchArticleById).toHaveBeenCalledWith(1);
     });
   });
 
@@ -167,7 +205,7 @@ describe('ArticlesManager', () => {
     fireEvent.click(deleteButtons[0]);
 
     await waitFor(() => {
-      expect(mockStore.deleteArticle).toHaveBeenCalledWith(1);
+      expect(mockArticleStore.deleteArticle).toHaveBeenCalledWith(1);
     });
   });
 
@@ -195,7 +233,7 @@ describe('ArticlesManager', () => {
 
   it('应该初始化时获取文章列表', () => {
     render(<ArticlesManager />);
-    expect(mockStore.fetchArticles).toHaveBeenCalled();
+    expect(mockArticleStore.fetchArticles).toHaveBeenCalled();
   });
 
   it('切换每页条数时应回到第一页', async () => {
@@ -203,7 +241,7 @@ describe('ArticlesManager', () => {
     fireEvent.click(screen.getByText('RowsPerPage'));
 
     await waitFor(() => {
-      expect(mockStore.fetchArticles).toHaveBeenCalledWith({ page: 1, perPage: 25 });
+      expect(mockArticleStore.fetchArticles).toHaveBeenCalledWith({ page: 1, perPage: 25 });
     });
   });
 });

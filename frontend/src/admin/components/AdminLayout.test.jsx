@@ -4,8 +4,6 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import AdminLayout from './AdminLayout';
 import AdminRoutes from '../routes';
 
-const navigateMock = vi.fn();
-
 vi.mock('../components/Login', () => ({ default: () => <div>登录页</div> }));
 vi.mock('../components/ArticlesManager', () => ({ default: () => <div>Articles页</div> }));
 vi.mock('../components/CommentsManager', () => ({ default: () => <div>Comments页</div> }));
@@ -46,6 +44,16 @@ vi.mock('../../config/api', () => ({
   },
 }));
 
+vi.mock('@/stores/notificationStore', () => ({
+  useNotificationStore: () => ({
+    open: false,
+    message: '',
+    severity: 'info',
+    hide: vi.fn(),
+    show: vi.fn(),
+  }),
+}));
+
 describe('AdminLayout', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -62,7 +70,7 @@ describe('AdminLayout', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText('左侧内容栏')).toBeInTheDocument();
+    expect(screen.getByText('Sidebar')).toBeInTheDocument();
     expect(screen.getByText('Articles')).toBeInTheDocument();
     expect(screen.getByText('Comments')).toBeInTheDocument();
 

@@ -1,6 +1,5 @@
 import { useState, useRef } from 'react';
 import {
-  Box,
   Button,
   Typography,
   Container,
@@ -9,8 +8,6 @@ import {
   CardContent,
   CardActions,
   Divider,
-  Snackbar,
-  Alert,
   Stack,
   Dialog,
   DialogTitle,
@@ -20,23 +17,16 @@ import {
 } from '@mui/material';
 import CloudDownloadIcon from '@mui/icons-material/CloudDownload';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
-import RefreshIcon from '@mui/icons-material/Refresh';
 import { getApiUrl, api } from '../../config/api';
+import useNotification from '../../hooks/useNotification';
 import { colors, typography } from '../../components/pixel/tokens';
 
 export default function DataImportExport() {
   const [loading, setLoading] = useState(false);
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [confirmOpen, setConfirmOpen] = useState(false);
   const pendingFile = useRef(null);
 
-  const showSnackbar = (message, severity = 'success') => {
-    setSnackbar({ open: true, message, severity });
-  };
-
-  const handleSnackbarClose = () => {
-    setSnackbar({ ...snackbar, open: false });
-  };
+  const notify = useNotification();
 
   // 导出数据
   const handleExport = async () => {
@@ -53,9 +43,9 @@ export default function DataImportExport() {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      showSnackbar('数据导出成功');
+      notify.notify().success('数据导出成功');
     } catch (error) {
-      showSnackbar('数据导出失败', 'error');
+      notify.notify().error('数据导出失败');
     } finally {
       setLoading(false);
     }
@@ -67,7 +57,7 @@ export default function DataImportExport() {
     if (!file) return;
 
     if (file.type !== 'application/json') {
-      showSnackbar('请选择JSON格式的文件', 'error');
+      notify.notify().error('请选择JSON格式的文件');
       event.target.value = '';
       return;
     }
@@ -93,9 +83,9 @@ export default function DataImportExport() {
       const jsonData = JSON.parse(text);
 
       await api.post(getApiUrl.adminImport(), jsonData);
-      showSnackbar('数据导入成功');
+      notify.notify().success('数据导入成功');
     } catch (error) {
-      showSnackbar('数据导入失败: ' + error.message, 'error');
+      notify.notify().error('数据导入失败: ' + error.message);
     } finally {
       setLoading(false);
       pendingFile.current = null;
@@ -207,18 +197,6 @@ export default function DataImportExport() {
           </Button>
         </DialogActions>
       </Dialog>
-
-      {/* 提示信息 */}
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={3000}
-        onClose={handleSnackbarClose}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-      >
-        <Alert onClose={handleSnackbarClose} severity={snackbar.severity} sx={{ width: '100%' }}>
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
     </Container>
   );
 }

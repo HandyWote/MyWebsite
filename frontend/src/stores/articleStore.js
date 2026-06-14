@@ -1,19 +1,13 @@
 // frontend/src/stores/articleStore.js
 import { create } from 'zustand';
-import { api, uploadFile, API_ENDPOINTS } from '@/config/api';
+import { api, API_ENDPOINTS } from '@/config/api';
 import { normalizeTags } from '@/utils/normalizeTags';
 
 // 从 ADMIN 端点中解构，保持 store 内部代码简洁
 const {
   ARTICLES,
   ARTICLE_DETAIL,
-  ARTICLE_COVER,
-  ARTICLE_PDF_UPLOAD,
-  ARTICLE_AI_ANALYZE,
   ARTICLE_BATCH_DELETE,
-  ARTICLE_IMPORT_MD,
-  AI_SETTINGS,
-  AI_SETTINGS_TEST,
 } = API_ENDPOINTS.ADMIN;
 
 const useArticleStore = create((set, get) => ({
@@ -29,14 +23,6 @@ const useArticleStore = create((set, get) => ({
 
   // ========== 当前文章（SEO 数据注入用） ==========
   currentArticle: null,
-
-  // ========== AI 分析状态 ==========
-  aiAnalysis: null,
-  aiLoading: false,
-
-  // ========== AI 设置状态 ==========
-  aiSettings: null,
-  aiSettingsLoading: false,
 
   // ========== 文章 CRUD ==========
   fetchArticles: async (params = {}) => {
@@ -126,125 +112,6 @@ const useArticleStore = create((set, get) => ({
     }
   },
 
-  // ========== 文件上传 ==========
-  uploadCover: async (file) => {
-    set({ loading: true, error: null });
-    try {
-      const data = await uploadFile(ARTICLE_COVER, file);
-      set({ loading: false });
-      return data.url;
-    } catch (err) {
-      set({ error: err.message, loading: false });
-      throw err;
-    }
-  },
-
-  uploadPdf: async (file) => {
-    set({ loading: true, error: null });
-    try {
-      const data = await uploadFile(ARTICLE_PDF_UPLOAD, file);
-      set({ loading: false });
-      return data.filename;
-    } catch (err) {
-      set({ error: err.message, loading: false });
-      throw err;
-    }
-  },
-
-  // ========== 批量导入 ==========
-  importMarkdown: async (files) => {
-    set({ loading: true, error: null });
-    try {
-      const formData = new FormData();
-      files.forEach(f => formData.append('files', f));
-
-      const token = localStorage.getItem('token');
-      const response = await fetch(ARTICLE_IMPORT_MD, {
-        method: 'POST',
-        headers: {
-          ...(token && { Authorization: `Bearer ${token}` }),
-        },
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: response.statusText }));
-        throw new Error(error.message || 'Import failed');
-      }
-
-      const data = await response.json();
-      // 刷新列表
-      get().fetchArticles();
-      return data.data || data;
-    } catch (err) {
-      set({ error: err.message });
-      throw err;
-    } finally {
-      set({ loading: false });
-    }
-  },
-
-  // ========== AI 功能 ==========
-  analyzeContent: async (title, content, summary = '') => {
-    set({ aiLoading: true, error: null });
-    try {
-      const result = await api.post(ARTICLE_AI_ANALYZE, {
-        title,
-        content,
-        summary,
-      });
-      set({ aiAnalysis: result, aiLoading: false });
-      return result;
-    } catch (err) {
-      set({ error: err.message, aiLoading: false });
-      throw err;
-    }
-  },
-
-  analyzeArticle: async (id) => {
-    const article = await get().fetchArticleById(id);
-    return get().analyzeContent(article.title, article.content, article.summary);
-  },
-
-  clearAiAnalysis: () => set({ aiAnalysis: null }),
-
-  // ========== AI 设置 ==========
-  fetchAiSettings: async () => {
-    set({ aiSettingsLoading: true, error: null });
-    try {
-      const settings = await api.get(AI_SETTINGS);
-      set({ aiSettings: settings, aiSettingsLoading: false });
-      return settings;
-    } catch (err) {
-      set({ error: err.message, aiSettingsLoading: false });
-      throw err;
-    }
-  },
-
-  updateAiSettings: async (settings) => {
-    set({ aiSettingsLoading: true, error: null });
-    try {
-      const updated = await api.put(AI_SETTINGS, settings);
-      set({ aiSettings: updated, aiSettingsLoading: false });
-      return updated;
-    } catch (err) {
-      set({ error: err.message, aiSettingsLoading: false });
-      throw err;
-    }
-  },
-
-  testAiConnection: async (settings) => {
-    set({ aiSettingsLoading: true, error: null });
-    try {
-      const result = await api.post(AI_SETTINGS_TEST, settings);
-      set({ aiSettingsLoading: false });
-      return result;
-    } catch (err) {
-      set({ error: err.message, aiSettingsLoading: false });
-      throw err;
-    }
-  },
-
   // ========== SEO 数据注入 ==========
   setCurrentArticle: (article) => set({ currentArticle: article }),
 
@@ -280,10 +147,7 @@ const useArticleStore = create((set, get) => ({
       loading: false,
       error: null,
       pagination: { page: 1, perPage: 10, total: 0 },
-      aiAnalysis: null,
-      aiLoading: false,
-      aiSettings: null,
-      aiSettingsLoading: false,
+      currentArticle: null,
     }),
 }));
 

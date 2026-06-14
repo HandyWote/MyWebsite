@@ -43,6 +43,7 @@ vi.mock('../../config/api', () => ({
     adminAvatarSetCurrent: (id) => `/api/admin/avatars/${id}/set_current`,
     adminAvatarDelete: (id) => `/api/admin/avatars/${id}`,
     avatarFile: (filename) => `/api/avatars/file/${filename}`,
+    baseUrl: () => '',
   },
   api: {
     get: vi.fn(),
@@ -59,9 +60,28 @@ vi.mock('../../config/api', () => ({
   buildApiUrl: (ep) => ep,
   unwrapApiPayload: (r) => r?.data ?? r,
   getApiMessage: (r, fb) => r?.msg || r?.message || fb,
-  API_ENDPOINTS: { PUBLIC: {}, ADMIN: {} },
+  API_ENDPOINTS: {
+    PUBLIC: {},
+    ADMIN: {
+      AVATARS: '/api/admin/avatars',
+      AVATAR_DELETE: (id) => `/api/admin/avatars/${id}`,
+      AVATAR_SET_CURRENT: (id) => `/api/admin/avatars/${id}/set_current`,
+    },
+  },
   API_CONFIG: { BASE_URL: '', TIMEOUT: 10000 },
   default: {},
+}));
+
+// Mock useNotification hook (Zustand-backed)
+vi.mock('../../hooks/useNotification', () => ({
+  default: () => ({
+    notify: () => ({
+      success: vi.fn(),
+      error: vi.fn(),
+      info: vi.fn(),
+      warning: vi.fn(),
+    }),
+  }),
 }));
 
 import { api } from '../../config/api';
