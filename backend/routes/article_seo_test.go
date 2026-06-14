@@ -237,9 +237,12 @@ func TestArticleSEO_T4_manifest为nil时降级且SEO不降级(t *testing.T) {
 	// 降级：不注入任何外部 JS 引用
 	assert.NotContains(t, body, "<script src",
 		"viteManifest=nil 时不应注入 <script src>（无外部 JS 引用）")
-	// 同理不注入 CSS link（基础 SEO 不含 stylesheet link，favicon 是 icon 不是 stylesheet）
-	assert.NotContains(t, body, `rel="stylesheet"`,
-		"viteManifest=nil 时不应注入 <link rel=stylesheet>")
+	// 降级：不注入 manifest 产物（JS/CSS）。
+	// 用 /app/assets/ 特征前缀而非 rel="stylesheet" 全局假设——后者在模板未来加字体/Reset CSS 时会误报。
+	// 锁的是"manifest 注入的 JS/CSS 都在 /app/assets/ 下"（Vite assetsDir=assets + base=/app/），
+	// 而 favicon /app/avatar.webp 是后端单独服务、不在 /app/assets/ 下，故不会被这条断言误伤。
+	assert.NotContains(t, body, "/app/assets/",
+		"viteManifest=nil 时不应注入 manifest JS/CSS（/app/assets/ 下无任何产物）")
 
 	// SEO 不降级：T1 全套 SEO 标签仍完整
 	assert.Contains(t, body, "<title>")
