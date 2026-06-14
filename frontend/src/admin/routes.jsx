@@ -9,6 +9,7 @@ import ArticlesManager from './components/ArticlesManager';
 import CommentsManager from './components/CommentsManager';
 import DataImportExport from './components/DataImportExport';
 import FrontendConfigManager from './components/FrontendConfigManager';
+import ErrorBoundary from './components/shared/ErrorBoundary';
 
 // 增强的登录守卫组件
 function RequireAuth({ children }) {
@@ -22,30 +23,31 @@ function RequireAuth({ children }) {
   useEffect(() => {
     const checkAuth = async () => {
       const result = await verifyToken();
-      
+
       if (result.valid) {
         setAuthState({ loading: false, authenticated: true, error: null });
       } else {
         clearAuth();
         saveRedirectPath(location.pathname);
-        setAuthState({ 
-          loading: false, 
-          authenticated: false, 
-          error: result.error || '登录已过期，请重新登录' 
+        setAuthState({
+          loading: false,
+          authenticated: false,
+          error: result.error || '登录已过期，请重新登录'
         });
       }
     };
 
     checkAuth();
-  }, [location.pathname]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // 显示加载状态
   if (authState.loading) {
     return (
-      <Box 
-        display="flex" 
-        justifyContent="center" 
-        alignItems="center" 
+      <Box
+        display="flex"
+        justifyContent="center"
+        alignItems="center"
         minHeight="100vh"
         flexDirection="column"
         gap={2}
@@ -59,13 +61,13 @@ function RequireAuth({ children }) {
   // 认证失败，重定向到登录页
   if (!authState.authenticated) {
     return (
-      <Navigate 
-        to="/admin/login" 
-        state={{ 
+      <Navigate
+        to="/admin/login"
+        state={{
           from: location,
-          message: authState.error 
-        }} 
-        replace 
+          message: authState.error
+        }}
+        replace
       />
     );
   }
@@ -79,9 +81,11 @@ export default function AdminRoutes() {
     <Routes>
       <Route path="login" element={<Login />} />
       <Route path="" element={
-        <RequireAuth>
-          <AdminLayout />
-        </RequireAuth>
+        <ErrorBoundary>
+          <RequireAuth>
+            <AdminLayout />
+          </RequireAuth>
+        </ErrorBoundary>
       }>
         <Route index element={<Navigate to="sidebar" replace />} />
         <Route path="sidebar" element={<FrontendConfigManager />} />

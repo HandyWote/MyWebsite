@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Box, Button, Paper, Stack, TextField, Typography } from '@mui/material';
+import { Box, Button, Paper, Stack, TextField, Typography, Snackbar, Alert } from '@mui/material';
 import { getApiUrl, api, unwrapApiPayload } from '../../config/api';
 import { getBlockContent, SITE_BLOCK_DEFAULTS } from '../../config/siteBlocks';
 import AvatarsManager from './AvatarsManager';
@@ -46,6 +46,7 @@ const addArrayItem = (section, arrayKey, defaultItem) => (prev) => ({
 export default function FrontendConfigManager() {
   const [form, setForm] = useState(createInitialForm());
   const [saving, setSaving] = useState(false);
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
   const fetchBlocks = async () => {
     const data = await api.get(getApiUrl.adminSiteBlocks());
@@ -90,6 +91,9 @@ export default function FrontendConfigManager() {
       };
 
       await api.put(getApiUrl.adminSiteBlocks(), payload);
+      setSnackbar({ open: true, message: '保存成功', severity: 'success' });
+    } catch (error) {
+      setSnackbar({ open: true, message: '保存失败: ' + error.message, severity: 'error' });
     } finally {
       setSaving(false);
     }
@@ -226,6 +230,17 @@ export default function FrontendConfigManager() {
       <Button sx={{ mt: 2 }} variant="contained" onClick={handleSave} disabled={saving}>
         保存配置
       </Button>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={3000}
+        onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert onClose={() => setSnackbar(prev => ({ ...prev, open: false }))} severity={snackbar.severity} sx={{ width: '100%' }}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

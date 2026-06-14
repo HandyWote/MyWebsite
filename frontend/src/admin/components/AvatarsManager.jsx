@@ -11,6 +11,7 @@ import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from 
 import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { getApiUrl, api } from '../../config/api';
+import { colors } from '../../components/pixel/tokens';
 
 function SortableAvatarCard({ avatar, index, onDelete, onSetCurrent, ...props }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: avatar.id });
@@ -31,9 +32,9 @@ function SortableAvatarCard({ avatar, index, onDelete, onSetCurrent, ...props })
       transition,
       opacity: isDragging ? 0.7 : 1,
       mb: 2,
-      border: '1px dashed #30363d',
+      border: `1px dashed ${colors.border.default}`,
       '&:hover': {
-        border: '1px solid #58a6ff',
+        border: `1px solid ${colors.accent.blue}`,
         borderStyle: 'solid',
       },
     }} {...props}>
@@ -43,13 +44,13 @@ function SortableAvatarCard({ avatar, index, onDelete, onSetCurrent, ...props })
           <Box {...attributes} {...listeners} sx={{ cursor: 'grab', '&:active': { cursor: 'grabbing' } }}>
             <Avatar
               src={avatar.url || undefined}
-              sx={{ width: 64, height: 64, border: isCurrent ? '3px solid #58a6ff' : 'none' }}
+              sx={{ width: 64, height: 64, border: isCurrent ? `3px solid ${colors.accent.blue}` : 'none' }}
             />
           </Box>
 
           {/* 信息区 */}
           <Box sx={{ flex: 1 }}>
-            <Typography sx={{ fontWeight: isCurrent ? 700 : 400, color: isCurrent ? '#58a6ff' : 'text.secondary' }}>
+            <Typography sx={{ fontWeight: isCurrent ? 700 : 400, color: isCurrent ? colors.accent.blue : 'text.secondary' }}>
               {isCurrent ? '当前头像' : `头像 ${index + 1}`}
             </Typography>
             <Typography variant="caption" color="text.disabled">

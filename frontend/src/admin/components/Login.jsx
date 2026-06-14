@@ -2,12 +2,13 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
-  Box, TextField, Typography,
+  Box, Typography,
   Alert, Checkbox, FormControlLabel
 } from '@mui/material';
 import { getAndClearRedirectPath } from '../utils/auth';
 import { getApiMessage, getApiUrl, unwrapApiPayload } from '../../config/api';
-import { PixelCard, PixelButton } from '../../components/pixel';
+import { PixelCard, PixelButton, PixelInput } from '../../components/pixel';
+import { colors, typography } from '../../components/pixel/tokens';
 
 const Login = () => {
   const [username, setUsername] = useState('');
@@ -85,8 +86,8 @@ const Login = () => {
                 mb: 2,
                 borderRadius: 0,
                 bgcolor: 'transparent',
-                color: '#d29922',
-                border: '1px solid #d29922',
+                color: colors.status.warning,
+                border: `1px solid ${colors.status.warning}`,
               }}
             >
               {stateMessage}
@@ -100,8 +101,8 @@ const Login = () => {
                 mb: 2,
                 borderRadius: 0,
                 bgcolor: 'transparent',
-                color: '#f85149',
-                border: '1px solid #f85149',
+                color: colors.status.error,
+                border: `1px solid ${colors.status.error}`,
               }}
             >
               {error}
@@ -109,7 +110,7 @@ const Login = () => {
           )}
 
           <form onSubmit={handleLogin}>
-            <TextField
+            <PixelInput
               fullWidth
               label="Username"
               value={username}
@@ -117,34 +118,8 @@ const Login = () => {
               margin="normal"
               required
               disabled={loading}
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  fontFamily: "'JetBrains Mono', monospace",
-                  borderRadius: 0,
-                  bgcolor: '#21262d',
-                  '& fieldset': {
-                    borderStyle: 'dashed',
-                    borderColor: '#30363d',
-                  },
-                  '&:hover fieldset': {
-                    borderStyle: 'solid',
-                    borderColor: '#30363d',
-                  },
-                  '&.Mui-focused fieldset': {
-                    borderStyle: 'solid',
-                    borderColor: '#58a6ff',
-                  },
-                },
-                '& .MuiInputLabel-root': {
-                  fontFamily: "'JetBrains Mono', monospace",
-                  color: '#8b949e',
-                  '&.Mui-focused': {
-                    color: '#58a6ff',
-                  },
-                },
-              }}
             />
-            <TextField
+            <PixelInput
               fullWidth
               label="Password"
               type="password"
@@ -153,32 +128,6 @@ const Login = () => {
               margin="normal"
               required
               disabled={loading}
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  fontFamily: "'JetBrains Mono', monospace",
-                  borderRadius: 0,
-                  bgcolor: '#21262d',
-                  '& fieldset': {
-                    borderStyle: 'dashed',
-                    borderColor: '#30363d',
-                  },
-                  '&:hover fieldset': {
-                    borderStyle: 'solid',
-                    borderColor: '#30363d',
-                  },
-                  '&.Mui-focused fieldset': {
-                    borderStyle: 'solid',
-                    borderColor: '#58a6ff',
-                  },
-                },
-                '& .MuiInputLabel-root': {
-                  fontFamily: "'JetBrains Mono', monospace",
-                  color: '#8b949e',
-                  '&.Mui-focused': {
-                    color: '#58a6ff',
-                  },
-                },
-              }}
             />
             <FormControlLabel
               control={
@@ -187,15 +136,15 @@ const Login = () => {
                   onChange={(e) => setRemember(e.target.checked)}
                   disabled={loading}
                   sx={{
-                    color: '#8b949e',
+                    color: colors.text.secondary,
                     '&.Mui-checked': {
-                      color: '#58a6ff',
+                      color: colors.accent.blue,
                     },
                   }}
                 />
               }
               label={
-                <Typography sx={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.875rem', color: '#8b949e' }}>
+                <Typography sx={{ fontFamily: typography.fontFamily.mono, fontSize: typography.fontSize.sm, color: colors.text.secondary }}>
                   Remember me
                 </Typography>
               }

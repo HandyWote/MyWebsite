@@ -27,6 +27,11 @@ export const colors = {
     muted: '#21262d',
     accent: '#58a6ff',
   },
+  // 语义色 - 状态反馈
+  status: {
+    warning: '#d29922',
+    error: '#f85149',
+  },
   // 交互状态
   interactive: {
     hover: '#1f2428',

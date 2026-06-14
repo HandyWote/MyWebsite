@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import {
   Box,
   Button,
@@ -12,16 +12,23 @@ import {
   Snackbar,
   Alert,
   Stack,
-  IconButton
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
 } from '@mui/material';
 import CloudDownloadIcon from '@mui/icons-material/CloudDownload';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import { getApiUrl, api } from '../../config/api';
+import { colors, typography } from '../../components/pixel/tokens';
 
 export default function DataImportExport() {
   const [loading, setLoading] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const pendingFile = useRef(null);
 
   const showSnackbar = (message, severity = 'success') => {
     setSnackbar({ open: true, message, severity });
@@ -54,19 +61,35 @@ export default function DataImportExport() {
     }
   };
 
-  // 导入数据
-  const handleImport = async (event) => {
+  // 文件选择时：先存文件，弹出确认
+  const handleFileSelect = (event) => {
     const file = event.target.files[0];
     if (!file) return;
 
     if (file.type !== 'application/json') {
       showSnackbar('请选择JSON格式的文件', 'error');
+      event.target.value = '';
       return;
     }
 
+    pendingFile.current = file;
+    setConfirmOpen(true);
+  };
+
+  // 确认后执行导入
+  const handleConfirmImport = async () => {
+    setConfirmOpen(false);
+    const file = pendingFile.current;
+    if (!file) return;
+
     setLoading(true);
     try {
-      const text = await file.text();
+      const text = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(new Error('文件读取失败'));
+        reader.readAsText(file);
+      });
       const jsonData = JSON.parse(text);
 
       await api.post(getApiUrl.adminImport(), jsonData);
@@ -75,9 +98,17 @@ export default function DataImportExport() {
       showSnackbar('数据导入失败: ' + error.message, 'error');
     } finally {
       setLoading(false);
+      pendingFile.current = null;
       // 重置文件输入
-      event.target.value = '';
+      document.getElementById('import-input').value = '';
     }
+  };
+
+  // 取消导入
+  const handleCancelImport = () => {
+    setConfirmOpen(false);
+    pendingFile.current = null;
+    document.getElementById('import-input').value = '';
   };
 
   const triggerFileInput = () => {
@@ -87,7 +118,7 @@ export default function DataImportExport() {
   return (
     <Container maxWidth="md" sx={{ py: 4 }}>
       <Typography variant="h4" align="center" gutterBottom>数据导入导出</Typography>
-      
+
       <Stack spacing={3}>
         {/* 导出卡片 */}
         <Card>
@@ -102,8 +133,8 @@ export default function DataImportExport() {
           </CardContent>
           <Divider />
           <CardActions sx={{ justifyContent: 'flex-end', p: 2 }}>
-            <Button 
-              variant="contained" 
+            <Button
+              variant="contained"
               onClick={handleExport}
               disabled={loading}
               startIcon={<CloudDownloadIcon />}
@@ -112,7 +143,7 @@ export default function DataImportExport() {
             </Button>
           </CardActions>
         </Card>
-        
+
         {/* 导入卡片 */}
         <Card>
           <CardContent>
@@ -130,11 +161,11 @@ export default function DataImportExport() {
               id="import-input"
               type="file"
               accept=".json,application/json"
-              onChange={handleImport}
+              onChange={handleFileSelect}
               style={{ display: 'none' }}
             />
-            <Button 
-              variant="contained" 
+            <Button
+              variant="contained"
               onClick={triggerFileInput}
               disabled={loading}
               startIcon={<CloudUploadIcon />}
@@ -143,7 +174,7 @@ export default function DataImportExport() {
             </Button>
           </CardActions>
         </Card>
-        
+
         {/* 注意事项 */}
         <Paper sx={{ p: 3 }}>
           <Typography variant="h6" gutterBottom>注意事项</Typography>
@@ -158,11 +189,29 @@ export default function DataImportExport() {
           </Typography>
         </Paper>
       </Stack>
-      
+
+      {/* 导入确认对话框 */}
+      <Dialog open={confirmOpen} onClose={handleCancelImport}>
+        <DialogTitle sx={{ fontFamily: typography.fontFamily.mono, color: colors.text.primary }}>
+          确认导入数据
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ color: colors.text.secondary }}>
+            导入将覆盖现有数据，确定要继续吗？
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCancelImport}>取消</Button>
+          <Button onClick={handleConfirmImport} variant="contained" disabled={loading}>
+            确认导入
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       {/* 提示信息 */}
-      <Snackbar 
-        open={snackbar.open} 
-        autoHideDuration={3000} 
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={3000}
         onClose={handleSnackbarClose}
         anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
       >

@@ -31,7 +31,7 @@ const SectionCard = ({ icon, title, subtitle, children, spacing = 2 }) => (
     variant="outlined"
     sx={{
       p: { xs: 2, md: 3 },
-      borderRadius: 3,
+      borderRadius: 0,
       display: 'flex',
       flexDirection: 'column',
       gap: spacing,
@@ -233,7 +233,7 @@ const ArticleEditDialog = ({
                   component="img"
                   src={coverPreview}
                   alt="封面"
-                  sx={{ width: 96, height: 60, objectFit: 'cover', borderRadius: 1, border: '1px solid', borderColor: 'divider' }}
+                  sx={{ width: 96, height: 60, objectFit: 'cover', borderRadius: 0, border: '1px solid', borderColor: 'divider' }}
                   onError={e => {
                     e.target.onerror = null;
                     e.target.src = coverPreview;
