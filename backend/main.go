@@ -45,6 +45,9 @@ func main() {
 	// Setup routes
 	routes.SetupRoutes(r, cfg)
 
+	// 拉取 Vite 构建产物映射，供 SEO HTML 注入正确的 JS/CSS 路径（修真人直接访问 /articles/:id 白屏）
+	routes.FetchViteManifest("")
+
 	// Start server on configured port
 	port := cfg.Port
 
