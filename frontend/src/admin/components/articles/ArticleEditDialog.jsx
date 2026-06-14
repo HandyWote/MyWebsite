@@ -30,7 +30,6 @@ import useArticleStore from '@/stores/articleStore';
 import useUploadStore from '@/stores/uploadStore';
 import useAiStore from '@/stores/aiStore';
 import { getApiUrl } from '@/config/api';
-import { ConfirmDialog } from '../shared';
 import useNotification from '../../../hooks/useNotification';
 
 const SectionCard = ({ icon, title, subtitle, children, spacing = 2 }) => (
@@ -100,9 +99,6 @@ const ArticleEditDialog = ({ open, isEdit, article, onClose, onSave }) => {
     pdf_filename: '',
   });
 
-  // 内容类型切换确认对话框
-  const [switchConfirm, setSwitchConfirm] = useState(null); // null | 'pdf' | 'markdown'
-
   // ========== Store 状态 ==========
   const loading = useArticleStore((s) => s.loading);
 
@@ -145,36 +141,11 @@ const ArticleEditDialog = ({ open, isEdit, article, onClose, onSave }) => {
 
   const handleContentTypeChange = (e) => {
     const newType = e.target.value;
-    const oldType = form.content_type;
-
-    // 从 Markdown 切换到 PDF，且存在 Markdown 内容
-    if (newType === 'pdf' && oldType === 'markdown' && form.content) {
-      setSwitchConfirm('pdf');
-      return;
-    }
-    // 从 PDF 切换到 Markdown，且存在 PDF 文件
-    if (newType === 'markdown' && oldType === 'pdf' && form.pdf_filename) {
-      setSwitchConfirm('markdown');
-      return;
-    }
 
     setForm((prev) => ({
       ...prev,
       content_type: newType,
-      content: newType === 'pdf' ? '' : prev.content,
-      pdf_filename: newType === 'markdown' ? '' : prev.pdf_filename,
     }));
-  };
-
-  const confirmContentTypeSwitch = () => {
-    const newType = switchConfirm === 'pdf' ? 'pdf' : 'markdown';
-    setForm((prev) => ({
-      ...prev,
-      content_type: newType,
-      content: newType === 'pdf' ? '' : prev.content,
-      pdf_filename: newType === 'markdown' ? '' : prev.pdf_filename,
-    }));
-    setSwitchConfirm(null);
   };
 
   // ========== 封面上传 ==========
@@ -252,8 +223,7 @@ const ArticleEditDialog = ({ open, isEdit, article, onClose, onSave }) => {
   );
 
   return (
-    <>
-      <Dialog open={open} onClose={onClose} fullWidth maxWidth="md">
+    <Dialog open={open} onClose={onClose} fullWidth maxWidth="md">
         <DialogTitle sx={{ pb: 1.5 }}>
           {isEdit ? '编辑文章' : '新增文章'}
           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
@@ -457,22 +427,7 @@ const ArticleEditDialog = ({ open, isEdit, article, onClose, onSave }) => {
             保存
           </Button>
         </DialogActions>
-      </Dialog>
-
-      {/* 内容类型切换确认 */}
-      <ConfirmDialog
-        open={Boolean(switchConfirm)}
-        title="确认切换内容类型"
-        message={switchConfirm === 'pdf'
-          ? '切换为PDF将清空现有Markdown内容，是否继续？'
-          : '切换为Markdown将移除现有PDF文件，是否继续？'}
-        confirmText="确认切换"
-        severity="warning"
-        onConfirm={confirmContentTypeSwitch}
-        onCancel={() => setSwitchConfirm(null)}
-        onClose={() => setSwitchConfirm(null)}
-      />
-    </>
+    </Dialog>
   );
 };
 
