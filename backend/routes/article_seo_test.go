@@ -3,6 +3,7 @@ package routes
 import (
 	"encoding/json"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 	"unicode/utf8"
@@ -47,7 +48,7 @@ func TestArticleSEO_T1_常规文章渲染完整SEO(t *testing.T) {
 		Content: "# 正文\n这是正文内容。",
 	})
 
-	body, code := renderSEO(t, uintToStr(id), "test.example.com")
+	body, code := renderSEO(t, strconv.FormatUint(uint64(id), 10), "test.example.com")
 	assert.Equal(t, 200, code)
 
 	// 非空基础 SEO 标签
@@ -77,7 +78,7 @@ func TestArticleSEO_T2_JSONLD含keywords和inLanguage(t *testing.T) {
 		Content: "正文内容",
 	})
 
-	body, _ := renderSEO(t, uintToStr(id), "test.example.com")
+	body, _ := renderSEO(t, strconv.FormatUint(uint64(id), 10), "test.example.com")
 
 	// 解析式断言：提取 JSON-LD script 内容并 unmarshal 成 map
 	ld := extractScriptJSON(t, body, "application/ld+json")
@@ -101,8 +102,14 @@ func TestArticleSEO_T2_JSONLD含keywords和inLanguage(t *testing.T) {
 	}
 }
 
-// T5: Summary 为空、Content 非空时，description meta 与 JSON-LD description 均应兜底为正文摘要
+// T5: Summary 为空、Content 非空时，description meta 与 JSON-LD description 均应兜底为正文摘要。
+//
+// 关键：旧断言仅 strings.Index(body, `"description"`) > 0 无法区分"正文兜底"与"空 description"
+// （即使 description 为空字符串，JSON-LD 里也仍会出现 "description":"" 的键名）。
+// 改为解析式断言：用 extractScriptJSON 取出 JSON-LD map，断言 description 值经 TrimSpace 非空，
+// 且包含 seed 文章 Content 中的特征文本子串；同时用 extractMetaContent 断言 meta description 非空。
 func TestArticleSEO_T5_Summary为空时正文兜底(t *testing.T) {
+	const contentFeature = "正文内容" // seed Content 中的稳定特征子串（stripMarkdown 不会破坏）
 	id := seedArticle(t, models.Article{
 		Title:   "无摘要文章",
 		Summary: "",
@@ -110,15 +117,21 @@ func TestArticleSEO_T5_Summary为空时正文兜底(t *testing.T) {
 		Content: "这是一段没有 summary 但有正文内容的文章，应当用正文生成描述。",
 	})
 
-	body, _ := renderSEO(t, uintToStr(id), "test.example.com")
+	body, _ := renderSEO(t, strconv.FormatUint(uint64(id), 10), "test.example.com")
 
 	// <meta name="description"> 的 content 应非空且含正文兜底内容
-	assert.Contains(t, body, `name="description"`)
-	assert.Contains(t, body, "正文内容")
+	metaDesc := extractMetaContent(t, body, `name="description"`)
+	assert.NotEmpty(t, metaDesc, "meta description 不应为空")
+	assert.Contains(t, metaDesc, contentFeature, "meta description 应含正文特征文本")
 
-	// JSON-LD description 也应为正文兜底，非空
-	idx := strings.Index(body, `"description"`)
-	assert.Greater(t, idx, 0, "JSON-LD 应含 description 字段")
+	// JSON-LD description 应为正文兜底：解析 JSON-LD map，断言 description 值非空且含特征子串
+	ld := extractScriptJSON(t, body, "application/ld+json")
+	desc, ok := ld["description"]
+	assert.True(t, ok, "JSON-LD 应含 description 字段")
+	descStr, ok := desc.(string)
+	assert.True(t, ok, "JSON-LD description 应为 JSON 字符串类型")
+	assert.NotEmpty(t, strings.TrimSpace(descStr), "JSON-LD description 经 TrimSpace 后不应为空")
+	assert.Contains(t, descStr, contentFeature, "JSON-LD description 应含正文特征文本")
 }
 
 // T6: Summary 为空 + 长中文正文时，description 长度应 <= 160（rune），
@@ -133,7 +146,7 @@ func TestArticleSEO_T6_长中文正文按rune截断(t *testing.T) {
 		Content: longContent,
 	})
 
-	body, _ := renderSEO(t, uintToStr(id), "test.example.com")
+	body, _ := renderSEO(t, strconv.FormatUint(uint64(id), 10), "test.example.com")
 
 	desc := extractMetaContent(t, body, `name="description"`)
 	assert.NotEmpty(t, desc, "description 不应为空")
@@ -155,7 +168,7 @@ func TestArticleSEO_T7_canonical动态化按Host(t *testing.T) {
 		Content: "正文",
 	})
 
-	body, _ := renderSEO(t, uintToStr(id), "test.example.com")
+	body, _ := renderSEO(t, strconv.FormatUint(uint64(id), 10), "test.example.com")
 
 	assert.Contains(t, body, "test.example.com")
 	assert.NotContains(t, body, "handywote.top", "不应残留硬编码的 handywote.top 域名")
@@ -216,19 +229,4 @@ func extractScriptJSON(t *testing.T, htmlBody, scriptType string) map[string]int
 		t.Fatalf("解析 <script type=%q> 内容为 JSON 失败: %v\n原始内容: %s", scriptType, err, raw)
 	}
 	return m
-}
-
-// uintToStr 将 uint 转为字符串（避免引入 strconv 仅为此用途，保持测试文件简洁）。
-func uintToStr(n uint) string {
-	if n == 0 {
-		return "0"
-	}
-	var buf [20]byte
-	i := len(buf)
-	for n > 0 {
-		i--
-		buf[i] = byte('0') + byte(n%10)
-		n /= 10
-	}
-	return string(buf[i:])
 }

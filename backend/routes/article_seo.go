@@ -200,12 +200,12 @@ func ArticleSEO(c *gin.Context) {
 // 以下正则与前端 useArticleSeo.js 的 stripMarkdown 保持一致，确保前后端摘要逻辑等价。
 // 注意 Go 正则使用 RE2 语法：(?s) 让 . 匹配换行，[\s\S] 同样可用。
 var (
-	reCodeBlock   = regexp.MustCompile("(?s)```.*?```") // 围栏代码块
-	reInlineCode  = regexp.MustCompile("`[^`]*`")       // 行内代码
-	reImage       = regexp.MustCompile(`!\[[^\]]*]\([^)]*\)`) // 图片 ![alt](url)
-	reLink        = regexp.MustCompile(`\[[^\]]*]\([^)]*\)`)  // 链接 [text](url)
-	reMdSymbols   = regexp.MustCompile("[#>*_~-]")      // 标题/强调/引用/删除线符号
-	reWhitespace  = regexp.MustCompile(`\s+`)           // 合并多余空白
+	reCodeBlock  = regexp.MustCompile("(?s)```.*?```")       // 围栏代码块
+	reInlineCode = regexp.MustCompile("`[^`]*`")             // 行内代码
+	reImage      = regexp.MustCompile(`!\[[^\]]*]\([^)]*\)`) // 图片 ![alt](url)
+	reLink       = regexp.MustCompile(`\[[^\]]*]\([^)]*\)`)  // 链接 [text](url)
+	reMdSymbols  = regexp.MustCompile("[#>*_~-]")            // 标题/强调/引用/删除线符号
+	reWhitespace = regexp.MustCompile(`\s+`)                 // 合并多余空白
 )
 
 // stripMarkdown 移除 Markdown 语法标记，返回纯文本。
