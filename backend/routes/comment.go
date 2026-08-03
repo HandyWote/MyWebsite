@@ -2,7 +2,6 @@ package routes
 
 import (
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
@@ -15,9 +14,8 @@ import (
 
 // GetComments 获取文章评论
 func GetComments(c *gin.Context) {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
-	if err != nil {
-		utils.ErrorBadRequest(c, "Invalid article ID")
+	id, valid := ParseUintParam(c, "id")
+	if !valid {
 		return
 	}
 
@@ -36,9 +34,8 @@ func GetComments(c *gin.Context) {
 
 // CreateComment 创建评论
 func CreateComment(c *gin.Context) {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
-	if err != nil {
-		utils.ErrorBadRequest(c, "Invalid article ID")
+	id, valid := ParseUintParam(c, "id")
+	if !valid {
 		return
 	}
 
@@ -83,7 +80,7 @@ func CreateComment(c *gin.Context) {
 	}
 
 	comment := models.Comment{
-		ArticleID: uint(id),
+		ArticleID: id,
 		Author:    input.Author,
 		Email:     input.Email,
 		Content:   input.Content,

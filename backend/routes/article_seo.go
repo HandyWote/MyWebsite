@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"os"
 	"regexp"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -143,10 +142,8 @@ type SEOData struct {
 
 // ArticleSEO 处理 GET /articles/:id，返回带完整 SEO 标签的 HTML
 func ArticleSEO(c *gin.Context) {
-	idStr := c.Param("id")
-	id, err := strconv.ParseUint(idStr, 10, 64)
-	if err != nil {
-		c.String(http.StatusBadRequest, "Invalid article ID")
+	id, valid := ParseUintParam(c, "id")
+	if !valid {
 		return
 	}
 

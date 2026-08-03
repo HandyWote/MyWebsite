@@ -94,7 +94,10 @@ func GetCurrentAvatar(c *gin.Context) {
 func SetCurrentAvatar(c *gin.Context) {
 	var avatarID uint
 
-	// 优先从路径参数获取 avatar_id
+	// 优先从路径参数获取 avatar_id。
+	// 注意：这里刻意不改用 ParseUintParam —— 该辅助函数解析失败时会直接写出 400 响应，
+	// 而本接口的路径参数与 JSON body 是双来源回退关系（路径参数缺失/非法时需静默
+	// 回退到 body 中的 avatar_id），因此保留内联解析。
 	if idStr := c.Param("id"); idStr != "" {
 		if parsed, err := strconv.ParseUint(idStr, 10, 32); err == nil {
 			avatarID = uint(parsed)

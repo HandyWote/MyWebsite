@@ -1,8 +1,6 @@
 package routes
 
 import (
-	"strconv"
-
 	"github.com/gin-gonic/gin"
 	"github.com/handywote/website/database"
 	"github.com/handywote/website/models"
@@ -12,17 +10,7 @@ import (
 // GetArticles 获取文章列表
 func GetArticles(c *gin.Context) {
 	var articles []models.Article
-	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	// 兼容 per_page 和 page_size 参数
-	pageSize, _ := strconv.Atoi(c.DefaultQuery("per_page", c.DefaultQuery("page_size", "10")))
-
-	// 防止除零错误，确保 pageSize 最小为 1
-	if pageSize < 1 {
-		pageSize = 10
-	}
-	if page < 1 {
-		page = 1
-	}
+	page, pageSize := ParsePaginationParams(c)
 
 	query := database.GetDB().Where("deleted_at IS NULL")
 
@@ -67,9 +55,8 @@ func GetArticles(c *gin.Context) {
 
 // GetArticle 获取单个文章
 func GetArticle(c *gin.Context) {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
-	if err != nil {
-		utils.ErrorBadRequest(c, "Invalid article ID")
+	id, valid := ParseUintParam(c, "id")
+	if !valid {
 		return
 	}
 
