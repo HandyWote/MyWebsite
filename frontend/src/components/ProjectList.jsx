@@ -6,47 +6,9 @@ import PixelCard from './pixel/ui/PixelCard';
 import PixelChip from './pixel/ui/PixelChip';
 import { api, API_ENDPOINTS } from '../config/api';
 import { getBlockContent, SITE_BLOCK_DEFAULTS } from '../config/siteBlocks';
+import { fetchGithubRepos, buildGithubCacheKey, readGithubCache } from '../utils/github';
 
 const MotionDiv = motion.div;
-const GITHUB_CACHE_TTL_MS = 3 * 60 * 60 * 1000;
-
-const buildGithubCacheKey = (username, sort, perPage) =>
-  `github_repos:${username}:${sort}:${perPage}`;
-
-const getBrowserStorage = () => {
-  if (typeof window === 'undefined' || !window.localStorage) {
-    return null;
-  }
-  return window.localStorage;
-};
-
-const readGithubCache = (cacheKey) => {
-  try {
-    const storage = getBrowserStorage();
-    if (!storage) return null;
-    const raw = storage.getItem(cacheKey);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (!parsed || !Array.isArray(parsed.data) || typeof parsed.timestamp !== 'number') {
-      return null;
-    }
-    return parsed;
-  } catch {
-    return null;
-  }
-};
-
-const writeGithubCache = (cacheKey, data) => {
-  const storage = getBrowserStorage();
-  if (!storage) return;
-  storage.setItem(
-    cacheKey,
-    JSON.stringify({
-      timestamp: Date.now(),
-      data,
-    }),
-  );
-};
 
 const formatRelativeTime = (dateString) => {
   const date = new Date(dateString);
@@ -76,44 +38,8 @@ function ProjectList() {
       const perPage = Number(activeConfig.per_page) || SITE_BLOCK_DEFAULTS.projects_page.per_page;
       const sort = activeConfig.sort || SITE_BLOCK_DEFAULTS.projects_page.sort;
       const username = activeConfig.github_username || SITE_BLOCK_DEFAULTS.projects_page.github_username;
-      const cacheKey = buildGithubCacheKey(username, sort, perPage);
-      const cached = readGithubCache(cacheKey);
-      const now = Date.now();
 
-      if (cached && now - cached.timestamp < GITHUB_CACHE_TTL_MS) {
-        setProjects(cached.data);
-        setError(null);
-        return;
-      }
-
-      let page = 1;
-      let allRepos = [];
-
-      // GitHub REST API 单页最多 100 条，这里循环拉取直到最后一页
-      while (true) {
-        const response = await fetch(
-          `https://api.github.com/users/${username}/repos?sort=${sort}&per_page=${perPage}&page=${page}`,
-          {
-            headers: {
-              'Accept': 'application/vnd.github.v3+json',
-              'User-Agent': 'HandyWote-Portfolio'
-            }
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error(`GitHub API error: ${response.status}`);
-        }
-
-        const pageRepos = await response.json();
-        allRepos = allRepos.concat(pageRepos);
-
-        if (pageRepos.length < perPage) {
-          break;
-        }
-
-        page += 1;
-      }
+      const allRepos = await fetchGithubRepos(username, { sort, perPage });
       const mappedProjects = allRepos
         .map(repo => ({
           id: repo.id,
@@ -128,7 +54,6 @@ function ProjectList() {
         .sort((a, b) => b.stars - a.stars);
 
       setProjects(mappedProjects);
-      writeGithubCache(cacheKey, mappedProjects);
       setError(null);
     } catch (err) {
       console.error('Failed to fetch projects:', err);
