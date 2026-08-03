@@ -77,7 +77,7 @@ describe('ArticleDetail', () => {
     render(<ArticleDetail />);
 
     expect(await screen.findByText('测试文章标题')).toBeInTheDocument();
-    expect(globalThis.fetch).toHaveBeenCalledWith(expect.stringContaining('/api/articles/42'));
+    expect(globalThis.fetch).toHaveBeenCalledWith(expect.stringContaining('/api/articles/42'), expect.anything());
   });
 
   it('支持后端 code/data 包装格式的文章详情响应', async () => {

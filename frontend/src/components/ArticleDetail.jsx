@@ -13,7 +13,7 @@ import {
   CalendarToday as CalendarIcon,
 } from '@mui/icons-material';
 import 'katex/dist/katex.min.css';
-import { getApiUrl, unwrapApiPayload } from '../config/api';
+import { api, getApiUrl } from '../config/api';
 import { PixelCard, PixelButton, PixelChip, PixelTypography, TerminalLine } from './pixel';
 import PdfViewerOnCanvas from './PdfViewerOnCanvas';
 import ArticleMarkdownContent from './articles/ArticleMarkdownContent';
@@ -48,20 +48,13 @@ const ArticleDetail = () => {
   const fetchArticle = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await fetch(getApiUrl.articleDetail(id));
-
-      if (response.ok) {
-        const data = await response.json();
-        const rawArticle = unwrapApiPayload(data);
-        const processedArticle = rawArticle ? {
-          ...rawArticle,
-          tags: normalizeTags(rawArticle.tags),
-        } : null;
-        setArticle(processedArticle);
-        setDemoMode(false);
-      } else {
-        throw new Error('API 请求失败');
-      }
+      const rawArticle = await api.get(getApiUrl.articleDetail(id));
+      const processedArticle = rawArticle ? {
+        ...rawArticle,
+        tags: normalizeTags(rawArticle.tags),
+      } : null;
+      setArticle(processedArticle);
+      setDemoMode(false);
     } catch {
       console.error('获取文章失败');
       setError('文章不存在或已被删除');

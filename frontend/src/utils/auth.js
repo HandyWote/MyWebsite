@@ -5,5 +5,5 @@
  * admin/utils/auth.js 都从这里引用，避免双实现漂移。
  */
 export const clearAuth = () => {
-  localStorage.removeItem('token');
+	localStorage.removeItem("token");
 };

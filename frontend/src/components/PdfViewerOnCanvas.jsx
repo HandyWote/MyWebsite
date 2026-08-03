@@ -65,6 +65,11 @@ const PdfViewerOnCanvas = ({ filename, url }) => {
         }
         setSourceUrl(finalUrl);
 
+        // 注意：这里保留原生 fetch 而不是 apiClient/api.download：
+        // 1) 需要 AbortSignal 支持组件卸载时取消请求；
+        // 2) 返回 Blob 而非 JSON，且需区分 404 与通用错误；
+        // 3) apiClient 的 JSON 解包管道不适用二进制下载。
+        // 该请求不依赖后端统一响应结构，不受响应格式变更影响。
         const response = await fetch(finalUrl, {
           method: 'GET',
           signal: controller.signal,

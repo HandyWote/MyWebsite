@@ -19,8 +19,8 @@
  * - 生产环境: VITE_API_BASE_URL=https://webbackend.handywote.site/
  */
 
-import { getBlockContent, SITE_BLOCK_DEFAULTS } from './siteBlocks';
-import { clearAuth } from '../utils/auth';
+import { getBlockContent, SITE_BLOCK_DEFAULTS } from "./siteBlocks";
+import { clearAuth } from "../utils/auth";
 
 // ==================== URL 基础设施 ====================
 
@@ -29,27 +29,27 @@ import { clearAuth } from '../utils/auth';
  * @returns {string} API基础URL
  */
 const getApiBaseUrl = () => {
-  if (import.meta.env.VITE_API_BASE_URL) {
-    return import.meta.env.VITE_API_BASE_URL;
-  }
+	if (import.meta.env.VITE_API_BASE_URL) {
+		return import.meta.env.VITE_API_BASE_URL;
+	}
 
-  if (import.meta.env.DEV) {
-    return '';
-  }
+	if (import.meta.env.DEV) {
+		return "";
+	}
 
-  if (import.meta.env.PROD) {
-    return '';
-  }
+	if (import.meta.env.PROD) {
+		return "";
+	}
 
-  return window.location.origin;
+	return window.location.origin;
 };
 
 /**
  * API基础配置
  */
 export const API_CONFIG = {
-  BASE_URL: getApiBaseUrl(),
-  TIMEOUT: 10000,
+	BASE_URL: getApiBaseUrl(),
+	TIMEOUT: 10000,
 };
 
 /**
@@ -59,10 +59,10 @@ export const API_CONFIG = {
  * @returns {string} 完整的API URL
  */
 export const buildApiUrl = (endpoint) => {
-  const baseUrl = API_CONFIG.BASE_URL.endsWith('/')
-    ? API_CONFIG.BASE_URL.slice(0, -1)
-    : API_CONFIG.BASE_URL;
-  return `${baseUrl}${endpoint}`;
+	const baseUrl = API_CONFIG.BASE_URL.endsWith("/")
+		? API_CONFIG.BASE_URL.slice(0, -1)
+		: API_CONFIG.BASE_URL;
+	return `${baseUrl}${endpoint}`;
 };
 
 // ==================== 端点注册表 ====================
@@ -75,48 +75,48 @@ export const buildApiUrl = (endpoint) => {
  * 2. ADMIN: 管理后台API，需要JWT认证
  */
 export const API_ENDPOINTS = {
-  // 公共API - 无需认证，所有用户可访问
-  PUBLIC: {
-    SITE_BLOCKS: '/api/site-blocks',
-    AVATARS: '/api/avatars',
-    ARTICLES: '/api/articles',
-    ARTICLE_DETAIL: (id) => `/api/articles/${id}`,
-    ARTICLE_COMMENTS: (id) => `/api/articles/${id}/comments`,
-    CREATE_COMMENT: (id) => `/api/articles/${id}/comments`,
-    CATEGORIES: '/api/categories',
-    TAGS: '/api/tags',
-    AVATAR_FILE: (filename) => `/api/avatars/file/${filename}`,
-    ARTICLE_PDF: (filename) => `/api/articles/pdf/${filename}`,
-  },
+	// 公共API - 无需认证，所有用户可访问
+	PUBLIC: {
+		SITE_BLOCKS: "/api/site-blocks",
+		AVATARS: "/api/avatars",
+		ARTICLES: "/api/articles",
+		ARTICLE_DETAIL: (id) => `/api/articles/${id}`,
+		ARTICLE_COMMENTS: (id) => `/api/articles/${id}/comments`,
+		CREATE_COMMENT: (id) => `/api/articles/${id}/comments`,
+		CATEGORIES: "/api/categories",
+		TAGS: "/api/tags",
+		AVATAR_FILE: (filename) => `/api/avatars/file/${filename}`,
+		ARTICLE_PDF: (filename) => `/api/articles/pdf/${filename}`,
+	},
 
-  // 管理后台API - 需要JWT认证
-  ADMIN: {
-    LOGIN: '/api/admin/login',
-    LOGOUT: '/api/admin/logout',
-    VERIFY: () => '/api/admin/verify',
-    SITE_BLOCKS: '/api/admin/site-blocks',
-    AVATARS: '/api/admin/avatars',
-    AVATAR_FILE: (filename) => `/api/admin/avatars/file/${filename}`,
-    AVATAR_SET_CURRENT: (id) => `/api/admin/avatars/${id}/set_current`,
-    AVATAR_DELETE: (id) => `/api/admin/avatars/${id}`,
-    ARTICLES: '/api/admin/articles',
-    ARTICLE_DETAIL: (id) => `/api/admin/articles/${id}`,
-    ARTICLE_COVER: '/api/admin/articles/cover',
-    ARTICLE_PDF_UPLOAD: '/api/admin/articles/pdf/upload',
-    ARTICLE_PDF_DELETE: '/api/admin/articles/pdf/delete',
-    ARTICLE_AI_ANALYZE: '/api/admin/articles/ai-analyze',
-    ARTICLE_BATCH_DELETE: '/api/admin/articles/batch-delete',
-    ARTICLE_IMPORT_MD: '/api/admin/articles/import-md',
-    AI_SETTINGS: '/api/admin/ai-settings',
-    AI_SETTINGS_TEST: '/api/admin/ai-settings/test',
-    ADMIN_COMMENTS: '/api/admin/comments',
-    DELETE_COMMENT: (id) => `/api/admin/comments/${id}`,
-    COMMENT_STATUS: (id) => `/api/admin/comments/${id}/status`,
-    COMMENT_EXPORT: () => '/api/admin/comments/export',
-    COMMENT_LIMITS: '/api/admin/comments/limits',
-    EXPORT: '/api/admin/export',
-    IMPORT: '/api/admin/import',
-  },
+	// 管理后台API - 需要JWT认证
+	ADMIN: {
+		LOGIN: "/api/admin/login",
+		LOGOUT: "/api/admin/logout",
+		VERIFY: () => "/api/admin/verify",
+		SITE_BLOCKS: "/api/admin/site-blocks",
+		AVATARS: "/api/admin/avatars",
+		AVATAR_FILE: (filename) => `/api/admin/avatars/file/${filename}`,
+		AVATAR_SET_CURRENT: (id) => `/api/admin/avatars/${id}/set_current`,
+		AVATAR_DELETE: (id) => `/api/admin/avatars/${id}`,
+		ARTICLES: "/api/admin/articles",
+		ARTICLE_DETAIL: (id) => `/api/admin/articles/${id}`,
+		ARTICLE_COVER: "/api/admin/articles/cover",
+		ARTICLE_PDF_UPLOAD: "/api/admin/articles/pdf/upload",
+		ARTICLE_PDF_DELETE: "/api/admin/articles/pdf/delete",
+		ARTICLE_AI_ANALYZE: "/api/admin/articles/ai-analyze",
+		ARTICLE_BATCH_DELETE: "/api/admin/articles/batch-delete",
+		ARTICLE_IMPORT_MD: "/api/admin/articles/import-md",
+		AI_SETTINGS: "/api/admin/ai-settings",
+		AI_SETTINGS_TEST: "/api/admin/ai-settings/test",
+		ADMIN_COMMENTS: "/api/admin/comments",
+		DELETE_COMMENT: (id) => `/api/admin/comments/${id}`,
+		COMMENT_STATUS: (id) => `/api/admin/comments/${id}/status`,
+		COMMENT_EXPORT: () => "/api/admin/comments/export",
+		COMMENT_LIMITS: "/api/admin/comments/limits",
+		EXPORT: "/api/admin/export",
+		IMPORT: "/api/admin/import",
+	},
 };
 
 // ==================== 便捷 URL 方法 ====================
@@ -125,47 +125,59 @@ export const API_ENDPOINTS = {
  * 获取完整API URL的便捷方法集合
  */
 export const getApiUrl = {
-  // ========== 公共API ==========
-  siteBlocks: () => buildApiUrl(API_ENDPOINTS.PUBLIC.SITE_BLOCKS),
-  avatars: () => buildApiUrl(API_ENDPOINTS.PUBLIC.AVATARS),
-  articles: () => buildApiUrl(API_ENDPOINTS.PUBLIC.ARTICLES),
-  articleDetail: (id) => buildApiUrl(API_ENDPOINTS.PUBLIC.ARTICLE_DETAIL(id)),
-  articleComments: (id) => buildApiUrl(API_ENDPOINTS.PUBLIC.ARTICLE_COMMENTS(id)),
-  createComment: (id) => buildApiUrl(API_ENDPOINTS.PUBLIC.CREATE_COMMENT(id)),
-  categories: () => buildApiUrl(API_ENDPOINTS.PUBLIC.CATEGORIES),
-  tags: () => buildApiUrl(API_ENDPOINTS.PUBLIC.TAGS),
-  avatarFile: (filename) => buildApiUrl(API_ENDPOINTS.PUBLIC.AVATAR_FILE(filename)),
-  articlePdf: (filename) => buildApiUrl(API_ENDPOINTS.PUBLIC.ARTICLE_PDF(filename)),
+	// ========== 公共API ==========
+	siteBlocks: () => buildApiUrl(API_ENDPOINTS.PUBLIC.SITE_BLOCKS),
+	avatars: () => buildApiUrl(API_ENDPOINTS.PUBLIC.AVATARS),
+	articles: () => buildApiUrl(API_ENDPOINTS.PUBLIC.ARTICLES),
+	articleDetail: (id) => buildApiUrl(API_ENDPOINTS.PUBLIC.ARTICLE_DETAIL(id)),
+	articleComments: (id) =>
+		buildApiUrl(API_ENDPOINTS.PUBLIC.ARTICLE_COMMENTS(id)),
+	createComment: (id) => buildApiUrl(API_ENDPOINTS.PUBLIC.CREATE_COMMENT(id)),
+	categories: () => buildApiUrl(API_ENDPOINTS.PUBLIC.CATEGORIES),
+	tags: () => buildApiUrl(API_ENDPOINTS.PUBLIC.TAGS),
+	avatarFile: (filename) =>
+		buildApiUrl(API_ENDPOINTS.PUBLIC.AVATAR_FILE(filename)),
+	articlePdf: (filename) =>
+		buildApiUrl(API_ENDPOINTS.PUBLIC.ARTICLE_PDF(filename)),
 
-  // ========== 管理后台API ==========
-  adminLogin: () => buildApiUrl(API_ENDPOINTS.ADMIN.LOGIN),
-  adminLogout: () => buildApiUrl(API_ENDPOINTS.ADMIN.LOGOUT),
-  adminVerify: () => buildApiUrl(API_ENDPOINTS.ADMIN.VERIFY()),
-  adminSiteBlocks: () => buildApiUrl(API_ENDPOINTS.ADMIN.SITE_BLOCKS),
-  adminAvatars: () => buildApiUrl(API_ENDPOINTS.ADMIN.AVATARS),
-  adminAvatarFile: (filename) => buildApiUrl(API_ENDPOINTS.ADMIN.AVATAR_FILE(filename)),
-  adminAvatarSetCurrent: (id) => buildApiUrl(API_ENDPOINTS.ADMIN.AVATAR_SET_CURRENT(id)),
-  adminAvatarDelete: (id) => buildApiUrl(API_ENDPOINTS.ADMIN.AVATAR_DELETE(id)),
-  adminArticles: () => buildApiUrl(API_ENDPOINTS.ADMIN.ARTICLES),
-  adminArticleDetail: (id) => buildApiUrl(API_ENDPOINTS.ADMIN.ARTICLE_DETAIL(id)),
-  adminArticleCover: () => buildApiUrl(API_ENDPOINTS.ADMIN.ARTICLE_COVER),
-  adminArticlePdfUpload: () => buildApiUrl(API_ENDPOINTS.ADMIN.ARTICLE_PDF_UPLOAD),
-  adminArticlePdfDelete: () => buildApiUrl(API_ENDPOINTS.ADMIN.ARTICLE_PDF_DELETE),
-  adminArticleAiAnalyze: () => buildApiUrl(API_ENDPOINTS.ADMIN.ARTICLE_AI_ANALYZE),
-  adminArticleBatchDelete: () => buildApiUrl(API_ENDPOINTS.ADMIN.ARTICLE_BATCH_DELETE),
-  adminArticleImportMd: () => buildApiUrl(API_ENDPOINTS.ADMIN.ARTICLE_IMPORT_MD),
-  adminAiSettings: () => buildApiUrl(API_ENDPOINTS.ADMIN.AI_SETTINGS),
-  adminAiSettingsTest: () => buildApiUrl(API_ENDPOINTS.ADMIN.AI_SETTINGS_TEST),
-  adminComments: () => buildApiUrl(API_ENDPOINTS.ADMIN.ADMIN_COMMENTS),
-  deleteComment: (id) => buildApiUrl(API_ENDPOINTS.ADMIN.DELETE_COMMENT(id)),
-  adminCommentStatus: (id) => buildApiUrl(API_ENDPOINTS.ADMIN.COMMENT_STATUS(id)),
-  adminCommentExport: () => buildApiUrl(API_ENDPOINTS.ADMIN.COMMENT_EXPORT()),
-  adminCommentLimits: () => buildApiUrl(API_ENDPOINTS.ADMIN.COMMENT_LIMITS),
-  adminExport: () => buildApiUrl(API_ENDPOINTS.ADMIN.EXPORT),
-  adminImport: () => buildApiUrl(API_ENDPOINTS.ADMIN.IMPORT),
+	// ========== 管理后台API ==========
+	adminLogin: () => buildApiUrl(API_ENDPOINTS.ADMIN.LOGIN),
+	adminLogout: () => buildApiUrl(API_ENDPOINTS.ADMIN.LOGOUT),
+	adminVerify: () => buildApiUrl(API_ENDPOINTS.ADMIN.VERIFY()),
+	adminSiteBlocks: () => buildApiUrl(API_ENDPOINTS.ADMIN.SITE_BLOCKS),
+	adminAvatars: () => buildApiUrl(API_ENDPOINTS.ADMIN.AVATARS),
+	adminAvatarFile: (filename) =>
+		buildApiUrl(API_ENDPOINTS.ADMIN.AVATAR_FILE(filename)),
+	adminAvatarSetCurrent: (id) =>
+		buildApiUrl(API_ENDPOINTS.ADMIN.AVATAR_SET_CURRENT(id)),
+	adminAvatarDelete: (id) => buildApiUrl(API_ENDPOINTS.ADMIN.AVATAR_DELETE(id)),
+	adminArticles: () => buildApiUrl(API_ENDPOINTS.ADMIN.ARTICLES),
+	adminArticleDetail: (id) =>
+		buildApiUrl(API_ENDPOINTS.ADMIN.ARTICLE_DETAIL(id)),
+	adminArticleCover: () => buildApiUrl(API_ENDPOINTS.ADMIN.ARTICLE_COVER),
+	adminArticlePdfUpload: () =>
+		buildApiUrl(API_ENDPOINTS.ADMIN.ARTICLE_PDF_UPLOAD),
+	adminArticlePdfDelete: () =>
+		buildApiUrl(API_ENDPOINTS.ADMIN.ARTICLE_PDF_DELETE),
+	adminArticleAiAnalyze: () =>
+		buildApiUrl(API_ENDPOINTS.ADMIN.ARTICLE_AI_ANALYZE),
+	adminArticleBatchDelete: () =>
+		buildApiUrl(API_ENDPOINTS.ADMIN.ARTICLE_BATCH_DELETE),
+	adminArticleImportMd: () =>
+		buildApiUrl(API_ENDPOINTS.ADMIN.ARTICLE_IMPORT_MD),
+	adminAiSettings: () => buildApiUrl(API_ENDPOINTS.ADMIN.AI_SETTINGS),
+	adminAiSettingsTest: () => buildApiUrl(API_ENDPOINTS.ADMIN.AI_SETTINGS_TEST),
+	adminComments: () => buildApiUrl(API_ENDPOINTS.ADMIN.ADMIN_COMMENTS),
+	deleteComment: (id) => buildApiUrl(API_ENDPOINTS.ADMIN.DELETE_COMMENT(id)),
+	adminCommentStatus: (id) =>
+		buildApiUrl(API_ENDPOINTS.ADMIN.COMMENT_STATUS(id)),
+	adminCommentExport: () => buildApiUrl(API_ENDPOINTS.ADMIN.COMMENT_EXPORT()),
+	adminCommentLimits: () => buildApiUrl(API_ENDPOINTS.ADMIN.COMMENT_LIMITS),
+	adminExport: () => buildApiUrl(API_ENDPOINTS.ADMIN.EXPORT),
+	adminImport: () => buildApiUrl(API_ENDPOINTS.ADMIN.IMPORT),
 
-  // 基础地址（用于拼接上传文件等静态资源路径）
-  baseUrl: () => API_CONFIG.BASE_URL,
+	// 基础地址（用于拼接上传文件等静态资源路径）
+	baseUrl: () => API_CONFIG.BASE_URL,
 };
 
 // ==================== 响应工具函数 ====================
@@ -176,23 +188,23 @@ export const getApiUrl = {
  * - 兼容：非包装结构直接返回原始对象
  */
 export const unwrapApiPayload = (response) => {
-  if (!response || typeof response !== 'object' || Array.isArray(response)) {
-    return response;
-  }
-  if (Object.prototype.hasOwnProperty.call(response, 'data')) {
-    return response.data;
-  }
-  return response;
+	if (!response || typeof response !== "object" || Array.isArray(response)) {
+		return response;
+	}
+	if (Object.prototype.hasOwnProperty.call(response, "data")) {
+		return response.data;
+	}
+	return response;
 };
 
 /**
  * 读取错误消息，兼容 msg / message 字段
  */
-export const getApiMessage = (response, fallback = '') => {
-  if (!response || typeof response !== 'object') {
-    return fallback;
-  }
-  return response.msg || response.message || fallback;
+export const getApiMessage = (response, fallback = "") => {
+	if (!response || typeof response !== "object") {
+		return fallback;
+	}
+	return response.msg || response.message || fallback;
 };
 
 // ==================== 统一 API 请求客户端 ====================
@@ -201,11 +213,11 @@ export const getApiMessage = (response, fallback = '') => {
  * 自定义错误类
  */
 export class ApiError extends Error {
-  constructor(status, message) {
-    super(message);
-    this.status = status;
-    this.name = 'ApiError';
-  }
+	constructor(status, message) {
+		super(message);
+		this.status = status;
+		this.name = "ApiError";
+	}
 }
 
 /**
@@ -220,94 +232,112 @@ export class ApiError extends Error {
  * - 通过 { noAuth: true } 可跳过 token 注入（用于 login/verify 等预认证场景）
  */
 export async function apiClient(endpoint, options = {}) {
-  const { noAuth = false, ...fetchOptions } = options;
+	const { noAuth = false, ...fetchOptions } = options;
 
-  const config = {
-    ...fetchOptions,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(!noAuth && (() => {
-        const token = localStorage.getItem('token');
-        return token ? { Authorization: `Bearer ${token}` } : {};
-      })()),
-      ...fetchOptions.headers,
-    },
-  };
+	const config = {
+		...fetchOptions,
+		headers: {
+			"Content-Type": "application/json",
+			...(!noAuth &&
+				(() => {
+					const token = localStorage.getItem("token");
+					return token ? { Authorization: `Bearer ${token}` } : {};
+				})()),
+			...fetchOptions.headers,
+		},
+	};
 
-  // 处理 body（支持对象自动序列化）
-  if (config.body && typeof config.body === 'object' && !(config.body instanceof FormData)) {
-    config.body = JSON.stringify(config.body);
-  }
+	// 处理 body（支持对象自动序列化）
+	if (
+		config.body &&
+		typeof config.body === "object" &&
+		!(config.body instanceof FormData)
+	) {
+		config.body = JSON.stringify(config.body);
+	}
 
-  const response = await fetch(buildApiUrl(endpoint), config);
-  const payload = await response.json().catch(() => ({ message: response.statusText }));
+	const response = await fetch(buildApiUrl(endpoint), config);
+	const payload = await response
+		.json()
+		.catch(() => ({ message: response.statusText }));
 
-  // 401: 清除认证并重定向
-  if (response.status === 401) {
-    clearAuth();
-    window.location.href = '/admin/login';
-  }
+	// 401: 清除认证并重定向
+	if (response.status === 401) {
+		clearAuth();
+		window.location.href = "/admin/login";
+	}
 
-  if (!response.ok) {
-    throw new ApiError(response.status, payload.msg || payload.message || payload.msg || 'Request failed');
-  }
+	if (!response.ok) {
+		throw new ApiError(
+			response.status,
+			payload.msg || payload.message || payload.msg || "Request failed",
+		);
+	}
 
-  // 业务错误码检查
-  if (
-    payload &&
-    typeof payload === 'object' &&
-    Object.prototype.hasOwnProperty.call(payload, 'code') &&
-    payload.code !== 0
-  ) {
-    throw new ApiError(response.status || 400, payload.msg || payload.message || 'Request failed');
-  }
+	// 业务错误码检查
+	if (
+		payload &&
+		typeof payload === "object" &&
+		Object.prototype.hasOwnProperty.call(payload, "code") &&
+		payload.code !== 0
+	) {
+		throw new ApiError(
+			response.status || 400,
+			payload.msg || payload.message || "Request failed",
+		);
+	}
 
-  // 自动解包 data.data
-  if (
-    payload &&
-    typeof payload === 'object' &&
-    Object.prototype.hasOwnProperty.call(payload, 'data')
-  ) {
-    return payload.data;
-  }
+	// 自动解包 data.data
+	if (
+		payload &&
+		typeof payload === "object" &&
+		Object.prototype.hasOwnProperty.call(payload, "data")
+	) {
+		return payload.data;
+	}
 
-  return payload;
+	return payload;
 }
 
 /**
  * 上传文件（FormData）
  */
-export async function uploadFile(endpoint, file, fieldName = 'file') {
-  const token = localStorage.getItem('token');
+export async function uploadFile(endpoint, file, fieldName = "file") {
+	const token = localStorage.getItem("token");
 
-  const formData = new FormData();
-  formData.append(fieldName, file);
+	const formData = new FormData();
+	formData.append(fieldName, file);
 
-  const config = {
-    method: 'POST',
-    headers: {
-      ...(token && { Authorization: `Bearer ${token}` }),
-    },
-    body: formData,
-  };
+	const config = {
+		method: "POST",
+		headers: {
+			...(token && { Authorization: `Bearer ${token}` }),
+		},
+		body: formData,
+	};
 
-  const response = await fetch(buildApiUrl(endpoint), config);
-  const payload = await response.json().catch(() => ({ message: response.statusText }));
+	const response = await fetch(buildApiUrl(endpoint), config);
+	const payload = await response
+		.json()
+		.catch(() => ({ message: response.statusText }));
 
-  if (!response.ok) {
-    throw new ApiError(response.status, payload.message || payload.msg || 'Upload failed');
-  }
+	if (!response.ok) {
+		throw new ApiError(
+			response.status,
+			payload.message || payload.msg || "Upload failed",
+		);
+	}
 
-  // 自动解包
-  if (
-    payload &&
-    typeof payload === 'object' &&
-    Object.prototype.hasOwnProperty.call(payload, 'data')
-  ) {
-    return payload.data;
-  }
+	// 自动解包
+	if (
+		payload &&
+		typeof payload === "object" &&
+		Object.prototype.hasOwnProperty.call(payload, "data")
+	) {
+		return payload.data;
+	}
 
-  return payload;
+	return payload;
 }
 
 /**
@@ -318,27 +348,27 @@ export async function uploadFile(endpoint, file, fieldName = 'file') {
  * 同样自动注入 Authorization 并处理 401。
  */
 export async function downloadBlob(endpoint, options = {}) {
-  const token = localStorage.getItem('token');
-  const config = {
-    ...options,
-    headers: {
-      ...(token && { Authorization: `Bearer ${token}` }),
-      ...options.headers,
-    },
-  };
+	const token = localStorage.getItem("token");
+	const config = {
+		...options,
+		headers: {
+			...(token && { Authorization: `Bearer ${token}` }),
+			...options.headers,
+		},
+	};
 
-  const response = await fetch(buildApiUrl(endpoint), config);
+	const response = await fetch(buildApiUrl(endpoint), config);
 
-  if (response.status === 401) {
-    clearAuth();
-    window.location.href = '/admin/login';
-  }
+	if (response.status === 401) {
+		clearAuth();
+		window.location.href = "/admin/login";
+	}
 
-  if (!response.ok) {
-    throw new ApiError(response.status, response.statusText);
-  }
+	if (!response.ok) {
+		throw new ApiError(response.status, response.statusText);
+	}
 
-  return response.blob();
+	return response.blob();
 }
 
 /**
@@ -348,78 +378,86 @@ export async function downloadBlob(endpoint, options = {}) {
  * 逐个 append。不设置 Content-Type，让浏览器自动生成
  * multipart/form-data + boundary。
  */
-export async function uploadFiles(endpoint, files, fieldName = 'files') {
-  const token = localStorage.getItem('token');
+export async function uploadFiles(endpoint, files, fieldName = "files") {
+	const token = localStorage.getItem("token");
 
-  const formData = new FormData();
-  files.forEach((f) => formData.append(fieldName, f));
+	const formData = new FormData();
+	files.forEach((f) => formData.append(fieldName, f));
 
-  const config = {
-    method: 'POST',
-    headers: {
-      ...(token && { Authorization: `Bearer ${token}` }),
-    },
-    body: formData,
-  };
+	const config = {
+		method: "POST",
+		headers: {
+			...(token && { Authorization: `Bearer ${token}` }),
+		},
+		body: formData,
+	};
 
-  const response = await fetch(buildApiUrl(endpoint), config);
-  const payload = await response.json().catch(() => ({ message: response.statusText }));
+	const response = await fetch(buildApiUrl(endpoint), config);
+	const payload = await response
+		.json()
+		.catch(() => ({ message: response.statusText }));
 
-  if (!response.ok) {
-    throw new ApiError(response.status, payload.message || payload.msg || 'Upload failed');
-  }
+	if (!response.ok) {
+		throw new ApiError(
+			response.status,
+			payload.message || payload.msg || "Upload failed",
+		);
+	}
 
-  // 业务错误码检查（与 apiClient 保持一致）
-  if (
-    payload &&
-    typeof payload === 'object' &&
-    Object.prototype.hasOwnProperty.call(payload, 'code') &&
-    payload.code !== 0
-  ) {
-    throw new ApiError(response.status || 400, payload.msg || payload.message || 'Request failed');
-  }
+	// 业务错误码检查（与 apiClient 保持一致）
+	if (
+		payload &&
+		typeof payload === "object" &&
+		Object.prototype.hasOwnProperty.call(payload, "code") &&
+		payload.code !== 0
+	) {
+		throw new ApiError(
+			response.status || 400,
+			payload.msg || payload.message || "Request failed",
+		);
+	}
 
-  if (
-    payload &&
-    typeof payload === 'object' &&
-    Object.prototype.hasOwnProperty.call(payload, 'data')
-  ) {
-    return payload.data;
-  }
+	if (
+		payload &&
+		typeof payload === "object" &&
+		Object.prototype.hasOwnProperty.call(payload, "data")
+	) {
+		return payload.data;
+	}
 
-  return payload;
+	return payload;
 }
 
 /**
  * 便捷方法
  */
 export const api = {
-  get: (endpoint) => apiClient(endpoint),
-  post: (endpoint, data) => apiClient(endpoint, { method: 'POST', body: data }),
-  put: (endpoint, data) => apiClient(endpoint, { method: 'PUT', body: data }),
-  del: (endpoint) => apiClient(endpoint, { method: 'DELETE' }),
-  upload: uploadFile,
-  download: downloadBlob,
-  uploadFiles: uploadFiles,
+	get: (endpoint) => apiClient(endpoint),
+	post: (endpoint, data) => apiClient(endpoint, { method: "POST", body: data }),
+	put: (endpoint, data) => apiClient(endpoint, { method: "PUT", body: data }),
+	del: (endpoint) => apiClient(endpoint, { method: "DELETE" }),
+	upload: uploadFile,
+	download: downloadBlob,
+	uploadFiles: uploadFiles,
 };
 
 // ==================== 默认导出 ====================
 
 export default {
-  API_CONFIG,
-  API_ENDPOINTS,
-  getApiUrl,
-  buildApiUrl,
-  unwrapApiPayload,
-  getApiMessage,
-  apiClient,
-  uploadFile,
-  downloadBlob,
-  uploadFiles,
-  api,
-  ApiError,
-  getBlockContent,
-  SITE_BLOCK_DEFAULTS,
+	API_CONFIG,
+	API_ENDPOINTS,
+	getApiUrl,
+	buildApiUrl,
+	unwrapApiPayload,
+	getApiMessage,
+	apiClient,
+	uploadFile,
+	downloadBlob,
+	uploadFiles,
+	api,
+	ApiError,
+	getBlockContent,
+	SITE_BLOCK_DEFAULTS,
 };
 
 export { getBlockContent, SITE_BLOCK_DEFAULTS };

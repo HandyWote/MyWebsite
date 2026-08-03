@@ -10,7 +10,7 @@ import {
   Snackbar,
 } from '@mui/material';
 import { Send as SendIcon } from '@mui/icons-material';
-import { getApiUrl, getApiMessage, unwrapApiPayload } from '../../config/api';
+import { api, getApiUrl, ApiError } from '../../config/api';
 import { formatDateTime } from '../../utils/formatDate';
 import { PixelCard, PixelButton, PixelTypography } from '../pixel';
 import useNotification from '../../hooks/useNotification';
@@ -32,15 +32,8 @@ export default function CommentSection({ articleId, demoMode = false }) {
 
     try {
       setCommentsLoading(true);
-      const response = await fetch(getApiUrl.articleComments(articleId));
-
-      if (response.ok) {
-        const data = await response.json();
-        const payload = unwrapApiPayload(data);
-        setComments(payload?.comments || []);
-      } else {
-        console.error('获取评论失败，状态码:', response.status);
-      }
+      const payload = await api.get(getApiUrl.articleComments(articleId));
+      setComments(payload?.comments || []);
     } catch (error) {
       console.error('获取评论失败:', error);
     } finally {
@@ -57,32 +50,23 @@ export default function CommentSection({ articleId, demoMode = false }) {
 
     try {
       setSubmittingComment(true);
-      const response = await fetch(getApiUrl.createComment(articleId), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          author: commentAuthor.trim(),
-          email: '',
-          content: newComment.trim(),
-        }),
+      await api.post(getApiUrl.createComment(articleId), {
+        author: commentAuthor.trim(),
+        email: '',
+        content: newComment.trim(),
       });
 
-      if (response.ok) {
-        setNewComment('');
-        setCommentAuthor('');
-        await fetchComments();
-        showNotification('评论发布成功！', 'success');
-      } else if (response.status === 429) {
-        const errorData = await response.json();
-        showNotification(getApiMessage(errorData, '评论发布频率过高，请稍后再试'), 'warning');
-      } else {
-        throw new Error('评论发布失败');
-      }
+      setNewComment('');
+      setCommentAuthor('');
+      await fetchComments();
+      showNotification('评论发布成功！', 'success');
     } catch (error) {
-      console.error('提交评论失败:', error);
-      showNotification('评论发布失败，请稍后重试', 'error');
+      if (error instanceof ApiError && error.status === 429) {
+        showNotification(error.message || '评论发布频率过高，请稍后再试', 'warning');
+      } else {
+        console.error('提交评论失败:', error);
+        showNotification('评论发布失败，请稍后重试', 'error');
+      }
     } finally {
       setSubmittingComment(false);
     }

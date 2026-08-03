@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Box, Typography } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import { getApiUrl, unwrapApiPayload } from '../../config/api';
+import { api, getApiUrl } from '../../config/api';
 import { getBlockContent, SITE_BLOCK_DEFAULTS } from '../../config/siteBlocks';
 import PixelAvatar from '../pixel/ui/PixelAvatar';
 import SocialLinks from '../sidebar/SocialLinks';
@@ -27,17 +27,11 @@ function TerminalWelcome() {
 
     const fetchProfile = async () => {
       try {
-        const [siteBlocksRes, avatarsRes] = await Promise.all([
-          fetch(getApiUrl.siteBlocks()),
-          fetch(getApiUrl.avatars()),
+        const [blocks, avatars] = await Promise.all([
+          api.get(getApiUrl.siteBlocks()),
+          api.get(getApiUrl.avatars()),
         ]);
-        const [siteBlocksData, avatarsData] = await Promise.all([
-          siteBlocksRes.json(),
-          avatarsRes.json(),
-        ]);
-        const blocks = unwrapApiPayload(siteBlocksData) || [];
-        const avatars = unwrapApiPayload(avatarsData) || avatarsData?.avatars || [];
-        const currentAvatar = avatars.find((avatar) => avatar.is_current);
+        const currentAvatar = (avatars || []).find((avatar) => avatar.is_current);
 
         if (!ignore) {
           setHomeBlock(getBlockContent(blocks, 'home'));

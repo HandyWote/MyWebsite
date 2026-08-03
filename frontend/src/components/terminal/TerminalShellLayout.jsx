@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Box } from '@mui/material';
 import { Outlet, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { getApiUrl, unwrapApiPayload } from '../../config/api';
+import { api, getApiUrl } from '../../config/api';
 import { uniqueCommands, navButtonSx } from './utils';
 import ArticleDetailNav from './ArticleDetailNav';
 import TerminalCommandBar from './TerminalCommandBar';
@@ -63,9 +63,7 @@ function TerminalShellLayout() {
     const fetchArticleCommands = async () => {
       try {
         setArticlesLoading(true);
-        const response = await fetch(`${getApiUrl.articles()}?page=1&per_page=100`);
-        const data = await response.json();
-        const payload = unwrapApiPayload(data);
+        const payload = await api.get(`${getApiUrl.articles()}?page=1&per_page=100`);
         const articles = payload?.items || payload?.articles || [];
         if (!ignore) {
           setArticleCommands(articles);

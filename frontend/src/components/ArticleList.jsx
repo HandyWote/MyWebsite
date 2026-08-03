@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Box, Typography } from '@mui/material';
 import { motion } from 'framer-motion';
 import PixelCard from './pixel/ui/PixelCard';
-import { getApiUrl, unwrapApiPayload } from '../config/api';
+import { api, getApiUrl } from '../config/api';
 import { getBlockContent, SITE_BLOCK_DEFAULTS } from '../config/siteBlocks';
 
 const MotionDiv = motion.div;
@@ -34,16 +34,13 @@ function ArticleList() {
     try {
       setLoading(true);
       setError(null);
-      const [articleRes, blockRes] = await Promise.all([
-        fetch(`${getApiUrl.articles()}?page=1&per_page=${PAGE_SIZE}`),
-        fetch(getApiUrl.siteBlocks()),
+      const [payload, blocks] = await Promise.all([
+        api.get(`${getApiUrl.articles()}?page=1&per_page=${PAGE_SIZE}`),
+        api.get(getApiUrl.siteBlocks()),
       ]);
-      const [articleData, blockData] = await Promise.all([articleRes.json(), blockRes.json()]);
-      const payload = unwrapApiPayload(articleData);
       const apiArticles = payload?.items || payload?.articles || [];
       const apiTotal = Number(payload?.total) || apiArticles.length;
-      const blocks = unwrapApiPayload(blockData) || [];
-      setPageConfig(getBlockContent(blocks, 'articles_page'));
+      setPageConfig(getBlockContent(blocks || [], 'articles_page'));
       const mappedArticles = mapArticles(apiArticles);
       setArticles(mappedArticles);
       setTotal(apiTotal);
@@ -66,9 +63,7 @@ function ArticleList() {
       setLoadingMore(true);
       setError(null);
       const nextPage = page + 1;
-      const response = await fetch(`${getApiUrl.articles()}?page=${nextPage}&per_page=${PAGE_SIZE}`);
-      const responseData = await response.json();
-      const payload = unwrapApiPayload(responseData);
+      const payload = await api.get(`${getApiUrl.articles()}?page=${nextPage}&per_page=${PAGE_SIZE}`);
       const apiArticles = payload?.items || payload?.articles || [];
       const apiTotal = Number(payload?.total) || total;
       setTotal(apiTotal);

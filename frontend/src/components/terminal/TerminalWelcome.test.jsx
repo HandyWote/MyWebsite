@@ -30,6 +30,7 @@ describe('TerminalWelcome', () => {
       const url = String(input);
       if (url.includes('/api/site-blocks')) {
         return {
+          ok: true,
           json: async () => ({
             data: [
               {
@@ -54,6 +55,7 @@ describe('TerminalWelcome', () => {
       }
 
       return {
+        ok: true,
         json: async () => ({
           data: [{ filename: 'avatar-current.webp', is_current: true }],
         }),
