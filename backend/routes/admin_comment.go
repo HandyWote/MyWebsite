@@ -37,8 +37,8 @@ func AdminGetComments(c *gin.Context) {
 	commentItems := make([]gin.H, 0, len(comments))
 	for _, cmt := range comments {
 		commentItems = append(commentItems, gin.H{
-			"id":           cmt.ID,
-			"article_id":   cmt.ArticleID,
+			"id":         cmt.ID,
+			"article_id": cmt.ArticleID,
 			"article_title": func() string {
 				if t, ok := articleTitleByID[cmt.ArticleID]; ok {
 					return t
