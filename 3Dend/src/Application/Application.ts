@@ -7,7 +7,6 @@ import Camera from './Camera/Camera';
 import Renderer from './Renderer';
 import Mouse from './Utils/Mouse';
 
-//@ts-expect-error
 import World from './World/World';
 import Resources from './Utils/Resources';
 
@@ -35,10 +34,6 @@ export default class Application {
         }
 
         instance = this;
-
-        // Global access
-        //@ts-expect-error
-        // window.Application = this;
 
         // Setup
         this.debug = new Debug();

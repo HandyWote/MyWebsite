@@ -1,11 +1,14 @@
 import * as THREE from 'three';
 import { CSS3DObject } from 'three/examples/jsm/renderers/CSS3DRenderer.js';
 import Application from '../Application';
-import Debug from '../Utils/Debug';
-import Resources from '../Utils/Resources';
-import Sizes from '../Utils/Sizes';
-import Camera from '../Camera/Camera';
+import type Debug from '../Utils/Debug';
+import type Resources from '../Utils/Resources';
+import type Sizes from '../Utils/Sizes';
+import type Camera from '../Camera/Camera';
 import EventEmitter from '../Utils/EventEmitter';
+import WheelBridge from './WheelBridge';
+import MonitorPointerTracker from './MonitorPointerTracker';
+import TextureLayers from './TextureLayers';
 
 const SCREEN_SIZE = { w: 1280, h: 1024 };
 const IFRAME_PADDING = 32;
@@ -15,7 +18,6 @@ const IFRAME_SIZE = {
 };
 
 const SMUDGE_OFFSET = 96;
-const SHADOW_OFFSET = 20;
 
 export default class MonitorScreen extends EventEmitter {
     application: Application;
@@ -29,14 +31,11 @@ export default class MonitorScreen extends EventEmitter {
     position: THREE.Vector3;
     rotation: THREE.Euler;
     camera: Camera;
-    prevInComputer: boolean;
-    shouldLeaveMonitor: boolean;
-    inComputer: boolean;
-    mouseClickInProgress: boolean;
     dimmingPlane: THREE.Mesh;
     iframe: HTMLIFrameElement | null;
-    iframeWheelCleanup: (() => void) | null;
-    cachedIframeScrollTarget: HTMLElement | null;
+    wheelBridge: WheelBridge;
+    pointerTracker: MonitorPointerTracker;
+    textureLayers: TextureLayers;
 
     constructor() {
         super();
@@ -49,212 +48,22 @@ export default class MonitorScreen extends EventEmitter {
         this.camera = this.application.camera;
         this.position = new THREE.Vector3(0, 950, 255);
         this.rotation = new THREE.Euler(-3 * THREE.MathUtils.DEG2RAD, 0, 0);
-        this.mouseClickInProgress = false;
-        this.shouldLeaveMonitor = false;
         this.iframe = null;
-        this.iframeWheelCleanup = null;
-        this.cachedIframeScrollTarget = null;
+
+        this.wheelBridge = new WheelBridge();
+        this.pointerTracker = new MonitorPointerTracker(this.application, this.camera);
+        this.textureLayers = new TextureLayers(
+            this.scene,
+            this.screenSize,
+            this.position,
+            this.rotation
+        );
 
         // Create screen (no texture layers yet)
-        this.initializeScreenEvents();
+        this.pointerTracker.initialize();
         this.createIframe();
         this.createEnclosingPlanes(SMUDGE_OFFSET);
         this.createPerspectiveDimmer(SMUDGE_OFFSET);
-    }
-
-    initializeScreenEvents() {
-        document.addEventListener(
-            'mousemove',
-            (event) => {
-                // @ts-ignore
-                const id = event.target.id;
-                if (id === 'computer-screen') {
-                    // @ts-ignore
-                    event.inComputer = true;
-                }
-
-                // @ts-ignore
-                this.inComputer = event.inComputer;
-
-                if (this.inComputer && !this.prevInComputer) {
-                    this.camera.trigger('enterMonitor');
-                }
-
-                if (
-                    !this.inComputer &&
-                    this.prevInComputer &&
-                    !this.mouseClickInProgress
-                ) {
-                    this.camera.trigger('leftMonitor');
-                }
-
-                if (
-                    !this.inComputer &&
-                    this.mouseClickInProgress &&
-                    this.prevInComputer
-                ) {
-                    this.shouldLeaveMonitor = true;
-                } else {
-                    this.shouldLeaveMonitor = false;
-                }
-
-                this.application.mouse.trigger('mousemove', [event]);
-
-                this.prevInComputer = this.inComputer;
-            },
-            false
-        );
-        document.addEventListener(
-            'mousedown',
-            (event) => {
-                // @ts-ignore
-                this.inComputer = event.inComputer;
-                this.application.mouse.trigger('mousedown', [event]);
-
-                this.mouseClickInProgress = true;
-                this.prevInComputer = this.inComputer;
-            },
-            false
-        );
-        document.addEventListener(
-            'mouseup',
-            (event) => {
-                // @ts-ignore
-                this.inComputer = event.inComputer;
-                this.application.mouse.trigger('mouseup', [event]);
-
-                if (this.shouldLeaveMonitor) {
-                    this.camera.trigger('leftMonitor');
-                    this.shouldLeaveMonitor = false;
-                }
-
-                this.mouseClickInProgress = false;
-                this.prevInComputer = this.inComputer;
-            },
-            false
-        );
-    }
-
-    attachIframeWheelBridge() {
-        this.iframeWheelCleanup?.();
-        this.iframeWheelCleanup = null;
-
-        const doc = this.getIframeDocument();
-        if (!doc) return;
-        this.cachedIframeScrollTarget = null;
-
-        const handleWheel = (event: WheelEvent) => {
-            const { deltaX, deltaY } = this.getWheelDelta(event);
-            if (deltaX === 0 && deltaY === 0) return;
-
-            const target = this.findScrollTarget(event, doc);
-            if (!target) return;
-
-            event.preventDefault();
-            target.scrollBy({ top: deltaY, left: deltaX, behavior: 'auto' });
-        };
-
-        doc.addEventListener('wheel', handleWheel, { passive: false });
-        this.iframeWheelCleanup = () => {
-            doc.removeEventListener('wheel', handleWheel);
-        };
-    }
-
-    getWheelDelta(event: WheelEvent) {
-        let { deltaX, deltaY } = event;
-
-        if (event.deltaMode === WheelEvent.DOM_DELTA_LINE) {
-            deltaX *= 40;
-            deltaY *= 40;
-        } else if (event.deltaMode === WheelEvent.DOM_DELTA_PAGE) {
-            // DOM_DELTA_PAGE is extremely rare; approximate with 800px
-            deltaX *= 800;
-            deltaY *= 800;
-        }
-
-        return { deltaX, deltaY };
-    }
-
-    findScrollTarget(event: WheelEvent, doc: Document): HTMLElement | null {
-        let element = this.getEventElement(event, doc);
-
-        while (element && element !== doc.documentElement) {
-            if (this.isScrollableElement(element, doc)) {
-                this.cachedIframeScrollTarget = element;
-                return element;
-            }
-
-            element = element.parentElement;
-        }
-
-        if (this.isCachedScrollTargetValid(doc)) {
-            return this.cachedIframeScrollTarget;
-        }
-
-        return this.findFallbackScrollTarget(doc);
-    }
-
-    findFallbackScrollTarget(doc: Document): HTMLElement | null {
-        const main = doc.querySelector('main');
-        const candidates = [
-            ...(main ? [main] : []),
-            ...Array.from(doc.body?.querySelectorAll('*') || []),
-        ];
-
-        for (const candidate of candidates) {
-            if (this.isHTMLElement(candidate, doc) && this.isScrollableElement(candidate, doc)) {
-                this.cachedIframeScrollTarget = candidate;
-                return candidate;
-            }
-        }
-
-        const root = doc.scrollingElement || doc.documentElement;
-        if (this.isHTMLElement(root, doc) && this.isScrollableElement(root, doc)) {
-            this.cachedIframeScrollTarget = root;
-            return root;
-        }
-
-        this.cachedIframeScrollTarget = null;
-        return null;
-    }
-
-    isScrollableElement(element: HTMLElement, doc: Document): boolean {
-        const style = doc.defaultView?.getComputedStyle(element);
-        const canScrollY =
-            style &&
-            /(auto|scroll)/.test(style.overflowY) &&
-            element.scrollHeight > element.clientHeight;
-        const canScrollX =
-            style &&
-            /(auto|scroll)/.test(style.overflowX) &&
-            element.scrollWidth > element.clientWidth;
-
-        return Boolean(canScrollY || canScrollX);
-    }
-
-    isCachedScrollTargetValid(doc: Document): boolean {
-        return Boolean(
-            this.cachedIframeScrollTarget?.isConnected &&
-            this.isScrollableElement(this.cachedIframeScrollTarget, doc)
-        );
-    }
-
-    getEventElement(event: WheelEvent, doc: Document): HTMLElement | null {
-        const target = event.target;
-        return this.isHTMLElement(target, doc) ? target : null;
-    }
-
-    isHTMLElement(value: unknown, doc: Document): value is HTMLElement {
-        const HTMLElementCtor = doc.defaultView?.HTMLElement;
-        return Boolean(HTMLElementCtor && value instanceof HTMLElementCtor);
-    }
-
-    getIframeDocument(): Document | null {
-        try {
-            return this.iframe?.contentDocument || null;
-        } catch {
-            return null;
-        }
     }
 
     /**
@@ -273,7 +82,7 @@ export default class MonitorScreen extends EventEmitter {
 
         // Bubble mouse move events to the main application, so we can affect the camera
         iframe.onload = () => {
-            this.attachIframeWheelBridge();
+            this.wheelBridge.attach(iframe);
 
             if (iframe.contentWindow) {
                 window.addEventListener('message', (event) => {
@@ -282,7 +91,7 @@ export default class MonitorScreen extends EventEmitter {
                         cancelable: false,
                     });
 
-                    // @ts-ignore
+                    // @ts-expect-error
                     evt.inComputer = true;
                     if (event.data.type === 'mousemove') {
                         var clRect = iframe.getBoundingClientRect();
@@ -290,19 +99,19 @@ export default class MonitorScreen extends EventEmitter {
                         const widthRatio = width / IFRAME_SIZE.w;
                         const heightRatio = height / IFRAME_SIZE.h;
 
-                        // @ts-ignore
+                        // @ts-expect-error
                         evt.clientX = Math.round(
                             event.data.clientX * widthRatio + left
                         );
-                        //@ts-ignore
+                        //@ts-expect-error
                         evt.clientY = Math.round(
                             event.data.clientY * heightRatio + top
                         );
                     } else if (event.data.type === 'keydown') {
-                        // @ts-ignore
+                        // @ts-expect-error
                         evt.key = event.data.key;
                     } else if (event.data.type === 'keyup') {
-                        // @ts-ignore
+                        // @ts-expect-error
                         evt.key = event.data.key;
                     }
 
@@ -382,88 +191,12 @@ export default class MonitorScreen extends EventEmitter {
         this.scene.add(mesh);
     }
 
-
-    /**
-     * Adds a texture layer to the screen
-     * @param texture the texture to add
-     * @param blending the blending mode
-     * @param opacity the opacity of the texture
-     * @param offset the offset of the texture, higher values are further from the screen
-     * @returns the created material
-     */
-    addTextureLayer(
-        texture: THREE.Texture,
-        blendingMode: THREE.Blending,
-        opacity: number,
-        offset: number
-    ): THREE.MeshBasicMaterial {
-        // Create material
-        const material = new THREE.MeshBasicMaterial({
-            map: texture,
-            blending: blendingMode,
-            side: THREE.DoubleSide,
-            opacity,
-            transparent: true,
-        });
-
-        // Create geometry
-        const geometry = new THREE.PlaneGeometry(
-            this.screenSize.width,
-            this.screenSize.height
-        );
-
-        // Create mesh
-        const mesh = new THREE.Mesh(geometry, material);
-
-        // Copy position and apply the depth offset
-        mesh.position.copy(
-            this.offsetPosition(this.position, new THREE.Vector3(0, 0, offset))
-        );
-
-        // Copy rotation
-        mesh.rotation.copy(this.rotation);
-
-        this.scene.add(mesh);
-
-        return material;
-    }
-
-    /**
-     * Adds a texture layer with a fade-in animation
-     */
-    addTextureLayerWithFade(
-        texture: THREE.Texture,
-        blendingMode: THREE.Blending,
-        targetOpacity: number,
-        offset: number,
-        duration = 500,
-    ): void {
-        const material = this.addTextureLayer(texture, blendingMode, 0, offset);
-        this.fadeInMaterial(material, targetOpacity, duration);
-    }
-
-    private fadeInMaterial(
-        material: THREE.MeshBasicMaterial,
-        targetOpacity: number,
-        duration: number,
-    ): void {
-        const startTime = performance.now();
-        const fadeIn = () => {
-            const progress = Math.min((performance.now() - startTime) / duration, 1);
-            material.opacity = targetOpacity * progress;
-            if (progress < 1) {
-                requestAnimationFrame(fadeIn);
-            }
-        };
-        requestAnimationFrame(fadeIn);
-    }
-
     addSmudgeLayer(texture: LoadedTexture) {
-        this.addTextureLayerWithFade(texture, THREE.AdditiveBlending, 0.12, SMUDGE_OFFSET);
+        this.textureLayers.addSmudge(texture);
     }
 
     addShadowLayer(texture: LoadedTexture) {
-        this.addTextureLayerWithFade(texture, THREE.NormalBlending, 1, SHADOW_OFFSET);
+        this.textureLayers.addShadow(texture);
     }
 
     /**
@@ -614,7 +347,7 @@ export default class MonitorScreen extends EventEmitter {
 
             const DIM_FACTOR = 0.7;
 
-            // @ts-ignore
+            // @ts-expect-error
             this.dimmingPlane.material.opacity =
                 (1 - opacity) * DIM_FACTOR + (1 - dot) * DIM_FACTOR;
         }
