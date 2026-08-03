@@ -282,8 +282,8 @@ func TestFetchViteManifest_从HTTP加载并缓存(t *testing.T) {
 	viteManifest = nil
 	defer func() { viteManifest = nil }()
 
-	oldClient := http.DefaultClient
-	http.DefaultClient = &http.Client{
+	oldClient := manifestHTTPClient
+	manifestHTTPClient = &http.Client{
 		Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
 			assert.Equal(t, "http://manifest.test/app/.vite/manifest.json", r.URL.String())
 			body := `{"src/main.jsx":{"file":"assets/index-test.js","css":["assets/index-test.css"]}}`
@@ -294,7 +294,7 @@ func TestFetchViteManifest_从HTTP加载并缓存(t *testing.T) {
 			}, nil
 		}),
 	}
-	defer func() { http.DefaultClient = oldClient }()
+	defer func() { manifestHTTPClient = oldClient }()
 
 	fetchViteManifestWithRetry("http://manifest.test/app/.vite/manifest.json", 1, 0)
 
