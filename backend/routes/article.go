@@ -1,11 +1,28 @@
 package routes
 
 import (
+	"time"
+
 	"github.com/gin-gonic/gin"
 	"github.com/handywote/website/database"
 	"github.com/handywote/website/models"
 	"github.com/handywote/website/utils"
 )
+
+// articleListItem 列表项 DTO：不含正文 content，避免响应体携带整篇 Markdown
+// （搜索过滤仍在 DB 层对 content 做 ILIKE，不影响列表瘦身）
+type articleListItem struct {
+	ID          uint      `json:"id"`
+	Title       string    `json:"title"`
+	Category    string    `json:"category"`
+	Tags        string    `json:"tags"`
+	Cover       string    `json:"cover"`
+	Summary     string    `json:"summary"`
+	ContentType string    `json:"content_type"`
+	PDFFilename string    `json:"pdf_filename"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
 
 // GetArticles 获取文章列表
 func GetArticles(c *gin.Context) {
@@ -40,13 +57,32 @@ func GetArticles(c *gin.Context) {
 
 	query = query.Offset((page - 1) * pageSize).Limit(pageSize)
 
+	// 列表接口不返回正文 content，避免响应体携带整篇 Markdown
+	query = query.Select("id, title, category, tags, cover, summary, content_type, pdf_filename, created_at, updated_at")
+
 	if err := query.Find(&articles).Error; err != nil {
 		utils.ErrorInternal(c, "Failed to fetch articles")
 		return
 	}
 
+	items := make([]articleListItem, 0, len(articles))
+	for _, a := range articles {
+		items = append(items, articleListItem{
+			ID:          a.ID,
+			Title:       a.Title,
+			Category:    a.Category,
+			Tags:        a.Tags,
+			Cover:       a.Cover,
+			Summary:     a.Summary,
+			ContentType: a.ContentType,
+			PDFFilename: a.PDFFilename,
+			CreatedAt:   a.CreatedAt,
+			UpdatedAt:   a.UpdatedAt,
+		})
+	}
+
 	utils.Success(c, gin.H{
-		"articles": articles,
+		"articles": items,
 		"pages":    (total + int64(pageSize) - 1) / int64(pageSize), // 总页数
 		"total":    total,
 		"page":     page,
