@@ -101,3 +101,8 @@ func AdminDeleteComment(c *gin.Context) {
 
 	utils.Success(c, gin.H{"message": "Comment deleted"})
 }
+
+// AdminUpdateCommentStatus 更新评论状态（管理后台路由别名，兼容 /comments/:id 与 /comments/:id/status）
+func AdminUpdateCommentStatus(c *gin.Context) {
+	AdminUpdateComment(c)
+}
