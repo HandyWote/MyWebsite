@@ -219,6 +219,16 @@
 
 ---
 
+## 执行状态（2026-08-03 完成，全部提交至 main）
+
+修复路线图 18 项任务（T1-T18）已全部执行完毕并小步提交：
+
+- **🟢 Quick wins（T1-T7）全部完成**：skills/contacts 死闭环删除（-476 行）、前端死组件删除（24 文件）、aiAnalysis/currentArticle 死状态删除、分页解析统一 helper.go、clearAuth 单实现、3Dend 死代码清理。
+- **🟡 中期（T8-T13）全部完成**：8 个活跃组件 fetch 收敛 api.*、getApiUrl 二次拼接修复（api.* 统一收 API_ENDPOINTS）、GitHub 拉取合并 utils/github.js、useProfile hook 收敛 site-blocks/avatars 加载、文章列表轻量 DTO 排除 content（搜索防抖因搜索功能已不存在而自动消解）、Vite manifest 抽取 + 2s 超时。
+- **🔴 长期（T14-T18）完成**：评论领域 CommentService 下沉（handler 瘦身为 HTTP 适配）、前端 domain API 层（articleApi/commentApi/siteBlockApi/aiApi）+ withLoading、MonitorScreen 拆分 WheelBridge/MonitorPointerTracker/TextureLayers、iframe 与 3D 资源并行加载、routes 文件级重组（admin_extra.go/public.go 拆分）。
+
+验证：后端 `go test ./...` 全绿（含新增契约测试）；前端 vitest 仅剩 5 个基线既有失败（改动前已存在）；3Dend jest 26/26。测试基础设施发现 React 19 act 对跨模块 reject 微任务的时序陷阱，失败路径用例已去 act 适配。
+
 ## 执行约定（用户指示，2026-08-03 补充）
 
 - 执行过程中在**合适的地方小步 commit**（一次只动一个领域，沿用 AGENTS.md 工作准则）。
