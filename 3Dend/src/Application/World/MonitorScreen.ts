@@ -33,6 +33,7 @@ export default class MonitorScreen extends EventEmitter {
     camera: Camera;
     dimmingPlane: THREE.Mesh;
     iframe: HTMLIFrameElement | null;
+    iframeContainer: HTMLDivElement | null;
     wheelBridge: WheelBridge;
     pointerTracker: MonitorPointerTracker;
     textureLayers: TextureLayers;
@@ -49,6 +50,7 @@ export default class MonitorScreen extends EventEmitter {
         this.position = new THREE.Vector3(0, 950, 255);
         this.rotation = new THREE.Euler(-3 * THREE.MathUtils.DEG2RAD, 0, 0);
         this.iframe = null;
+        this.iframeContainer = null;
 
         this.wheelBridge = new WheelBridge();
         this.pointerTracker = new MonitorPointerTracker(this.application, this.camera);
@@ -76,6 +78,7 @@ export default class MonitorScreen extends EventEmitter {
         container.style.height = this.screenSize.height + 'px';
         container.style.opacity = '1';
         container.style.background = '#1d2e2f';
+        this.iframeContainer = container;
 
         // Create iframe
         const iframe = document.createElement('iframe');
@@ -189,6 +192,17 @@ export default class MonitorScreen extends EventEmitter {
 
         // Add to gl scene
         this.scene.add(mesh);
+    }
+
+    /**
+     * 控制屏幕容器显隐。
+     * 供并行加载流程使用：World 构造时创建屏幕（iframe 提前加载）但保持隐藏，
+     * geometryReady 后调用 setVisible(true) 显示。
+     */
+    setVisible(visible: boolean) {
+        if (this.iframeContainer) {
+            this.iframeContainer.style.opacity = visible ? '1' : '0';
+        }
     }
 
     addSmudgeLayer(texture: LoadedTexture) {

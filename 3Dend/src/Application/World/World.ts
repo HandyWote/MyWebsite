@@ -21,12 +21,18 @@ export default class World {
         this.scene = this.application.scene;
         this.resources = this.application.resources;
 
+        // 屏幕 iframe 与 3D 模型资源并行加载：
+        // 立即创建 MonitorScreen（iframe 开始加载 /app/），geometryReady 后再显示，
+        // 避免慢网络下首屏等待 = 模型下载 + 前端加载的串行叠加。
+        this.monitorScreen = new MonitorScreen();
+        this.monitorScreen.setVisible(false);
+
         // 阶段1：几何就绪 → 创建场景（无纹理占位）
         this.resources.on('geometryReady', () => {
             this.environment = new Environment();
             this.decor = new Decor();
             this.computerSetup = new ComputerSetup();
-            this.monitorScreen = new MonitorScreen();
+            this.monitorScreen.setVisible(true);
         });
 
         // 阶段2：纹理逐个就绪 → 无感贴图

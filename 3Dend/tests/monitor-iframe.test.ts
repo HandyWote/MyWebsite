@@ -30,6 +30,23 @@ describe('Monitor iframe source', () => {
     expect(source).toContain('if (deltaX === 0 && deltaY === 0) return;');
   });
 
+  test('iframe is created up front and revealed after geometry ready', () => {
+    const worldSource = readFileSync(
+      join(root, 'src/Application/World/World.ts'),
+      'utf8'
+    );
+    const screenSource = readFileSync(
+      join(root, 'src/Application/World/MonitorScreen.ts'),
+      'utf8'
+    );
+
+    // iframe 与 3D 模型资源并行加载：构造时创建屏幕（隐藏），geometryReady 后显示
+    expect(worldSource).toContain('this.monitorScreen = new MonitorScreen();');
+    expect(worldSource).toContain('this.monitorScreen.setVisible(false);');
+    expect(worldSource).toContain('this.monitorScreen.setVisible(true);');
+    expect(screenSource).toContain("this.iframeContainer.style.opacity = visible ? '1' : '0';");
+  });
+
   test('MonitorScreen wires the wheel bridge on iframe load', () => {
     const source = readFileSync(
       join(root, 'src/Application/World/MonitorScreen.ts'),
