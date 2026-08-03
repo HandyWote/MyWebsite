@@ -77,3 +77,5 @@ logs/
 .pytest_cache
 coverage.xml
 .claude
+.agents
+.codex
