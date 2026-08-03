@@ -29,12 +29,12 @@ describe('app shell', () => {
 
   it('does not hardcode avatar fallback to root path in app components', () => {
     const currentDir = path.dirname(fileURLToPath(import.meta.url));
-    const homeSource = fs.readFileSync(path.resolve(currentDir, './components/Home.jsx'), 'utf8');
-    const sidebarSource = fs.readFileSync(path.resolve(currentDir, './components/Sidebar.jsx'), 'utf8');
+    const welcomeSource = fs.readFileSync(path.resolve(currentDir, './components/terminal/TerminalWelcome.jsx'), 'utf8');
+    const shellSource = fs.readFileSync(path.resolve(currentDir, './components/terminal/TerminalShellLayout.jsx'), 'utf8');
 
-    expect(homeSource).not.toContain("'/avatar.webp'");
-    expect(homeSource).not.toContain('"/avatar.webp"');
-    expect(sidebarSource).not.toContain("'/avatar.webp'");
-    expect(sidebarSource).not.toContain('"/avatar.webp"');
+    expect(welcomeSource).not.toContain("'/avatar.webp'");
+    expect(welcomeSource).not.toContain('"/avatar.webp"');
+    expect(shellSource).not.toContain("'/avatar.webp'");
+    expect(shellSource).not.toContain('"/avatar.webp"');
   });
 });
