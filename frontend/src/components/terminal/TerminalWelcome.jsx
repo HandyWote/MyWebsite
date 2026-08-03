@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Box, Typography } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import { api, getApiUrl } from '../../config/api';
+import { api, API_ENDPOINTS, getApiUrl } from '../../config/api';
 import { getBlockContent, SITE_BLOCK_DEFAULTS } from '../../config/siteBlocks';
 import PixelAvatar from '../pixel/ui/PixelAvatar';
 import SocialLinks from '../sidebar/SocialLinks';
@@ -28,8 +28,8 @@ function TerminalWelcome() {
     const fetchProfile = async () => {
       try {
         const [blocks, avatars] = await Promise.all([
-          api.get(getApiUrl.siteBlocks()),
-          api.get(getApiUrl.avatars()),
+          api.get(API_ENDPOINTS.PUBLIC.SITE_BLOCKS),
+          api.get(API_ENDPOINTS.PUBLIC.AVATARS),
         ]);
         const currentAvatar = (avatars || []).find((avatar) => avatar.is_current);
 

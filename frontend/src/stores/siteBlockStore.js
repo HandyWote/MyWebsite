@@ -1,6 +1,6 @@
 // frontend/src/stores/siteBlockStore.js
 import { create } from 'zustand';
-import { api, getApiUrl, unwrapApiPayload } from '@/config/api';
+import { api, API_ENDPOINTS, unwrapApiPayload } from '@/config/api';
 import { getBlockContent, SITE_BLOCK_DEFAULTS } from '@/config/siteBlocks';
 
 const HOME_FIELD_KEYS = ['title', 'subtitle', 'github_calendar_url'];
@@ -30,7 +30,7 @@ const useSiteBlockStore = create((set, get) => ({
   fetchBlocks: async () => {
     set({ loading: true, error: null });
     try {
-      const data = await api.get(getApiUrl.adminSiteBlocks());
+      const data = await api.get(API_ENDPOINTS.ADMIN.SITE_BLOCKS);
       const blocks = unwrapApiPayload(data) || [];
       set({ blocks, form: normalizeBlocksToForm(blocks), loading: false });
     } catch (err) {
@@ -57,7 +57,7 @@ const useSiteBlockStore = create((set, get) => ({
           { name: 'sidebar', content: form.sidebar },
         ],
       };
-      await api.put(getApiUrl.adminSiteBlocks(), payload);
+      await api.put(API_ENDPOINTS.ADMIN.SITE_BLOCKS, payload);
       set({ saving: false });
     } catch (err) {
       set({ error: err.message, saving: false });

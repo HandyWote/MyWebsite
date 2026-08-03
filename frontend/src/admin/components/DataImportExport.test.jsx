@@ -23,7 +23,13 @@ vi.mock('../../config/api', () => ({
   buildApiUrl: (ep) => ep,
   unwrapApiPayload: (r) => r?.data ?? r,
   getApiMessage: (r, fb) => r?.msg || r?.message || fb,
-  API_ENDPOINTS: { PUBLIC: {}, ADMIN: {} },
+  API_ENDPOINTS: {
+    PUBLIC: {},
+    ADMIN: {
+      EXPORT: '/api/admin/export',
+      IMPORT: '/api/admin/import',
+    },
+  },
   API_CONFIG: { BASE_URL: '', TIMEOUT: 10000 },
   default: {},
 }));

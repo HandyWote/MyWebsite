@@ -4,7 +4,7 @@ import { ExternalLink } from 'lucide-react';
 import { motion } from 'framer-motion';
 import PixelCard from './pixel/ui/PixelCard';
 import PixelChip from './pixel/ui/PixelChip';
-import { api, getApiUrl } from '../config/api';
+import { api, API_ENDPOINTS } from '../config/api';
 import { getBlockContent, SITE_BLOCK_DEFAULTS } from '../config/siteBlocks';
 
 const MotionDiv = motion.div;
@@ -69,7 +69,7 @@ function ProjectList() {
   const fetchProjects = async () => {
     let activeConfig = SITE_BLOCK_DEFAULTS.projects_page;
     try {
-      const blocks = (await api.get(getApiUrl.siteBlocks())) || [];
+      const blocks = (await api.get(API_ENDPOINTS.PUBLIC.SITE_BLOCKS)) || [];
       activeConfig = getBlockContent(blocks, 'projects_page');
       setPageConfig(activeConfig);
 

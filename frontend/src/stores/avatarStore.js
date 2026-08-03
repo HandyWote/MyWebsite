@@ -16,7 +16,7 @@ const useAvatarStore = create((set, get) => ({
   fetchAvatars: async () => {
     set({ loading: true, error: null });
     try {
-      const data = await api.get(getApiUrl.adminAvatars());
+      const data = await api.get(API_ENDPOINTS.ADMIN.AVATARS);
       const arr = (data || []).map(a => {
         const url = a.filename ? getApiUrl.avatarFile(a.filename) : undefined;
         return { ...a, url };
@@ -30,7 +30,7 @@ const useAvatarStore = create((set, get) => ({
 
   uploadAvatar: async (file) => {
     try {
-      await api.upload(getApiUrl.adminAvatars(), file);
+      await api.upload(API_ENDPOINTS.ADMIN.AVATARS, file);
       await get().fetchAvatars();
     } catch (err) {
       throw err;
@@ -39,7 +39,7 @@ const useAvatarStore = create((set, get) => ({
 
   deleteAvatar: async (avatarId) => {
     try {
-      const data = await api.del(getApiUrl.adminAvatarDelete(avatarId));
+      const data = await api.del(API_ENDPOINTS.ADMIN.AVATAR_DELETE(avatarId));
       await get().fetchAvatars();
       return data;
     } catch (err) {
@@ -49,7 +49,7 @@ const useAvatarStore = create((set, get) => ({
 
   setCurrent: async (avatarId) => {
     try {
-      await api.put(getApiUrl.adminAvatarSetCurrent(avatarId));
+      await api.put(API_ENDPOINTS.ADMIN.AVATAR_SET_CURRENT(avatarId));
       await get().fetchAvatars();
     } catch (err) {
       throw err;

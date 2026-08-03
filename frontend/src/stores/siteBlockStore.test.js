@@ -18,7 +18,9 @@ vi.mock('@/config/api', () => ({
   unwrapApiPayload: (r) => r?.data ?? r,
   API_ENDPOINTS: {
     PUBLIC: {},
-    ADMIN: {},
+    ADMIN: {
+      SITE_BLOCKS: '/api/admin/site-blocks',
+    },
   },
   default: {},
 }));

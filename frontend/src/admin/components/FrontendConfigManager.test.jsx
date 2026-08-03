@@ -26,7 +26,12 @@ vi.mock('../../config/api', () => ({
   buildApiUrl: (ep) => ep,
   unwrapApiPayload: (r) => r?.data ?? r,
   getApiMessage: (r, fb) => r?.msg || r?.message || fb,
-  API_ENDPOINTS: { PUBLIC: {}, ADMIN: {} },
+  API_ENDPOINTS: {
+    PUBLIC: {},
+    ADMIN: {
+      SITE_BLOCKS: '/api/admin/site-blocks',
+    },
+  },
   API_CONFIG: { BASE_URL: '', TIMEOUT: 10000 },
   default: {},
 }));

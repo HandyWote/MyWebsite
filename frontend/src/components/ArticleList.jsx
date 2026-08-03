@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Box, Typography } from '@mui/material';
 import { motion } from 'framer-motion';
 import PixelCard from './pixel/ui/PixelCard';
-import { api, getApiUrl } from '../config/api';
+import { api, API_ENDPOINTS } from '../config/api';
 import { getBlockContent, SITE_BLOCK_DEFAULTS } from '../config/siteBlocks';
 
 const MotionDiv = motion.div;
@@ -35,8 +35,8 @@ function ArticleList() {
       setLoading(true);
       setError(null);
       const [payload, blocks] = await Promise.all([
-        api.get(`${getApiUrl.articles()}?page=1&per_page=${PAGE_SIZE}`),
-        api.get(getApiUrl.siteBlocks()),
+        api.get(`${API_ENDPOINTS.PUBLIC.ARTICLES}?page=1&per_page=${PAGE_SIZE}`),
+        api.get(API_ENDPOINTS.PUBLIC.SITE_BLOCKS),
       ]);
       const apiArticles = payload?.items || payload?.articles || [];
       const apiTotal = Number(payload?.total) || apiArticles.length;
@@ -63,7 +63,7 @@ function ArticleList() {
       setLoadingMore(true);
       setError(null);
       const nextPage = page + 1;
-      const payload = await api.get(`${getApiUrl.articles()}?page=${nextPage}&per_page=${PAGE_SIZE}`);
+      const payload = await api.get(`${API_ENDPOINTS.PUBLIC.ARTICLES}?page=${nextPage}&per_page=${PAGE_SIZE}`);
       const apiArticles = payload?.items || payload?.articles || [];
       const apiTotal = Number(payload?.total) || total;
       setTotal(apiTotal);

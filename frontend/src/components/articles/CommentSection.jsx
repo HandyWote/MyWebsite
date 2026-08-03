@@ -10,7 +10,7 @@ import {
   Snackbar,
 } from '@mui/material';
 import { Send as SendIcon } from '@mui/icons-material';
-import { api, getApiUrl, ApiError } from '../../config/api';
+import { api, API_ENDPOINTS, ApiError } from '../../config/api';
 import { formatDateTime } from '../../utils/formatDate';
 import { PixelCard, PixelButton, PixelTypography } from '../pixel';
 import useNotification from '../../hooks/useNotification';
@@ -32,7 +32,7 @@ export default function CommentSection({ articleId, demoMode = false }) {
 
     try {
       setCommentsLoading(true);
-      const payload = await api.get(getApiUrl.articleComments(articleId));
+      const payload = await api.get(API_ENDPOINTS.PUBLIC.ARTICLE_COMMENTS(articleId));
       setComments(payload?.comments || []);
     } catch (error) {
       console.error('获取评论失败:', error);
@@ -50,7 +50,7 @@ export default function CommentSection({ articleId, demoMode = false }) {
 
     try {
       setSubmittingComment(true);
-      await api.post(getApiUrl.createComment(articleId), {
+      await api.post(API_ENDPOINTS.PUBLIC.CREATE_COMMENT(articleId), {
         author: commentAuthor.trim(),
         email: '',
         content: newComment.trim(),

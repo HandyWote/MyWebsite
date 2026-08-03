@@ -13,7 +13,7 @@ import {
   CalendarToday as CalendarIcon,
 } from '@mui/icons-material';
 import 'katex/dist/katex.min.css';
-import { api, getApiUrl } from '../config/api';
+import { api, API_ENDPOINTS } from '../config/api';
 import { PixelCard, PixelButton, PixelChip, PixelTypography, TerminalLine } from './pixel';
 import PdfViewerOnCanvas from './PdfViewerOnCanvas';
 import ArticleMarkdownContent from './articles/ArticleMarkdownContent';
@@ -48,7 +48,7 @@ const ArticleDetail = () => {
   const fetchArticle = useCallback(async () => {
     try {
       setLoading(true);
-      const rawArticle = await api.get(getApiUrl.articleDetail(id));
+      const rawArticle = await api.get(API_ENDPOINTS.PUBLIC.ARTICLE_DETAIL(id));
       const processedArticle = rawArticle ? {
         ...rawArticle,
         tags: normalizeTags(rawArticle.tags),

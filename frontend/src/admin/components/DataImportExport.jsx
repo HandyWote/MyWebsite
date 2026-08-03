@@ -17,7 +17,7 @@ import {
 } from '@mui/material';
 import CloudDownloadIcon from '@mui/icons-material/CloudDownload';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
-import { getApiUrl, api } from '../../config/api';
+import { api, API_ENDPOINTS } from '../../config/api';
 import useNotification from '../../hooks/useNotification';
 import { colors, typography } from '../../components/pixel/tokens';
 
@@ -32,7 +32,7 @@ export default function DataImportExport() {
   const handleExport = async () => {
     setLoading(true);
     try {
-      const data = await api.get(getApiUrl.adminExport());
+      const data = await api.get(API_ENDPOINTS.ADMIN.EXPORT);
       // 创建并下载文件
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
@@ -82,7 +82,7 @@ export default function DataImportExport() {
       });
       const jsonData = JSON.parse(text);
 
-      await api.post(getApiUrl.adminImport(), jsonData);
+      await api.post(API_ENDPOINTS.ADMIN.IMPORT, jsonData);
       notify.notify().success('数据导入成功');
     } catch (error) {
       notify.notify().error('数据导入失败: ' + error.message);
