@@ -20,6 +20,7 @@
  */
 
 import { getBlockContent, SITE_BLOCK_DEFAULTS } from './siteBlocks';
+import { clearAuth } from '../utils/auth';
 
 // ==================== URL 基础设施 ====================
 
@@ -206,13 +207,6 @@ export class ApiError extends Error {
     this.name = 'ApiError';
   }
 }
-
-/**
- * 清除认证信息（模块内使用，与 auth.js 的 clearAuth 保持一致）
- */
-const clearAuth = () => {
-  localStorage.removeItem('token');
-};
 
 /**
  * 统一的 API 请求客户端

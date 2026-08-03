@@ -1,4 +1,7 @@
 import { apiClient } from '../../config/api';
+import { clearAuth } from '../../utils/auth';
+
+export { clearAuth };
 
 export const verifyToken = async () => {
   const token = localStorage.getItem('token');
@@ -21,10 +24,6 @@ export const verifyToken = async () => {
   } catch {
     return { valid: false, error: 'Token已过期或无效' };
   }
-};
-
-export const clearAuth = () => {
-  localStorage.removeItem('token');
 };
 
 export const saveRedirectPath = (path) => {
