@@ -42,31 +42,6 @@ func (Comment) TableName() string {
 	return "comments"
 }
 
-type Skill struct {
-	ID          uint      `gorm:"primaryKey" json:"id"`
-	Name        string    `gorm:"size:100;not null" json:"name"`
-	Description string    `gorm:"type:text" json:"description"`
-	Level       int       `gorm:"default:0" json:"level"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
-}
-
-func (Skill) TableName() string {
-	return "skill"
-}
-
-type Contact struct {
-	ID        uint      `gorm:"primaryKey" json:"id"`
-	Type      string    `gorm:"size:32;not null" json:"type"`
-	Value     string    `gorm:"size:255;not null" json:"value"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-}
-
-func (Contact) TableName() string {
-	return "contact"
-}
-
 type Avatar struct {
 	ID          uint           `gorm:"primaryKey" json:"id"`
 	Filename    string         `gorm:"size:256;not null" json:"filename"`

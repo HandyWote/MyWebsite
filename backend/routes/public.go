@@ -68,28 +68,6 @@ func buildPublicSiteBlockPayload(block models.SiteBlock) map[string]interface{} 
 	return payload
 }
 
-// GetSkills 获取技能列表
-func GetSkills(c *gin.Context) {
-	var skills []models.Skill
-	if err := database.GetDB().Order("level DESC").Find(&skills).Error; err != nil {
-		utils.ErrorInternal(c, "Failed to fetch skills")
-		return
-	}
-
-	utils.Success(c, skills)
-}
-
-// GetContacts 获取联系方式
-func GetContacts(c *gin.Context) {
-	var contacts []models.Contact
-	if err := database.GetDB().Find(&contacts).Error; err != nil {
-		utils.ErrorInternal(c, "Failed to fetch contacts")
-		return
-	}
-
-	utils.Success(c, contacts)
-}
-
 // GetAvatars 获取头像列表
 func GetAvatars(c *gin.Context) {
 	var avatars []models.Avatar

@@ -24,8 +24,6 @@ func main() {
 	database.GetDB().AutoMigrate(
 		&models.Article{},
 		&models.Comment{},
-		&models.Skill{},
-		&models.Contact{},
 		&models.Avatar{},
 		&models.SiteBlock{},
 		&models.AISetting{},
@@ -74,25 +72,4 @@ func seedData() {
 		log.Println("Seeded site blocks")
 	}
 
-	// Seed Skills
-	db.Model(&models.Skill{}).Count(&count)
-	if count == 0 {
-		skills := []models.Skill{
-			{Name: "Python", Description: "熟练掌握 Python 编程", Level: 90},
-			{Name: "React", Description: "熟悉 React 前端开发", Level: 85},
-		}
-		db.Create(&skills)
-		log.Println("Seeded skills")
-	}
-
-	// Seed Contacts
-	db.Model(&models.Contact{}).Count(&count)
-	if count == 0 {
-		contacts := []models.Contact{
-			{Type: "email", Value: "handywote@example.com"},
-			{Type: "github", Value: "https://github.com/handywote"},
-		}
-		db.Create(&contacts)
-		log.Println("Seeded contacts")
-	}
 }

@@ -33,8 +33,6 @@ func AutoMigrate() error {
 	err := DB.AutoMigrate(
 		&models.Article{},
 		&models.Comment{},
-		&models.Skill{},
-		&models.Contact{},
 		&models.Avatar{},
 		&models.SiteBlock{},
 		&models.AISetting{},

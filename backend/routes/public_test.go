@@ -31,38 +31,6 @@ func TestGetSiteBlocksRoute(t *testing.T) {
 	assert.NotNil(t, response["data"])
 }
 
-func TestGetSkillsRoute(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
-	w := httptest.NewRecorder()
-	c, r := gin.CreateTestContext(w)
-	c.Request = httptest.NewRequest("GET", "/api/skills", nil)
-
-	r.GET("/api/skills", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"data": []interface{}{}})
-	})
-
-	r.ServeHTTP(w, c.Request)
-
-	assert.Equal(t, http.StatusOK, w.Code)
-}
-
-func TestGetContactsRoute(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
-	w := httptest.NewRecorder()
-	c, r := gin.CreateTestContext(w)
-	c.Request = httptest.NewRequest("GET", "/api/contacts", nil)
-
-	r.GET("/api/contacts", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"data": []interface{}{}})
-	})
-
-	r.ServeHTTP(w, c.Request)
-
-	assert.Equal(t, http.StatusOK, w.Code)
-}
-
 func TestGetAvatarsRoute(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 

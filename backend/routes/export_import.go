@@ -1,9 +1,6 @@
 package routes
 
 import (
-	"encoding/json"
-	"fmt"
-
 	"github.com/gin-gonic/gin"
 	"github.com/handywote/website/database"
 	"github.com/handywote/website/models"
@@ -15,19 +12,11 @@ func ExportData(c *gin.Context) {
 	var articles []models.Article
 	database.GetDB().Find(&articles)
 
-	var skills []models.Skill
-	database.GetDB().Find(&skills)
-
-	var contacts []models.Contact
-	database.GetDB().Find(&contacts)
-
 	var siteBlocks []models.SiteBlock
 	database.GetDB().Find(&siteBlocks)
 
 	data := gin.H{
 		"articles":   articles,
-		"skills":     skills,
-		"contacts":   contacts,
 		"siteBlocks": siteBlocks,
 	}
 
@@ -38,8 +27,6 @@ func ExportData(c *gin.Context) {
 func ImportData(c *gin.Context) {
 	var input struct {
 		Articles   []models.Article   `json:"articles"`
-		Skills     []models.Skill     `json:"skills"`
-		Contacts   []models.Contact   `json:"contacts"`
 		SiteBlocks []models.SiteBlock `json:"siteBlocks"`
 	}
 
@@ -53,22 +40,6 @@ func ImportData(c *gin.Context) {
 		for _, article := range input.Articles {
 			article.ID = 0 // 重新生成 ID
 			database.GetDB().Create(&article)
-		}
-	}
-
-	// 导入技能
-	if len(input.Skills) > 0 {
-		for _, skill := range input.Skills {
-			skill.ID = 0
-			database.GetDB().Create(&skill)
-		}
-	}
-
-	// 导入联系方式
-	if len(input.Contacts) > 0 {
-		for _, contact := range input.Contacts {
-			contact.ID = 0
-			database.GetDB().Create(&contact)
 		}
 	}
 
@@ -87,21 +58,12 @@ func ImportData(c *gin.Context) {
 func GetStats(c *gin.Context) {
 	var articleCount int64
 	var commentCount int64
-	var skillCount int64
-	var contactCount int64
 
 	database.GetDB().Model(&models.Article{}).Count(&articleCount)
 	database.GetDB().Model(&models.Comment{}).Count(&commentCount)
-	database.GetDB().Model(&models.Skill{}).Count(&skillCount)
-	database.GetDB().Model(&models.Contact{}).Count(&contactCount)
 
 	utils.Success(c, gin.H{
 		"articles": articleCount,
 		"comments": commentCount,
-		"skills":   skillCount,
-		"contacts": contactCount,
 	})
 }
-
-var _ = json.Marshal
-var _ = fmt.Sprintf
