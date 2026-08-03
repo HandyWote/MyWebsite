@@ -1,11 +1,9 @@
 import Application from '../Application';
-import Resources from '../Utils/Resources';
+import type Resources from '../Utils/Resources';
 import ComputerSetup from './Computer';
 import MonitorScreen from './MonitorScreen';
 import Environment from './Environment';
 import Decor from './Decor';
-import Cursor from './Cursor';
-import Hitboxes from './Hitboxes';
 
 export default class World {
     application: Application;
@@ -17,7 +15,6 @@ export default class World {
     decor: Decor;
     computerSetup: ComputerSetup;
     monitorScreen: MonitorScreen;
-    cursor: Cursor;
 
     constructor() {
         this.application = new Application();
@@ -30,8 +27,6 @@ export default class World {
             this.decor = new Decor();
             this.computerSetup = new ComputerSetup();
             this.monitorScreen = new MonitorScreen();
-            // const hb = new Hitboxes();
-            // this.cursor = new Cursor();
         });
 
         // 阶段2：纹理逐个就绪 → 无感贴图

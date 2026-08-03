@@ -30,18 +30,7 @@ jest.mock('three/examples/jsm/loaders/GLTFLoader.js', () => ({
 // Mock Application to break singleton cycle
 jest.mock('../src/Application/Application', () => ({
     __esModule: true,
-    default: class MockApplication {
-        loading = {
-            trigger: jest.fn(),
-        };
-    },
-}));
-
-jest.mock('../src/Application/Utils/Loading', () => ({
-    default: class MockLoading {
-        trigger = jest.fn();
-        application = { loading: { trigger: jest.fn() } };
-    },
+    default: class MockApplication {},
 }));
 
 import Resources from '../src/Application/Utils/Resources';

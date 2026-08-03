@@ -7,15 +7,11 @@ import Camera from './Camera/Camera';
 import Renderer from './Renderer';
 import Mouse from './Utils/Mouse';
 
-//@ts-ignore
+//@ts-expect-error
 import World from './World/World';
 import Resources from './Utils/Resources';
 
 import sources from './sources';
-
-import Loading from './Utils/Loading';
-
-import UI from './UI';
 
 let instance: Application | null = null;
 
@@ -31,8 +27,6 @@ export default class Application {
     renderer: Renderer;
     world: World;
     mouse: Mouse;
-    loading: Loading;
-    ui: UI;
 
     constructor() {
         // Singleton
@@ -43,14 +37,13 @@ export default class Application {
         instance = this;
 
         // Global access
-        //@ts-ignore
+        //@ts-expect-error
         // window.Application = this;
 
         // Setup
         this.debug = new Debug();
         this.sizes = new Sizes();
         this.mouse = new Mouse();
-        this.loading = new Loading();
         this.time = new Time();
         this.scene = new THREE.Scene();
         this.cssScene = new THREE.Scene();
@@ -60,8 +53,6 @@ export default class Application {
         this.renderer = new Renderer();
         this.camera.createControls();
         this.world = new World();
-
-        this.ui = new UI();
 
         // Resize event
         this.sizes.on('resize', () => {
