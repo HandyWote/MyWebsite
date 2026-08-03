@@ -1,10 +1,8 @@
 // frontend/src/stores/articleStore.js
 import { create } from "zustand";
-import { api, API_ENDPOINTS } from "@/config/api";
 import { normalizeTags } from "@/utils/normalizeTags";
-
-// 从 ADMIN 端点中解构，保持 store 内部代码简洁
-const { ARTICLES, ARTICLE_DETAIL, ARTICLE_BATCH_DELETE } = API_ENDPOINTS.ADMIN;
+import { articleApi } from "@/api/articleApi";
+import { withLoading } from "@/api/withLoading";
 
 const useArticleStore = create((set, get) => ({
 	// ========== 文章列表状态 ==========
@@ -24,90 +22,58 @@ const useArticleStore = create((set, get) => ({
 		const perPage = params.perPage ?? pagination.perPage;
 		const search = params.search ?? "";
 
-		set({ loading: true, error: null });
-		try {
-			const query = new URLSearchParams({
-				page,
-				per_page: perPage,
-				search,
-			}).toString();
-			const data = await api.get(`${ARTICLES}?${query}`);
+		// 与历史行为一致：列表失败时吞掉错误，只置 error 状态
+		return withLoading(
+			set,
+			"loading",
+			"error",
+			async () => {
+				const data = await articleApi.fetchArticles({ page, perPage, search });
 
-			// apiClient 自动解包了 data.data
-			const articles = data.articles || [];
-			const total = data.total || 0;
+				// apiClient 自动解包了 data.data
+				const articles = data.articles || [];
+				const total = data.total || 0;
 
-			set({
-				articles: articles.map((article) => ({
-					...article,
-					tags: normalizeTags(article.tags),
-				})),
-				pagination: { ...pagination, page, perPage, total },
-				loading: false,
-			});
-		} catch (err) {
-			set({ error: err.message, loading: false });
-		}
+				set({
+					articles: articles.map((article) => ({
+						...article,
+						tags: normalizeTags(article.tags),
+					})),
+					pagination: { ...pagination, page, perPage, total },
+				});
+			},
+			{ rethrow: false }
+		);
 	},
 
-	fetchArticleById: async (id) => {
-		set({ loading: true, error: null });
-		try {
-			const article = await api.get(ARTICLE_DETAIL(id));
-			return article;
-		} catch (err) {
-			set({ error: err.message });
-			throw err;
-		} finally {
-			set({ loading: false });
-		}
-	},
+	fetchArticleById: async (id) =>
+		withLoading(set, "loading", "error", () => articleApi.fetchArticleById(id)),
 
-	createArticle: async (article) => {
-		set({ loading: true, error: null });
-		try {
-			const data = await api.post(ARTICLES, article);
+	createArticle: async (article) =>
+		withLoading(set, "loading", "error", async () => {
+			const data = await articleApi.createArticle(article);
 			get().fetchArticles();
 			return data;
-		} catch (err) {
-			set({ error: err.message, loading: false });
-			throw err;
-		}
-	},
+		}),
 
-	updateArticle: async (id, article) => {
-		set({ loading: true, error: null });
-		try {
-			const data = await api.put(ARTICLE_DETAIL(id), article);
+	updateArticle: async (id, article) =>
+		withLoading(set, "loading", "error", async () => {
+			const data = await articleApi.updateArticle(id, article);
 			get().fetchArticles();
 			return data;
-		} catch (err) {
-			set({ error: err.message, loading: false });
-			throw err;
-		}
-	},
+		}),
 
-	deleteArticle: async (id) => {
-		set({ loading: true, error: null });
-		try {
-			await api.del(ARTICLE_DETAIL(id));
+	deleteArticle: async (id) =>
+		withLoading(set, "loading", "error", async () => {
+			await articleApi.deleteArticle(id);
 			get().fetchArticles();
-		} catch (err) {
-			set({ error: err.message, loading: false });
-			throw err;
-		}
-	},
+		}),
 
-	batchDeleteArticles: async (ids) => {
-		set({ loading: true, error: null });
-		try {
-			await api.post(ARTICLE_BATCH_DELETE, { ids });
+	batchDeleteArticles: async (ids) =>
+		withLoading(set, "loading", "error", async () => {
+			await articleApi.batchDeleteArticles(ids);
 			get().fetchArticles();
-		} catch (err) {
-			set({ error: err.message, loading: false });
-			throw err;
-		}
-	},
+		}),
 
 	// ========== SEO 数据注入 ==========
 	/**

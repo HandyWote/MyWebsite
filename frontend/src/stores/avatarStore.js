@@ -1,6 +1,7 @@
 // frontend/src/stores/avatarStore.js
 import { create } from 'zustand';
 import { api, API_ENDPOINTS, getApiUrl } from '@/config/api';
+import { withLoading } from '@/api/withLoading';
 
 const {
   AVATARS,
@@ -13,47 +14,30 @@ const useAvatarStore = create((set, get) => ({
   loading: false,
   error: null,
 
-  fetchAvatars: async () => {
-    set({ loading: true, error: null });
-    try {
+  fetchAvatars: async () =>
+    withLoading(set, 'loading', 'error', async () => {
       const data = await api.get(API_ENDPOINTS.ADMIN.AVATARS);
       const arr = (data || []).map(a => {
         const url = a.filename ? getApiUrl.avatarFile(a.filename) : undefined;
         return { ...a, url };
       });
-      set({ avatars: arr, loading: false });
-    } catch (err) {
-      set({ error: err.message, loading: false });
-      throw err;
-    }
-  },
+      set({ avatars: arr });
+    }),
 
   uploadAvatar: async (file) => {
-    try {
-      await api.upload(API_ENDPOINTS.ADMIN.AVATARS, file);
-      await get().fetchAvatars();
-    } catch (err) {
-      throw err;
-    }
+    await api.upload(API_ENDPOINTS.ADMIN.AVATARS, file);
+    await get().fetchAvatars();
   },
 
   deleteAvatar: async (avatarId) => {
-    try {
-      const data = await api.del(API_ENDPOINTS.ADMIN.AVATAR_DELETE(avatarId));
-      await get().fetchAvatars();
-      return data;
-    } catch (err) {
-      throw err;
-    }
+    const data = await api.del(API_ENDPOINTS.ADMIN.AVATAR_DELETE(avatarId));
+    await get().fetchAvatars();
+    return data;
   },
 
   setCurrent: async (avatarId) => {
-    try {
-      await api.put(API_ENDPOINTS.ADMIN.AVATAR_SET_CURRENT(avatarId));
-      await get().fetchAvatars();
-    } catch (err) {
-      throw err;
-    }
+    await api.put(API_ENDPOINTS.ADMIN.AVATAR_SET_CURRENT(avatarId));
+    await get().fetchAvatars();
   },
 
   reorderAvatars: async (newOrder) => {

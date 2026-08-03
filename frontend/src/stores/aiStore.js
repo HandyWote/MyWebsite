@@ -1,9 +1,7 @@
 // frontend/src/stores/aiStore.js
 import { create } from "zustand";
-import { api, API_ENDPOINTS } from "@/config/api";
-
-const { ARTICLE_AI_ANALYZE, AI_SETTINGS, AI_SETTINGS_TEST } =
-	API_ENDPOINTS.ADMIN;
+import { aiApi } from "@/api/aiApi";
+import { withLoading } from "@/api/withLoading";
 
 const useAiStore = create((set, get) => ({
 	aiSuggestions: null,
@@ -13,57 +11,31 @@ const useAiStore = create((set, get) => ({
 	settingsSaving: false,
 	settingsTesting: false,
 
-	analyzeContent: async (title, content, summary = "") => {
-		set({ loading: true });
-		try {
-			const result = await api.post(ARTICLE_AI_ANALYZE, {
-				title,
-				content,
-				summary,
-			});
-			set({ aiSuggestions: result, loading: false });
+	analyzeContent: async (title, content, summary = "") =>
+		withLoading(set, "loading", null, async () => {
+			const result = await aiApi.analyzeContent(title, content, summary);
+			set({ aiSuggestions: result });
 			return result;
-		} catch (err) {
-			set({ loading: false });
-			throw err;
-		}
-	},
+		}),
 
-	fetchAiSettings: async () => {
-		set({ settingsLoading: true });
-		try {
-			const settings = await api.get(AI_SETTINGS);
-			set({ aiSettings: settings, settingsLoading: false });
+	fetchAiSettings: async () =>
+		withLoading(set, "settingsLoading", null, async () => {
+			const settings = await aiApi.fetchAiSettings();
+			set({ aiSettings: settings });
 			return settings;
-		} catch (err) {
-			set({ settingsLoading: false });
-			throw err;
-		}
-	},
+		}),
 
-	updateAiSettings: async (settings) => {
-		set({ settingsSaving: true });
-		try {
-			const updated = await api.put(AI_SETTINGS, settings);
-			set({ aiSettings: updated, settingsSaving: false });
+	updateAiSettings: async (settings) =>
+		withLoading(set, "settingsSaving", null, async () => {
+			const updated = await aiApi.updateAiSettings(settings);
+			set({ aiSettings: updated });
 			return updated;
-		} catch (err) {
-			set({ settingsSaving: false });
-			throw err;
-		}
-	},
+		}),
 
-	testAiConnection: async (settings) => {
-		set({ settingsTesting: true });
-		try {
-			const result = await api.post(AI_SETTINGS_TEST, settings);
-			set({ settingsTesting: false });
-			return result;
-		} catch (err) {
-			set({ settingsTesting: false });
-			throw err;
-		}
-	},
+	testAiConnection: async (settings) =>
+		withLoading(set, "settingsTesting", null, () =>
+			aiApi.testAiConnection(settings)
+		),
 
 	applySuggestions: () => {
 		const { aiSuggestions } = get();

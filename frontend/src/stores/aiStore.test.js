@@ -83,10 +83,10 @@ describe("aiStore", () => {
 		it("应该处理分析失败", async () => {
 			api.post.mockRejectedValueOnce(new Error("AI service unavailable"));
 
+			// zustand store 断言不需要 React act（act 只服务于组件渲染），
+			// 失败路径直接 await 避免 React 19 act 对跨模块 reject 微任务的时序陷阱
 			await expect(
-				act(async () => {
-					await useAiStore.getState().analyzeContent("标题", "内容");
-				}),
+				useAiStore.getState().analyzeContent("标题", "内容"),
 			).rejects.toThrow("AI service unavailable");
 
 			expect(useAiStore.getState().loading).toBe(false);

@@ -69,10 +69,9 @@ describe('avatarStore', () => {
     it('应该处理获取失败', async () => {
       api.get.mockRejectedValueOnce(new Error('Fetch failed'));
 
+      // zustand store 断言不需要 React act，避免 React 19 act 的微任务时序陷阱
       await expect(
-        act(async () => {
-          await useAvatarStore.getState().fetchAvatars();
-        })
+        useAvatarStore.getState().fetchAvatars()
       ).rejects.toThrow('Fetch failed');
 
       expect(useAvatarStore.getState().error).toBe('Fetch failed');

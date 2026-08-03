@@ -96,10 +96,9 @@ describe('siteBlockStore', () => {
     it('应该处理获取失败', async () => {
       api.get.mockRejectedValueOnce(new Error('Fetch failed'));
 
+      // zustand store 断言不需要 React act，避免 React 19 act 的微任务时序陷阱
       await expect(
-        act(async () => {
-          await useSiteBlockStore.getState().fetchBlocks();
-        })
+        useSiteBlockStore.getState().fetchBlocks()
       ).rejects.toThrow('Fetch failed');
 
       expect(useSiteBlockStore.getState().error).toBe('Fetch failed');
@@ -155,9 +154,7 @@ describe('siteBlockStore', () => {
       api.put.mockRejectedValueOnce(new Error('Save failed'));
 
       await expect(
-        act(async () => {
-          await useSiteBlockStore.getState().saveBlocks();
-        })
+        useSiteBlockStore.getState().saveBlocks()
       ).rejects.toThrow('Save failed');
 
       expect(useSiteBlockStore.getState().saving).toBe(false);
