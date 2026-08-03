@@ -4,36 +4,22 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/handywote/website/database"
-	"github.com/handywote/website/models"
+	"github.com/handywote/website/services"
 	"github.com/handywote/website/utils"
 )
 
 // AdminGetComments 获取评论列表（管理）
 func AdminGetComments(c *gin.Context) {
-	var comments []models.Comment
 	page, pageSize := ParsePaginationParams(c)
 
-	query := database.GetDB().Model(&models.Comment{})
+	status := strings.TrimSpace(c.Query("status"))
+	search := strings.TrimSpace(c.Query("search"))
 
-	if status := strings.TrimSpace(c.Query("status")); status != "" {
-		query = query.Where("status = ?", status)
-	}
-	if search := strings.TrimSpace(c.Query("search")); search != "" {
-		like := "%" + search + "%"
-		query = query.Where("content ILIKE ? OR author ILIKE ? OR ip_address ILIKE ?", like, like, like)
-	}
+	commentService := services.NewCommentService()
 
-	var total int64
-	if err := query.Count(&total).Error; err != nil {
+	comments, total, err := commentService.ListAdmin(status, search, page, pageSize)
+	if err != nil {
 		utils.ErrorInternal(c, "Failed to count comments: "+err.Error())
-		return
-	}
-
-	query = query.Order("created_at DESC").Offset((page - 1) * pageSize).Limit(pageSize)
-
-	if err := query.Find(&comments).Error; err != nil {
-		utils.ErrorInternal(c, "Failed to fetch comments")
 		return
 	}
 
@@ -46,21 +32,13 @@ func AdminGetComments(c *gin.Context) {
 		}
 	}
 
-	articleTitleByID := make(map[uint]string)
-	if len(articleIDs) > 0 {
-		var articles []models.Article
-		if err := database.GetDB().Select("id,title").Where("id IN ?", articleIDs).Find(&articles).Error; err == nil {
-			for _, article := range articles {
-				articleTitleByID[article.ID] = article.Title
-			}
-		}
-	}
+	articleTitleByID, _ := commentService.ListArticleTitles(articleIDs)
 
 	commentItems := make([]gin.H, 0, len(comments))
 	for _, cmt := range comments {
 		commentItems = append(commentItems, gin.H{
 			"id":           cmt.ID,
-			"article_id":  cmt.ArticleID,
+			"article_id":   cmt.ArticleID,
 			"article_title": func() string {
 				if t, ok := articleTitleByID[cmt.ArticleID]; ok {
 					return t
@@ -101,7 +79,7 @@ func AdminUpdateComment(c *gin.Context) {
 		return
 	}
 
-	if err := database.GetDB().Model(&models.Comment{}).Where("id = ?", id).Update("status", input.Status).Error; err != nil {
+	if err := services.NewCommentService().UpdateStatus(id, input.Status); err != nil {
 		utils.ErrorInternal(c, "Failed to update comment")
 		return
 	}
@@ -116,7 +94,7 @@ func AdminDeleteComment(c *gin.Context) {
 		return
 	}
 
-	if err := database.GetDB().Delete(&models.Comment{}, id).Error; err != nil {
+	if err := services.NewCommentService().Delete(id); err != nil {
 		utils.ErrorInternal(c, "Failed to delete comment")
 		return
 	}

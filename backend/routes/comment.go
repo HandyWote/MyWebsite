@@ -7,8 +7,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/handywote/website/config"
-	"github.com/handywote/website/database"
 	"github.com/handywote/website/models"
+	"github.com/handywote/website/services"
 	"github.com/handywote/website/utils"
 )
 
@@ -19,9 +19,8 @@ func GetComments(c *gin.Context) {
 		return
 	}
 
-	var comments []models.Comment
-	if err := database.GetDB().Where("article_id = ? AND status = ?", id, "normal").
-		Order("created_at DESC").Find(&comments).Error; err != nil {
+	comments, err := services.NewCommentService().ListByArticle(id)
+	if err != nil {
 		utils.ErrorInternal(c, "Failed to fetch comments")
 		return
 	}
@@ -57,20 +56,18 @@ func CreateComment(c *gin.Context) {
 
 	// 评论限制检查 - 按小时且按用户维度
 	if cfg.CommentLimitEnabled {
-		var count int64
-		// 按小时计算时间窗口
 		hoursAgo := time.Now().Add(-time.Duration(cfg.CommentLimitTimeWindow) * time.Hour)
-		limitQuery := database.GetDB().Model(&models.Comment{})
-		if identityEmail != "" {
-			limitQuery = limitQuery.Where("email = ? AND created_at > ?", identityEmail, hoursAgo)
-		} else if identityIP != "" {
-			limitQuery = limitQuery.Where("ip_address = ? AND created_at > ?", identityIP, hoursAgo)
-		} else {
-			limitQuery = limitQuery.Where("author = ? AND created_at > ?", identifier, hoursAgo)
+		var count int64
+		var err error
+		switch {
+		case identityEmail != "":
+			count, err = services.NewCommentService().CountRecentBy("email", identityEmail, hoursAgo)
+		case identityIP != "":
+			count, err = services.NewCommentService().CountRecentBy("ip_address", identityIP, hoursAgo)
+		default:
+			count, err = services.NewCommentService().CountRecentBy("author", identifier, hoursAgo)
 		}
-		limitQuery.Count(&count)
-
-		if count >= int64(cfg.CommentLimitMaxCount) {
+		if err == nil && count >= int64(cfg.CommentLimitMaxCount) {
 			c.JSON(http.StatusTooManyRequests, utils.Response{
 				Code:    http.StatusTooManyRequests,
 				Message: "评论次数已达上限，请稍后再试",
@@ -89,7 +86,7 @@ func CreateComment(c *gin.Context) {
 		Status:    "pending",
 	}
 
-	if err := database.GetDB().Create(&comment).Error; err != nil {
+	if err := services.NewCommentService().Create(&comment); err != nil {
 		utils.ErrorInternal(c, "Failed to create comment")
 		return
 	}
