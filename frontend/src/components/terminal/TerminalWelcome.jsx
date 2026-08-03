@@ -1,8 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef } from 'react';
 import { Box, Typography } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import { api, API_ENDPOINTS, getApiUrl } from '../../config/api';
-import { getBlockContent, SITE_BLOCK_DEFAULTS } from '../../config/siteBlocks';
+import { useProfile } from '../../hooks/useProfile';
 import PixelAvatar from '../pixel/ui/PixelAvatar';
 import SocialLinks from '../sidebar/SocialLinks';
 import Education from '../sidebar/Education';
@@ -16,44 +15,8 @@ import { normalizeGitHubUsername } from '../../utils/github';
 
 function TerminalWelcome() {
   const navigate = useNavigate();
-  const [homeBlock, setHomeBlock] = useState(SITE_BLOCK_DEFAULTS.home);
-  const [sidebarBlock, setSidebarBlock] = useState(SITE_BLOCK_DEFAULTS.sidebar);
-  const [avatarUrl, setAvatarUrl] = useState(AVATAR_FALLBACK);
-  const [loading, setLoading] = useState(true);
+  const { homeBlock, sidebarBlock, avatarUrl, loading } = useProfile({ fallbackAvatar: AVATAR_FALLBACK });
   const lastTapAt = useRef(0);
-
-  useEffect(() => {
-    let ignore = false;
-
-    const fetchProfile = async () => {
-      try {
-        const [blocks, avatars] = await Promise.all([
-          api.get(API_ENDPOINTS.PUBLIC.SITE_BLOCKS),
-          api.get(API_ENDPOINTS.PUBLIC.AVATARS),
-        ]);
-        const currentAvatar = (avatars || []).find((avatar) => avatar.is_current);
-
-        if (!ignore) {
-          setHomeBlock(getBlockContent(blocks, 'home'));
-          setSidebarBlock(getBlockContent(blocks, 'sidebar'));
-          setAvatarUrl(currentAvatar ? getApiUrl.avatarFile(currentAvatar.filename) : AVATAR_FALLBACK);
-        }
-      } catch {
-        if (!ignore) {
-          setAvatarUrl(AVATAR_FALLBACK);
-        }
-      } finally {
-        if (!ignore) {
-          setLoading(false);
-        }
-      }
-    };
-
-    fetchProfile();
-    return () => {
-      ignore = true;
-    };
-  }, []);
 
   const siteTitle = loading ? 'loading...' : homeBlock.title;
   const siteSubtitle = loading ? 'fetching profile...' : homeBlock.subtitle;
