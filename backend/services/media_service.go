@@ -82,11 +82,17 @@ func (s *MediaStorageService) Save(ctx context.Context, kind MediaKind, filename
 }
 
 func (s *MediaStorageService) PDFURL(ctx context.Context, filename string) string {
-	if strings.TrimSpace(filename) == "" { return "" }
+	if strings.TrimSpace(filename) == "" {
+		return ""
+	}
 	key := strings.TrimLeft(filepath.ToSlash(filename), "/")
-	if strings.HasPrefix(key, "articles/pdfs/") { return s.PublicURL(key) }
+	if strings.HasPrefix(key, "articles/pdfs/") {
+		return s.PublicURL(key)
+	}
 	for _, candidate := range []string{"articles/pdfs/" + filepath.Base(key), "pdfs/" + filepath.Base(key)} {
-		if _, err := s.storage.Head(ctx, candidate); err == nil { return s.PublicURL(candidate) }
+		if _, err := s.storage.Head(ctx, candidate); err == nil {
+			return s.PublicURL(candidate)
+		}
 	}
 	return s.PublicURL(key)
 }
@@ -115,13 +121,16 @@ func (s *MediaStorageService) Delete(ctx context.Context, key string) error {
 }
 
 func (s *MediaStorageService) RunDeleteWorker(ctx context.Context, interval time.Duration) {
-	if interval <= 0 { interval = time.Minute }
+	if interval <= 0 {
+		interval = time.Minute
+	}
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 	for {
 		_ = s.RetryDeletes(ctx)
 		select {
-		case <-ctx.Done(): return
+		case <-ctx.Done():
+			return
 		case <-ticker.C:
 		}
 	}
