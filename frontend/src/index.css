@@ -198,6 +198,21 @@ a:hover {
   color: var(--accent-green);
 }
 
+.home-avatar {
+  object-fit: cover;
+  border: 1px solid var(--border-default);
+}
+
+.home-social-link {
+  margin-inline: var(--spacing-sm);
+}
+
+.public-shell-link,
+.article-card-link {
+  color: inherit;
+  text-decoration: none;
+}
+
 /* 代码风格文本 */
 .code-text {
   font-family: var(--font-mono);

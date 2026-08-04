@@ -5,7 +5,7 @@ import HomePage from './page';
 
 const { getPublicProfileMock } = vi.hoisted(() => ({ getPublicProfileMock: vi.fn() }));
 
-vi.mock('@/api/publicApi.server', () => ({ getPublicProfile: getPublicProfileMock }));
+vi.mock('@/seo/data.server', () => ({ getProfileForPage: getPublicProfileMock }));
 vi.mock('next/image', () => ({
   default: ({ priority: _priority, ...props }: ImgHTMLAttributes<HTMLImageElement> & { priority?: boolean }) => <img {...props} />,
 }));
@@ -44,6 +44,8 @@ describe('HomePage', () => {
 
     expect(screen.getByRole('heading', { name: 'Configured title' })).toBeInTheDocument();
     expect(screen.getByText('$ Configured subtitle')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'articles/' })).toHaveAttribute('href', '/articles');
+    expect(screen.getByRole('link', { name: 'projects/' })).toHaveAttribute('href', '/projects');
     expect(screen.getByRole('link', { name: 'GitHub' })).toHaveAttribute('href', 'https://github.com/octocat');
     expect(screen.getByTestId('github-activity')).toHaveAttribute('data-username', 'octocat');
     expect(screen.getByTestId('github-activity')).toHaveAttribute('data-compact', 'false');

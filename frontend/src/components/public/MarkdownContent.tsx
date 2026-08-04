@@ -1,8 +1,11 @@
 import { Box } from '@mui/material';
 import ReactMarkdown from 'react-markdown';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { oneDark } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 import rehypeKatex from 'rehype-katex';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
+import { MermaidDiagram } from './MermaidDiagram';
 
 export function MarkdownContent({ content }: { content: string }) {
   return (
@@ -19,17 +22,30 @@ export function MarkdownContent({ content }: { content: string }) {
         '& table': { width: '100%', borderCollapse: 'collapse', mb: 2 },
         '& th, & td': { border: 1, borderColor: 'divider', p: 1 },
         '& img': { maxWidth: '100%', height: 'auto' },
+        '& figure': { m: 0, mb: 2 },
+        '& figcaption': { mt: 0.75, color: 'text.secondary', fontSize: '0.75rem' },
+        '& svg': { display: 'block', maxWidth: '100%', height: 'auto' },
       }}
     >
       <ReactMarkdown
         remarkPlugins={[remarkMath, remarkGfm]}
         rehypePlugins={[rehypeKatex]}
         components={{
+          pre({ children }) {
+            return <>{children}</>;
+          },
           code({ className, children, ...props }) {
-            const language = /language-(\w+)/.exec(className ?? '')?.[1];
-            if (language === 'mermaid') {
-              return <code className={className} data-mermaid-fallback="true" {...props}>{children}</code>;
+            const source = String(children);
+            const language = /language-([\w-]+)/.exec(className ?? '')?.[1];
+            if (language === 'mermaid') return <MermaidDiagram source={source.replace(/\n$/, '')} />;
+            if (language) {
+              return (
+                <SyntaxHighlighter language={language} style={oneDark} PreTag="pre" customStyle={{ margin: 0 }}>
+                  {source.replace(/\n$/, '')}
+                </SyntaxHighlighter>
+              );
             }
+            if (source.endsWith('\n')) return <pre><code className={className} {...props}>{source}</code></pre>;
             return <code className={className} {...props}>{children}</code>;
           },
         }}

@@ -1,9 +1,16 @@
+import type { Metadata } from 'next';
 import { ExternalLink } from 'lucide-react';
 import { Box, Card, Chip, Typography } from '@mui/material';
 import { getProjects } from '@/api/publicApi.server';
+import { pageMetadata } from '@/seo/site';
 import { PublicShell } from '@/components/public/PublicShell';
 
 export const dynamic = 'force-dynamic';
+export const metadata: Metadata = pageMetadata({
+  title: 'Projects',
+  description: 'HandyWote 的开源项目与代码仓库。',
+  path: '/projects',
+});
 
 export default async function ProjectsPage() {
   const { config, projects, error } = await getProjects();

@@ -18,9 +18,11 @@ export function PublicShell({ activePath, children }: { activePath: string; chil
           {items.map((item) => {
             const active = item.href === '/' ? activePath === '/' : activePath.startsWith(item.href);
             return (
-              <Box key={item.href} component={Link} href={item.href} sx={{ display: 'grid', gridTemplateColumns: '16px 1fr', py: 0.75, color: active ? 'primary.main' : 'text.secondary', fontFamily: 'JetBrains Mono, monospace' }}>
-                <span>{active ? '▸' : ''}</span><span>{item.label}</span>
-              </Box>
+              <Link key={item.href} href={item.href} className="public-shell-link">
+                <Box sx={{ display: 'grid', gridTemplateColumns: '16px 1fr', py: 0.75, color: active ? 'primary.main' : 'text.secondary', fontFamily: 'JetBrains Mono, monospace' }}>
+                  <span>{active ? '▸' : ''}</span><span>{item.label}</span>
+                </Box>
+              </Link>
             );
           })}
         </Box>

@@ -22,13 +22,15 @@ export interface ArticleSummary {
   read_time?: string;
   created_at?: string;
   updated_at?: string;
+  cover?: string;
+  cover_url?: string;
+  content_type?: 'markdown' | 'pdf' | string;
+  pdf_filename?: string;
+  pdf_url?: string;
 }
 
 export interface Article extends ArticleSummary {
   content?: string;
-  content_type?: 'markdown' | 'pdf' | string;
-  pdf_filename?: string;
-  cover?: string;
   views?: number;
 }
 
