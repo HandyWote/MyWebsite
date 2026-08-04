@@ -2,6 +2,8 @@ package routes
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"time"
 
 	"github.com/handywote/website/config"
@@ -22,21 +24,23 @@ var (
 	runtimeConfig       *config.Config
 )
 
-func init() {
-	configureServices(config.LoadConfig())
-}
-
 func StartMediaDeleteWorker(ctx context.Context) {
 	go mediaService.RunDeleteWorker(ctx, time.Minute)
 }
 
-func configureServices(cfg *config.Config) {
-	runtimeConfig = cfg
+func configureServices(cfg *config.Config) error {
+	if cfg == nil {
+		return errors.New("route configuration is required")
+	}
 	driver, err := mediastorage.NewFromConfig(context.Background(), cfg)
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("initialize media storage: %w", err)
 	}
-	mediaService = services.NewMediaStorageService(driver, nil, cfg.MaxContentLength, cfg.AllowedImageExtensions)
-	avatarService = services.NewAvatarService(repositories.NewAvatarRepository(), mediaService)
+
+	configuredMedia := services.NewMediaStorageService(driver, nil, cfg.MaxContentLength, cfg.AllowedImageExtensions)
+	runtimeConfig = cfg
+	mediaService = configuredMedia
+	avatarService = services.NewAvatarService(repositories.NewAvatarRepository(), configuredMedia)
 	revalidationAdmin = services.NewRevalidationAdminService(nil, cfg.RevalidationToken)
+	return nil
 }

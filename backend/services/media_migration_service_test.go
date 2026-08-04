@@ -3,6 +3,7 @@ package services
 import (
 	"bytes"
 	"context"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -27,6 +28,35 @@ func mediaMigrationTestService(t *testing.T) (*gorm.DB, string, *storage.LocalSt
 	target := storage.NewLocalStorage(t.TempDir(), "https://media.example")
 	service := NewMediaMigrationService(source, target, repositories.NewArticleRepository(db), repositories.NewAvatarRepository(db))
 	return db, source, target, service
+}
+
+type failingReadCloser struct {
+	readErr  error
+	closeErr error
+}
+
+func (source *failingReadCloser) Read(_ []byte) (int, error) { return 0, source.readErr }
+func (source *failingReadCloser) Close() error               { return source.closeErr }
+
+func TestSHA256AndClosePreservesReadAndCloseErrors(t *testing.T) {
+	readErr := errors.New("read failed")
+	closeErr := errors.New("close failed")
+
+	_, err := sha256AndClose("source.bin", &failingReadCloser{readErr: readErr, closeErr: closeErr})
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, readErr)
+	assert.ErrorIs(t, err, closeErr)
+	assert.Contains(t, err.Error(), "hash migration source")
+	assert.Contains(t, err.Error(), "close migration source")
+}
+
+func TestFileSHA256WrapsOpenFailure(t *testing.T) {
+	_, err := fileSHA256(filepath.Join(t.TempDir(), "missing.bin"))
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, os.ErrNotExist)
+	assert.Contains(t, err.Error(), "open migration source")
 }
 
 func TestMediaMigrationDryRunApplySkipVerifyAndRepeat(t *testing.T) {

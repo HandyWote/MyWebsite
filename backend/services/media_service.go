@@ -213,17 +213,18 @@ func (s *MediaStorageService) seekableBody(body io.Reader, declaredSize int64) (
 func detectContentType(body io.ReadSeeker) (string, error) {
 	start, err := body.Seek(0, io.SeekCurrent)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("record media read position: %w", err)
 	}
 	header := make([]byte, 512)
 	read, readErr := io.ReadFull(body, header)
 	if readErr != nil && !errors.Is(readErr, io.EOF) && !errors.Is(readErr, io.ErrUnexpectedEOF) {
-		return "", readErr
+		return "", fmt.Errorf("read media header: %w", readErr)
 	}
 	if _, err := body.Seek(start, io.SeekStart); err != nil {
-		return "", err
+		return "", fmt.Errorf("restore media read position: %w", err)
 	}
-	return http.DetectContentType(header[:read]), nil
+	contentType := http.DetectContentType(header[:read])
+	return contentType, nil
 }
 
 func (s *MediaStorageService) Delete(ctx context.Context, key string) error {

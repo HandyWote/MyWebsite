@@ -2,6 +2,7 @@ package routes
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -17,9 +18,12 @@ func buildUploadedAvatar(filename string) models.Avatar {
 
 func createThenClearCurrent(create func() error, clear func() error) error {
 	if err := create(); err != nil {
-		return err
+		return fmt.Errorf("create avatar: %w", err)
 	}
-	return clear()
+	if err := clear(); err != nil {
+		return fmt.Errorf("clear previous current avatar: %w", err)
+	}
+	return nil
 }
 
 func GetAvatars(c *gin.Context) {

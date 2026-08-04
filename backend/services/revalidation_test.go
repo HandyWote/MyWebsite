@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -127,4 +128,12 @@ func TestTwoRevalidationWorkersDeliverClaimedEventOnlyOnce(t *testing.T) {
 func TestNewOutboxRecordRejectsCallerControlledEntityOrAction(t *testing.T) {
 	_, err := NewOutboxRecord(RevalidationEvent{Entity: "tag", Action: "arbitrary", IDs: []uint{1}}, time.Now())
 	assert.ErrorIs(t, err, ErrInvalidRevalidationEvent)
+}
+
+func TestEnqueueOutboxWrapsInvalidEventWithoutLosingCause(t *testing.T) {
+	err := enqueueOutbox(context.Background(), nil, RevalidationEvent{Entity: "tag", Action: "arbitrary"}, time.Now())
+
+	require.Error(t, err)
+	assert.True(t, errors.Is(err, ErrInvalidRevalidationEvent))
+	assert.Contains(t, err.Error(), "build revalidation outbox record")
 }

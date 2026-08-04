@@ -3,6 +3,7 @@ package services
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"testing"
 
 	"github.com/glebarez/sqlite"
@@ -44,6 +45,15 @@ func TestSiteBlockServiceCentralizesPublicAndAdminPayloads(t *testing.T) {
 	assert.Equal(t, int64(1), count)
 }
 
+func TestEncodeSiteBlockContentReturnsContextualMarshalError(t *testing.T) {
+	_, err := encodeSiteBlockContent(make(chan int))
+
+	require.Error(t, err)
+	var unsupportedType *json.UnsupportedTypeError
+	assert.ErrorAs(t, err, &unsupportedType)
+	assert.Contains(t, err.Error(), "encode site block content")
+}
+
 func TestAvatarServiceUsesStorageKeysAndMaintainsSingleCurrentAvatar(t *testing.T) {
 	db := profileTestDB(t)
 	driver := storage.NewLocalStorage(t.TempDir(), "https://media.example")
@@ -63,7 +73,11 @@ func TestAvatarServiceUsesStorageKeysAndMaintainsSingleCurrentAvatar(t *testing.
 	require.NoError(t, err)
 	require.Len(t, avatars, 2)
 	currentCount := 0
-	for _, avatar := range avatars { if avatar.IsCurrent { currentCount++ } }
+	for _, avatar := range avatars {
+		if avatar.IsCurrent {
+			currentCount++
+		}
+	}
 	assert.Equal(t, 1, currentCount)
 	current, err := service.Current(ctx)
 	require.NoError(t, err)

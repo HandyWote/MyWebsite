@@ -9,13 +9,14 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/handywote/website/config"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestRouteAlignment_AdminCompatibilityEndpointsExist(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
 	cfg := &config.Config{JWTSecretKey: "test-secret", UploadFolder: "uploads"}
-	SetupRoutes(r, cfg)
+	require.NoError(t, SetupRoutes(r, cfg))
 
 	cases := []struct {
 		name   string
@@ -43,11 +44,30 @@ func TestRouteAlignment_AdminCompatibilityEndpointsExist(t *testing.T) {
 	}
 }
 
+func TestSetupRoutesPropagatesDependencyErrorsWithoutReplacingInjectedServices(t *testing.T) {
+	r := gin.New()
+	previousConfig := runtimeConfig
+	previousMedia := mediaService
+	previousAvatar := avatarService
+	previousRevalidation := revalidationAdmin
+
+	err := SetupRoutes(r, &config.Config{StorageDriver: "unsupported"})
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "configure route services")
+	assert.Contains(t, err.Error(), "unsupported storage driver")
+	assert.Same(t, previousConfig, runtimeConfig)
+	assert.Same(t, previousMedia, mediaService)
+	assert.Same(t, previousAvatar, avatarService)
+	assert.Same(t, previousRevalidation, revalidationAdmin)
+	assert.Empty(t, r.Routes())
+}
+
 func TestRouteAlignment_LegacySkillsAndContactsRoutesRemoved(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
 	cfg := &config.Config{JWTSecretKey: "test-secret", UploadFolder: "uploads"}
-	SetupRoutes(r, cfg)
+	require.NoError(t, SetupRoutes(r, cfg))
 
 	cases := []struct {
 		name   string

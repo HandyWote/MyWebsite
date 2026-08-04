@@ -43,7 +43,9 @@ func main() {
 	r := gin.Default()
 
 	// Setup routes
-	routes.SetupRoutes(r, cfg)
+	if err := routes.SetupRoutes(r, cfg); err != nil {
+		log.Fatalf("Route setup failed: %v", err)
+	}
 	routes.StartMediaDeleteWorker(context.Background())
 
 	// Empty tokens are rejected; queued events remain durable until the

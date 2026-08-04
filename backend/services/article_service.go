@@ -261,7 +261,10 @@ func markdownTitle(filename, content string) string {
 func enqueueOutbox(ctx context.Context, repository *repositories.RevalidationOutboxRepository, event RevalidationEvent, now time.Time) error {
 	record, err := NewOutboxRecord(event, now)
 	if err != nil {
-		return err
+		return fmt.Errorf("build revalidation outbox record: %w", err)
 	}
-	return repository.Create(ctx, &record)
+	if err := repository.Create(ctx, &record); err != nil {
+		return fmt.Errorf("create revalidation outbox record: %w", err)
+	}
+	return nil
 }

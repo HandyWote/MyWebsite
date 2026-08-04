@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/glebarez/sqlite"
+	"github.com/handywote/website/config"
 	"github.com/handywote/website/database"
 	"github.com/handywote/website/models"
 	"gorm.io/gorm"
@@ -35,6 +36,9 @@ func TestMain(m *testing.M) {
 
 	// Repository default constructors resolve this test database lazily.
 	database.DB = db
+	if err := configureServices(&config.Config{StorageDriver: "local", UploadFolder: "uploads"}); err != nil {
+		log.Fatalf("initialize route test dependencies: %v", err)
+	}
 
 	code := m.Run()
 	os.Exit(code)

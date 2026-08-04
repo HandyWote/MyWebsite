@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -138,5 +139,9 @@ func encodeSiteBlockContent(content interface{}) (string, error) {
 		}
 	}
 	encoded, err := json.Marshal(content)
-	return string(encoded), err
+	if err != nil {
+		return "", fmt.Errorf("encode site block content: %w", err)
+	}
+	encodedContent := string(encoded)
+	return encodedContent, nil
 }

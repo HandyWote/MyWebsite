@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -57,5 +58,9 @@ func GenerateToken(username, secretKey string, expiresIn int) (string, error) {
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString([]byte(secretKey))
+	signed, err := token.SignedString([]byte(secretKey))
+	if err != nil {
+		return "", fmt.Errorf("sign JWT token: %w", err)
+	}
+	return signed, nil
 }

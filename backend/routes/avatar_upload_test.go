@@ -2,6 +2,7 @@ package routes
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/handywote/website/models"
@@ -45,6 +46,9 @@ func TestCreateThenClearCurrent_DoesNotClearWhenCreateFails(t *testing.T) {
 	if !errors.Is(err, createErr) {
 		t.Fatalf("expected create error, got %v", err)
 	}
+	if !strings.Contains(err.Error(), "create avatar") {
+		t.Fatalf("expected create context, got %v", err)
+	}
 
 	if clearCalled {
 		t.Fatal("clear should not be called when create fails")
@@ -73,5 +77,8 @@ func TestCreateThenClearCurrent_PropagatesClearErrorAfterCreateSuccess(t *testin
 
 	if !errors.Is(err, clearErr) {
 		t.Fatalf("expected clear error, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "clear previous current avatar") {
+		t.Fatalf("expected clear context, got %v", err)
 	}
 }

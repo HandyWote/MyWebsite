@@ -223,22 +223,41 @@ func (s *AIService) TestConnection(ctx context.Context, resolved ResolvedAIConfi
 func defaultAIService() *AIService { return NewAIService(nil, nil, nil) }
 
 func AnalyzeWithAI(articleID uint, cfg *config.Config) (string, error) {
-	return defaultAIService().AnalyzeArticle(context.Background(), articleID, cfg)
+	result, err := defaultAIService().AnalyzeArticle(context.Background(), articleID, cfg)
+	if err != nil {
+		return "", fmt.Errorf("analyze article %d with AI: %w", articleID, err)
+	}
+	return result, nil
 }
 
 func AnalyzeTextWithAI(title, content, summary string, cfg *config.Config) (string, error) {
-	return defaultAIService().AnalyzeText(context.Background(), title, content, summary, cfg)
+	result, err := defaultAIService().AnalyzeText(context.Background(), title, content, summary, cfg)
+	if err != nil {
+		return "", fmt.Errorf("analyze supplied text with AI: %w", err)
+	}
+	return result, nil
 }
 
 func GetAISetting() (models.AISetting, error) {
-	return defaultAIService().GetSetting(context.Background())
+	setting, err := defaultAIService().GetSetting(context.Background())
+	if err != nil {
+		return models.AISetting{}, fmt.Errorf("get AI setting: %w", err)
+	}
+	return setting, nil
 }
 
 func UpdateAISetting(input models.AISetting) (models.AISetting, error) {
-	return defaultAIService().UpdateSetting(context.Background(), input)
+	setting, err := defaultAIService().UpdateSetting(context.Background(), input)
+	if err != nil {
+		return models.AISetting{}, fmt.Errorf("update AI setting: %w", err)
+	}
+	return setting, nil
 }
 
 func TestAIConnection(cfg config.Config) error {
 	resolved := ResolvedAIConfig{APIKey: cfg.OpenAIAPIKey, Model: cfg.OpenAIModel, BaseURL: cfg.OpenAIAPIURL}
-	return defaultAIService().TestConnection(context.Background(), resolved)
+	if err := defaultAIService().TestConnection(context.Background(), resolved); err != nil {
+		return fmt.Errorf("test AI connection: %w", err)
+	}
+	return nil
 }

@@ -102,14 +102,20 @@ func (s *MediaMigrationService) Run(ctx context.Context, mode MediaMigrationMode
 			if plan.missing {
 				file, err := os.Open(plan.item.Source)
 				if err != nil {
-					return result, err
+					return result, fmt.Errorf("open migration source %q: %w", plan.item.Source, err)
 				}
-				err = s.storage.Save(ctx, plan.item.Key, file, plan.item.Size, plan.typeName, map[string]string{
+				uploadErr := s.storage.Save(ctx, plan.item.Key, file, plan.item.Size, plan.typeName, map[string]string{
 					storage.SHA256MetadataKey: plan.item.Checksum,
 				})
-				file.Close()
-				if err != nil {
-					return result, fmt.Errorf("upload %s: %w", plan.item.Key, err)
+				if uploadErr != nil {
+					uploadErr = fmt.Errorf("upload %s: %w", plan.item.Key, uploadErr)
+				}
+				closeErr := file.Close()
+				if closeErr != nil {
+					closeErr = fmt.Errorf("close migration source %q: %w", plan.item.Source, closeErr)
+				}
+				if err := errors.Join(uploadErr, closeErr); err != nil {
+					return result, err
 				}
 				if err := s.validateTarget(ctx, plan.item.Key, plan.item.Size, plan.typeName, plan.item.Checksum); err != nil {
 					return result, err
@@ -249,14 +255,30 @@ func checksumConflict(metadata map[string]string, expected string) bool {
 func fileSHA256(filename string) (string, error) {
 	file, err := os.Open(filename)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("open migration source %q for hashing: %w", filename, err)
 	}
-	defer file.Close()
+	digest, err := sha256AndClose(filename, file)
+	if err != nil {
+		return "", fmt.Errorf("calculate SHA-256 for migration source %q: %w", filename, err)
+	}
+	return digest, nil
+}
+
+func sha256AndClose(filename string, source io.ReadCloser) (string, error) {
 	hash := sha256.New()
-	if _, err := io.Copy(hash, file); err != nil {
+	_, readErr := io.Copy(hash, source)
+	if readErr != nil {
+		readErr = fmt.Errorf("hash migration source %q: %w", filename, readErr)
+	}
+	closeErr := source.Close()
+	if closeErr != nil {
+		closeErr = fmt.Errorf("close migration source %q after hashing: %w", filename, closeErr)
+	}
+	if err := errors.Join(readErr, closeErr); err != nil {
 		return "", err
 	}
-	return hex.EncodeToString(hash.Sum(nil)), nil
+	digest := hex.EncodeToString(hash.Sum(nil))
+	return digest, nil
 }
 
 func (s *MediaMigrationService) updateReferences(ctx context.Context, key string, refs []mediaReference) error {
