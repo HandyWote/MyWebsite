@@ -16,13 +16,20 @@ export function getBackendInternalUrl(): string {
   return (process.env.BACKEND_INTERNAL_URL ?? 'http://localhost:5000').replace(/\/$/, '');
 }
 
-export async function serverRequest<T>(endpoint: string, init: RequestInit = {}): Promise<T> {
+export type ServerRequestInit = RequestInit & {
+  next?: {
+    revalidate?: number | false;
+    tags?: string[];
+  };
+};
+
+export async function serverRequest<T>(endpoint: string, init: ServerRequestInit = {}): Promise<T> {
   if (!endpoint.startsWith('/api/')) {
     throw new Error(`Server API endpoint must start with /api/: ${endpoint}`);
   }
   const response = await fetch(`${getBackendInternalUrl()}${endpoint}`, {
     ...init,
-    cache: 'no-store',
+    cache: init.cache ?? 'force-cache',
     headers: {
       Accept: 'application/json',
       ...init.headers,

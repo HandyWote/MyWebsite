@@ -20,7 +20,11 @@ var (
 	ErrMissingRevalidationToken = errors.New("revalidation token is required")
 )
 
-const revalidationClaimLease = 30 * time.Second
+const (
+	revalidationBatchSize      = 25
+	revalidationRequestTimeout = 2 * time.Second
+	revalidationClaimLease     = 2 * time.Minute
+)
 
 type RevalidationEvent struct {
 	Entity string `json:"entity"`
@@ -36,8 +40,13 @@ var allowedRevalidationActions = map[string]map[string]bool{
 
 func NewOutboxRecord(event RevalidationEvent, now time.Time) (models.RevalidationOutbox, error) {
 	actions, ok := allowedRevalidationActions[event.Entity]
-	if !ok || !actions[event.Action] {
+	if !ok || !actions[event.Action] || len(event.IDs) == 0 {
 		return models.RevalidationOutbox{}, ErrInvalidRevalidationEvent
+	}
+	for _, id := range event.IDs {
+		if id == 0 {
+			return models.RevalidationOutbox{}, ErrInvalidRevalidationEvent
+		}
 	}
 	ids, err := json.Marshal(event.IDs)
 	if err != nil {
@@ -70,7 +79,7 @@ func NewRevalidationWorker(repository *repositories.RevalidationOutboxRepository
 		repository = repositories.NewRevalidationOutboxRepository()
 	}
 	if client == nil {
-		client = &http.Client{Timeout: 2 * time.Second}
+		client = &http.Client{Timeout: revalidationRequestTimeout}
 	}
 	return &RevalidationWorker{
 		repository: repository,
@@ -107,7 +116,7 @@ func (w *RevalidationWorker) RunOnce(ctx context.Context) error {
 		return errors.New("revalidation URL is required")
 	}
 	now := w.now()
-	events, err := w.repository.ClaimDue(ctx, now, 25, revalidationClaimLease)
+	events, err := w.repository.ClaimDue(ctx, now, revalidationBatchSize, revalidationClaimLease)
 	if err != nil {
 		return err
 	}
@@ -135,7 +144,7 @@ func (w *RevalidationWorker) deliver(ctx context.Context, record models.Revalida
 	if err != nil {
 		return err
 	}
-	requestCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	requestCtx, cancel := context.WithTimeout(ctx, revalidationRequestTimeout)
 	defer cancel()
 	req, err := http.NewRequestWithContext(requestCtx, http.MethodPost, w.url, bytes.NewReader(payload))
 	if err != nil {

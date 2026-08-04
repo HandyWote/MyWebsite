@@ -15,8 +15,26 @@ describe('server API', () => {
       json: async () => ({ code: 0, data: { id: 7 } }),
     }));
     await expect(serverRequest<{ id: number }>('/api/articles/7')).resolves.toEqual({ id: 7 });
-    expect(fetch).toHaveBeenCalledWith('http://backend:5000/api/articles/7', expect.objectContaining({ cache: 'no-store' }));
+    expect(fetch).toHaveBeenCalledWith('http://backend:5000/api/articles/7', expect.objectContaining({ cache: 'force-cache' }));
     expect(getBackendInternalUrl()).toBe('http://backend:5000');
+  });
+
+  it('passes explicit Next cache tags and revalidation to fetch', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ code: 0, data: [] }),
+    }));
+
+    await serverRequest('/api/articles', {
+      cache: 'force-cache',
+      next: { revalidate: 86400, tags: ['articles:list'] },
+    });
+
+    expect(fetch).toHaveBeenCalledWith('http://localhost:5000/api/articles', expect.objectContaining({
+      cache: 'force-cache',
+      next: { revalidate: 86400, tags: ['articles:list'] },
+    }));
   });
 
   it('rejects browser or arbitrary URLs at the server boundary', async () => {

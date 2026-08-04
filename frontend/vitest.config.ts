@@ -36,6 +36,7 @@ const config: VitestConfig = {
 		include: [
 			"src/**/*.{test,spec}.{js,jsx,ts,tsx}",
 			"app/**/*.{test,spec}.{js,jsx,ts,tsx}",
+			"scripts/**/*.{test,spec}.{js,jsx,ts,tsx}",
 		],
 		coverage: {
 			provider: "v8",

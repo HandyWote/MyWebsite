@@ -1,0 +1,56 @@
+[
+  {
+    "event": { "entity": "article", "action": "create", "ids": [101] },
+    "tags": ["articles:list", "sitemap"],
+    "paths": ["/", "/articles", "/sitemap.xml", "/articles/101"],
+    "prewarmPaths": ["/articles/101"]
+  },
+  {
+    "event": { "entity": "article", "action": "update", "ids": [42] },
+    "tags": ["articles:list", "sitemap", "article:42"],
+    "paths": ["/", "/articles", "/sitemap.xml", "/articles/42"],
+    "prewarmPaths": []
+  },
+  {
+    "event": { "entity": "article", "action": "delete", "ids": [43] },
+    "tags": ["articles:list", "sitemap", "article:43"],
+    "paths": ["/", "/articles", "/sitemap.xml", "/articles/43"],
+    "prewarmPaths": []
+  },
+  {
+    "event": { "entity": "article", "action": "batch", "ids": [7, 8] },
+    "tags": ["articles:list", "sitemap", "article:7", "article:8"],
+    "paths": ["/", "/articles", "/sitemap.xml", "/articles/7", "/articles/8"],
+    "prewarmPaths": []
+  },
+  {
+    "event": { "entity": "article", "action": "import", "ids": [9, 10] },
+    "tags": ["articles:list", "sitemap", "article:9", "article:10"],
+    "paths": ["/", "/articles", "/sitemap.xml", "/articles/9", "/articles/10"],
+    "prewarmPaths": []
+  },
+  {
+    "event": { "entity": "site-block", "action": "update", "ids": [3] },
+    "tags": ["site-blocks"],
+    "paths": ["/", "/articles", "/projects"],
+    "prewarmPaths": []
+  },
+  {
+    "event": { "entity": "site-block", "action": "delete", "ids": [4] },
+    "tags": ["site-blocks"],
+    "paths": ["/", "/articles", "/projects"],
+    "prewarmPaths": []
+  },
+  {
+    "event": { "entity": "avatar", "action": "update", "ids": [5] },
+    "tags": ["profile"],
+    "paths": ["/"],
+    "prewarmPaths": []
+  },
+  {
+    "event": { "entity": "avatar", "action": "delete", "ids": [6] },
+    "tags": ["profile"],
+    "paths": ["/"],
+    "prewarmPaths": []
+  }
+]
