@@ -35,7 +35,7 @@ export default async function HomePage() {
 		<HomeEnterBoundary>
 			<Box
 				sx={{
-					height: "calc(100dvh - 24px)",
+					height: "var(--public-viewport-height)",
 					display: "grid",
 					gridTemplateRows: "minmax(0, 1fr) auto",
 					border: 1,

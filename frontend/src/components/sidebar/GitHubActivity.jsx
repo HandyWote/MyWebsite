@@ -1,5 +1,6 @@
 'use client';
 
+import { useSyncExternalStore } from 'react';
 import { Box } from '@mui/material';
 import { GitHubCalendar } from 'react-github-calendar';
 import useMediaQuery from '@mui/material/useMediaQuery';
@@ -9,7 +10,12 @@ const RECENT_WEEKS = 18;
 const TABLET_WEEKS = 30;
 const FULL_YEAR_WEEKS = 53;
 
+const subscribe = () => () => {};
+const getClientSnapshot = () => true;
+const getServerSnapshot = () => false;
+
 function GitHubActivity({ username = 'HandyWote', compact = true }) {
+  const mounted = useSyncExternalStore(subscribe, getClientSnapshot, getServerSnapshot);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
@@ -39,22 +45,30 @@ function GitHubActivity({ username = 'HandyWote', compact = true }) {
           },
         }}
       >
-        <GitHubCalendar
-          username={username}
-          transformData={transformData}
-          blockSize={10}
-          blockMargin={2}
-          showWeekdayLabels={false}
-          showMonthLabels={false}
-          showColorLegend={false}
-          showTotalCount={false}
-          colorScheme="dark"
-          style={{
-            minWidth: calendarMinWidth,
-            maxWidth: '100%',
-            fontFamily: 'var(--font-mono)',
-          }}
-        />
+        {mounted ? (
+          <GitHubCalendar
+            username={username}
+            transformData={transformData}
+            blockSize={10}
+            blockMargin={2}
+            showWeekdayLabels={false}
+            showMonthLabels={false}
+            showColorLegend={false}
+            showTotalCount={false}
+            colorScheme="dark"
+            style={{
+              minWidth: calendarMinWidth,
+              maxWidth: '100%',
+              fontFamily: 'var(--font-mono)',
+            }}
+          />
+        ) : (
+          <Box
+            aria-hidden="true"
+            data-testid="github-calendar-placeholder"
+            sx={{ width: '100%', minWidth: calendarMinWidth, minHeight: 96 }}
+          />
+        )}
       </Box>
     </Box>
   );

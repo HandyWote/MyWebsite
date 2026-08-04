@@ -11,7 +11,7 @@ const items = [
 
 export function PublicShell({ activePath, children }: { activePath: string; children: ReactNode }) {
   return (
-    <Box sx={{ height: 'calc(100dvh - 24px)', display: 'grid', gridTemplateRows: 'minmax(0, 1fr) auto', border: 1, borderColor: 'divider', overflow: 'hidden' }}>
+    <Box sx={{ height: 'var(--public-viewport-height)', display: 'grid', gridTemplateRows: 'minmax(0, 1fr) auto', border: 1, borderColor: 'divider', overflow: 'hidden' }}>
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '180px minmax(0, 1fr)' }, minHeight: 0 }}>
         <Box component="aside" sx={{ display: { xs: 'none', md: 'block' }, p: 1.5, bgcolor: 'background.paper', borderRight: 1, borderColor: 'divider' }}>
           <Box sx={{ color: 'text.disabled', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.75rem', mb: 1.25 }}>explorer</Box>

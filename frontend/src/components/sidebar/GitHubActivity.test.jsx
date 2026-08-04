@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import { renderToString } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import GitHubActivity from './GitHubActivity';
 
@@ -9,6 +10,15 @@ vi.mock('react-github-calendar', () => ({
 }));
 
 describe('GitHubActivity', () => {
+  it('uses a stable placeholder for server rendering', () => {
+    mockCalendar.mockClear();
+
+    const html = renderToString(<GitHubActivity username="octocat" compact={false} />);
+
+    expect(html).toContain('github-calendar-placeholder');
+    expect(mockCalendar).not.toHaveBeenCalled();
+  });
+
   it('renders compact calendar settings for sidebar', () => {
     render(<GitHubActivity username="octocat" />);
 
