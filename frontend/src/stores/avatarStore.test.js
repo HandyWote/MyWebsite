@@ -29,7 +29,7 @@ vi.mock('@/config/api', () => ({
   default: {},
 }));
 
-import { api, getApiUrl } from '@/config/api';
+import { api } from '@/config/api';
 
 describe('avatarStore', () => {
   beforeEach(() => {

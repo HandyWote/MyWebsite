@@ -6,21 +6,14 @@ import PixelCard from './pixel/ui/PixelCard';
 import PixelChip from './pixel/ui/PixelChip';
 import { api, API_ENDPOINTS } from '../config/api';
 import { getBlockContent, SITE_BLOCK_DEFAULTS } from '../config/siteBlocks';
-import { fetchGithubRepos, buildGithubCacheKey, readGithubCache } from '../utils/github';
+import {
+  buildGithubCacheKey,
+  fetchGithubRepos,
+  mapGithubReposToProjects,
+  readGithubCache,
+} from '../utils/github';
 
 const MotionDiv = motion.div;
-
-const formatRelativeTime = (dateString) => {
-  const date = new Date(dateString);
-  const now = new Date();
-  const diffMs = now - date;
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  if (diffDays === 0) return 'today';
-  if (diffDays === 1) return 'yesterday';
-  if (diffDays < 7) return `${diffDays}d ago`;
-  if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
-  return `${Math.floor(diffDays / 30)}mo ago`;
-};
 
 function ProjectList() {
   const [projects, setProjects] = useState([]);
@@ -40,20 +33,7 @@ function ProjectList() {
       const username = activeConfig.github_username || SITE_BLOCK_DEFAULTS.projects_page.github_username;
 
       const allRepos = await fetchGithubRepos(username, { sort, perPage });
-      const mappedProjects = allRepos
-        .map(repo => ({
-          id: repo.id,
-          name: repo.name,
-          description: repo.description || '暂无描述',
-          tags: repo.topics?.slice(0, 3) || (repo.language ? [repo.language] : []),
-          stars: repo.stargazers_count,
-          forks: repo.forks_count,
-          updatedAt: formatRelativeTime(repo.updated_at),
-          url: repo.html_url,
-        }))
-        .sort((a, b) => b.stars - a.stars);
-
-      setProjects(mappedProjects);
+      setProjects(mapGithubReposToProjects(allRepos));
       setError(null);
     } catch (err) {
       console.error('Failed to fetch projects:', err);
@@ -64,7 +44,7 @@ function ProjectList() {
       const staleCache = readGithubCache(cacheKey);
 
       if (staleCache && Array.isArray(staleCache.data) && staleCache.data.length > 0) {
-        setProjects(staleCache.data);
+        setProjects(mapGithubReposToProjects(staleCache.data));
         setError(null);
         return;
       }

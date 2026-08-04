@@ -44,7 +44,7 @@ export default function DataImportExport() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
       notify.notify().success('数据导出成功');
-    } catch (error) {
+    } catch {
       notify.notify().error('数据导出失败');
     } finally {
       setLoading(false);

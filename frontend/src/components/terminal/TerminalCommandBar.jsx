@@ -171,6 +171,7 @@ function TerminalCommandBar({
             <Box
               component="div"
               role="option"
+              aria-label={candidate}
               aria-selected={index === activeIndex}
               key={candidate}
               onMouseDown={(event) => {

@@ -39,13 +39,7 @@ const useUploadStore = create((set) => ({
     }
   },
 
-  importMarkdown: async (files) => {
-    try {
-      return await api.uploadFiles(ARTICLE_IMPORT_MD, files, 'files');
-    } catch (err) {
-      throw err;
-    }
-  },
+  importMarkdown: (files) => api.uploadFiles(ARTICLE_IMPORT_MD, files, 'files'),
 
   resetUploads: () => set({
     coverPreview: null,

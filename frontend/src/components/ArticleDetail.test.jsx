@@ -112,6 +112,7 @@ describe('ArticleDetail', () => {
       expect(writeTextMock).toHaveBeenCalledWith('http://localhost:5173/articles/42');
     });
 
-    expect(await screen.findByText('链接已复制到剪贴板')).toBeInTheDocument();
+    const closeButton = await screen.findByRole('button', { name: 'Close' });
+    expect(closeButton.closest('[role="alert"]')).toHaveTextContent('链接已复制到剪贴板');
   });
 });

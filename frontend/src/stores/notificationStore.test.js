@@ -1,5 +1,5 @@
 // frontend/src/stores/notificationStore.test.js
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { useNotificationStore } from './notificationStore';
 
 describe('notificationStore', () => {

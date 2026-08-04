@@ -1,6 +1,6 @@
 // frontend/src/components/pixel/ui/PixelChip.jsx
 import { Chip as MuiChip } from '@mui/material';
-import { colors, typography, spacing, animations } from '../tokens';
+import { colors, typography, animations } from '../tokens';
 
 /**
  * PixelChip - 终端风格标签组件

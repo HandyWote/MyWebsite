@@ -6,7 +6,8 @@
     "scripts": {
         "start": "vite preview",
         "build": "vite build",
-        "dev": "vite"
+        "dev": "vite",
+        "test": "jest --runInBand"
     },
     "dependencies": {
         "@tweenjs/tween.js": "^18.6.4",

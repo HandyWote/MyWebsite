@@ -119,8 +119,8 @@ describe("aiStore", () => {
 			};
 			api.put.mockResolvedValueOnce(updatedSettings);
 
-			const result = await act(async () => {
-				return await useAiStore.getState().updateAiSettings(updatedSettings);
+			await act(async () => {
+				await useAiStore.getState().updateAiSettings(updatedSettings);
 			});
 
 			expect(useAiStore.getState().aiSettings).toEqual(updatedSettings);

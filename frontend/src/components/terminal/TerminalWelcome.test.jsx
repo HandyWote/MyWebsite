@@ -99,8 +99,12 @@ describe('TerminalWelcome', () => {
 
     const enterHint = await screen.findByText(/double click to enter articles/i);
 
-    fireEvent.pointerUp(enterHint, { pointerType: 'touch' });
-    fireEvent.pointerUp(enterHint, { pointerType: 'touch' });
+    const firstTap = new Event('pointerup', { bubbles: true });
+    const secondTap = new Event('pointerup', { bubbles: true });
+    Object.defineProperty(firstTap, 'pointerType', { value: 'touch' });
+    Object.defineProperty(secondTap, 'pointerType', { value: 'touch' });
+    fireEvent(enterHint, firstTap);
+    fireEvent(enterHint, secondTap);
 
     expect(screen.getByText('ARTICLE_LIST_SENTINEL')).toBeInTheDocument();
   });

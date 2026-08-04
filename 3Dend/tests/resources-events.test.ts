@@ -35,6 +35,8 @@ jest.mock('../src/Application/Application', () => ({
 
 import Resources from '../src/Application/Utils/Resources';
 
+type Resource = ConstructorParameters<typeof Resources>[0][number];
+
 describe('Resources two-phase events', () => {
     test('在所有 geometry 资源加载完后触发 geometryReady', (done) => {
         const onGeometryReady = jest.fn();

@@ -47,7 +47,7 @@ vi.mock('@/config/siteBlocks', () => ({
   },
 }));
 
-import { api, getApiUrl } from '@/config/api';
+import { api } from '@/config/api';
 
 describe('siteBlockStore', () => {
   beforeEach(() => {

@@ -63,6 +63,35 @@ const writeGithubCache = (cacheKey, data) => {
   );
 };
 
+export function mapGithubRepoToProject(repo, now = new Date()) {
+  const updatedAt = new Date(repo.updated_at);
+  const diffMs = now - updatedAt;
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  let relativeUpdatedAt;
+  if (diffDays === 0) relativeUpdatedAt = 'today';
+  else if (diffDays === 1) relativeUpdatedAt = 'yesterday';
+  else if (diffDays < 7) relativeUpdatedAt = `${diffDays}d ago`;
+  else if (diffDays < 30) relativeUpdatedAt = `${Math.floor(diffDays / 7)}w ago`;
+  else relativeUpdatedAt = `${Math.floor(diffDays / 30)}mo ago`;
+
+  return {
+    id: repo.id,
+    name: repo.name,
+    description: repo.description || '暂无描述',
+    tags: repo.topics?.slice(0, 3) || (repo.language ? [repo.language] : []),
+    stars: repo.stargazers_count,
+    forks: repo.forks_count,
+    updatedAt: relativeUpdatedAt,
+    url: repo.html_url,
+  };
+}
+
+export const mapGithubReposToProjects = (repos) =>
+  repos
+    .map((repo) => mapGithubRepoToProject(repo))
+    .sort((a, b) => b.stars - a.stars);
+
 async function fetchGithubPage(username, sort, perPage, page) {
   const response = await fetch(
     `https://api.github.com/users/${username}/repos?sort=${sort}&per_page=${perPage}&page=${page}`,

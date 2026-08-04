@@ -52,17 +52,13 @@ describe('Admin Login', () => {
     const usernameLabel = screen.getByText('Username');
     const usernameInput = document.querySelector('input[type="text"]');
 
-    expect(usernameLabel).toHaveStyle({
-      transform: 'translate(16px, 11px) scale(1)',
-    });
+    expect(usernameLabel).not.toHaveClass('MuiInputLabel-shrink');
     expect(usernameInput.closest('.MuiOutlinedInput-root')).toHaveStyle({
       minHeight: '44px',
     });
 
     fireEvent.change(usernameInput, { target: { value: 'admin' } });
 
-    expect(usernameLabel).toHaveStyle({
-      transform: 'translate(16px, -9px) scale(0.75)',
-    });
+    expect(usernameLabel).toHaveClass('MuiInputLabel-shrink');
   });
 });

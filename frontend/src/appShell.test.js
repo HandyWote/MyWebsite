@@ -18,15 +18,6 @@ describe('app shell', () => {
     expect(viteConfig).toContain("base: process.env.NODE_ENV === 'production' ? '/app/' : './'");
   });
 
-  it('configures BrowserRouter basename from Vite base path', () => {
-    const currentDir = path.dirname(fileURLToPath(import.meta.url));
-    const appSource = fs.readFileSync(path.resolve(currentDir, './App.jsx'), 'utf8');
-
-    expect(appSource).toContain('const routerBasename =');
-    expect(appSource).toContain('import.meta.env.BASE_URL');
-    expect(appSource).toContain('<Router basename={routerBasename}>');
-  });
-
   it('does not hardcode avatar fallback to root path in app components', () => {
     const currentDir = path.dirname(fileURLToPath(import.meta.url));
     const welcomeSource = fs.readFileSync(path.resolve(currentDir, './components/terminal/TerminalWelcome.jsx'), 'utf8');

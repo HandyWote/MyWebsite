@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   buildGithubCacheKey,
   fetchGithubRepos,
+  mapGithubRepoToProject,
   normalizeGitHubUsername,
   readGithubCache,
 } from './github';
@@ -30,6 +31,21 @@ describe('normalizeGitHubUsername', () => {
   it('空值回退到默认用户名', () => {
     expect(normalizeGitHubUsername('')).toBe('HandyWote');
     expect(normalizeGitHubUsername(null)).toBe('HandyWote');
+  });
+});
+
+describe('mapGithubRepoToProject', () => {
+  it('maps a GitHub API repo to the ProjectList DTO', () => {
+    expect(mapGithubRepoToProject(MOCK_REPO(7, 'mapped'), new Date('2024-01-02T00:00:00Z'))).toEqual({
+      id: 7,
+      name: 'mapped',
+      description: 'desc-mapped',
+      tags: ['react'],
+      stars: 3,
+      forks: 1,
+      updatedAt: 'yesterday',
+      url: 'https://github.com/user/mapped',
+    });
   });
 });
 

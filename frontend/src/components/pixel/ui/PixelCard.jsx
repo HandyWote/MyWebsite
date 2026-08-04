@@ -1,6 +1,6 @@
 // frontend/src/components/pixel/ui/PixelCard.jsx
 import { Card as MuiCard, CardContent, CardActions, Typography, Box } from '@mui/material';
-import { colors, typography, spacing, animations, borders } from '../tokens';
+import { colors, typography, spacing, animations } from '../tokens';
 
 /**
  * PixelCard - 终端风格卡片组件

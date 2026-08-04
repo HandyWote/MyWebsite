@@ -5,7 +5,7 @@ import { Box, AppBar, Toolbar, Typography, Tabs, Tab, Button, useMediaQuery, Div
 import { FileText, MessageSquare, Settings, LogOut } from 'lucide-react';
 import { verifyToken, clearAuth, saveRedirectPath } from '../utils/auth';
 import { api, API_ENDPOINTS } from '../../config/api';
-import { colors, typography, spacing } from '../../components/pixel/tokens';
+import { colors, typography } from '../../components/pixel/tokens';
 import NotificationSnackbar from '../../components/NotificationSnackbar';
 import { useNotificationStore } from '@/stores/notificationStore';
 

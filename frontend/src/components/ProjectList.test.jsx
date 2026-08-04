@@ -145,7 +145,7 @@ describe('ProjectList', () => {
     });
   });
 
-  it.skip('uses 3-hour local cache to avoid extra GitHub requests', async () => {
+  it('uses 3-hour local cache to avoid extra GitHub requests', async () => {
     projectPageConfig = {
       github_username: 'ConfigUser',
       per_page: 50,
@@ -158,26 +158,26 @@ describe('ProjectList', () => {
         {
           id: 999,
           name: 'cached-repo',
-          description: 'cached',
-          tags: ['cached'],
-          stars: 5,
-          forks: 1,
-          updatedAt: 'today',
-          url: 'https://github.com/ConfigUser/cached-repo',
+          description: 'cached description',
+          topics: ['cached-topic'],
+          language: 'JavaScript',
+          stargazers_count: 5,
+          forks_count: 1,
+          updated_at: new Date().toISOString(),
+          html_url: 'https://github.com/ConfigUser/cached-repo',
         },
       ],
     });
 
-    const getItemSpy = vi.spyOn(Storage.prototype, 'getItem').mockImplementation((key) => {
-      if (String(key) === 'github_repos:ConfigUser:created:50') {
-        return cachePayload;
-      }
-      return null;
-    });
+    window.localStorage.setItem('github_repos:ConfigUser:created:50', cachePayload);
 
     render(<ProjectList />);
 
-    expect(await screen.findByText('cached-repo')).toBeInTheDocument();
+    const cachedProject = await screen.findByRole('link', { name: /cached-repo/i });
+    expect(cachedProject).toHaveAttribute('href', 'https://github.com/ConfigUser/cached-repo');
+    expect(screen.getByText('cached description')).toBeInTheDocument();
+    expect(screen.getByText('cached-topic')).toBeInTheDocument();
+    expect(screen.getByText('★ 5 · ⑂ 1 · updated today')).toBeInTheDocument();
     expect(screen.getByText('found 1 repositories')).toBeInTheDocument();
 
     expect(
@@ -185,10 +185,9 @@ describe('ProjectList', () => {
         String(requestUrl).includes('api.github.com/users/ConfigUser/repos')
       )
     ).toBe(false);
-    getItemSpy.mockRestore();
   });
 
-  it.skip('falls back to stale cache when GitHub request fails', async () => {
+  it('falls back to stale cache when GitHub request fails', async () => {
     projectPageConfig = {
       github_username: 'ConfigUser',
       per_page: 50,
@@ -202,21 +201,17 @@ describe('ProjectList', () => {
           id: 888,
           name: 'stale-repo',
           description: 'stale',
-          tags: ['legacy'],
-          stars: 3,
-          forks: 0,
-          updatedAt: 'yesterday',
-          url: 'https://github.com/ConfigUser/stale-repo',
+          topics: ['legacy'],
+          language: 'TypeScript',
+          stargazers_count: 3,
+          forks_count: 0,
+          updated_at: new Date(Date.now() - (24 * 60 * 60 * 1000)).toISOString(),
+          html_url: 'https://github.com/ConfigUser/stale-repo',
         },
       ],
     });
 
-    const getItemSpy = vi.spyOn(Storage.prototype, 'getItem').mockImplementation((key) => {
-      if (String(key) === 'github_repos:ConfigUser:created:50') {
-        return stalePayload;
-      }
-      return null;
-    });
+    window.localStorage.setItem('github_repos:ConfigUser:created:50', stalePayload);
 
     globalThis.fetch = vi.fn((url) => {
       const requestUrl = String(url);
@@ -238,8 +233,10 @@ describe('ProjectList', () => {
 
     render(<ProjectList />);
 
-    expect(await screen.findByText('stale-repo')).toBeInTheDocument();
+    const staleProject = await screen.findByRole('link', { name: /stale-repo/i });
+    expect(staleProject).toHaveAttribute('href', 'https://github.com/ConfigUser/stale-repo');
+    expect(screen.getByText('legacy')).toBeInTheDocument();
+    expect(screen.getByText('★ 3 · ⑂ 0 · updated yesterday')).toBeInTheDocument();
     expect(screen.getByText('found 1 repositories')).toBeInTheDocument();
-    getItemSpy.mockRestore();
   });
 });

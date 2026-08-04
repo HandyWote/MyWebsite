@@ -8,8 +8,6 @@ import { colors, typography, spacing, animations } from '../tokens';
 export function PixelInput({
   label,
   placeholder,
-  prefix,
-  suffix,
   ...props
 }) {
   return (

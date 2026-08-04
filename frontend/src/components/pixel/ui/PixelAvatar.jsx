@@ -1,6 +1,6 @@
 // frontend/src/components/pixel/ui/PixelAvatar.jsx
 import { Avatar as MuiAvatar } from '@mui/material';
-import { colors, spacing } from '../tokens';
+import { colors } from '../tokens';
 
 /**
  * PixelAvatar - 终端风格头像组件

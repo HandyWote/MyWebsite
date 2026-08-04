@@ -3,6 +3,9 @@ import react from '@vitejs/plugin-react'
 import process from 'process'
 import path from 'path'
 import fs from 'fs'
+import { fileURLToPath } from 'url'
+
+const currentDir = path.dirname(fileURLToPath(import.meta.url))
 
 // 自定义插件：构建时生成 .vite/manifest.json，供 Go 后端读取 CSS/JS hash
 function viteBuildManifest() {
@@ -49,7 +52,7 @@ export default defineConfig({
   plugins: [react(), viteBuildManifest()],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      '@': path.resolve(currentDir, './src'),
     },
   },
   base: process.env.NODE_ENV === 'production' ? '/app/' : './',
