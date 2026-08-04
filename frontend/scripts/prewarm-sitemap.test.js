@@ -38,11 +38,20 @@ describe('sitemap prewarm script', () => {
       .rejects.toThrow('Prewarm request failed (500)');
   });
 
-  it('rejects cross-origin sitemap entries', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(response(
+  it('rejects invalid and cross-origin sitemap entries', async () => {
+    await expect(prewarmSitemap('not a URL', { fetchImpl: vi.fn() }))
+      .rejects.toThrow('Invalid sitemap URL: not a URL');
+
+    const invalidLocation = vi.fn().mockResolvedValue(response(
+      '<urlset><url><loc>not a URL</loc></url></urlset>',
+    ));
+    await expect(prewarmSitemap('https://example.com', { fetchImpl: invalidLocation }))
+      .rejects.toThrow('Invalid sitemap URL: not a URL');
+
+    const crossOrigin = vi.fn().mockResolvedValue(response(
       '<urlset><url><loc>https://attacker.example/articles/1</loc></url></urlset>',
     ));
-    await expect(prewarmSitemap('https://example.com', { fetchImpl: fetchMock }))
+    await expect(prewarmSitemap('https://example.com', { fetchImpl: crossOrigin }))
       .rejects.toThrow('outside https://example.com');
   });
 });
