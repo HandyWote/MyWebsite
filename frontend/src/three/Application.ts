@@ -12,6 +12,12 @@ import { Time } from './Time';
 import type { ThreeExperience, ThreeExperienceOptions } from './types';
 import { World } from './World';
 
+// r152+ defaults to color-managed rendering, which changes every material and
+// baked-texture color vs the pre-upgrade r137 visuals (sRGB design values were
+// previously treated as linear and re-encoded, brightening the scene). Keep the
+// legacy pipeline so the upgrade is pixel-identical to the shipped experience.
+THREE.ColorManagement.enabled = false;
+
 export class Application implements ThreeExperience {
   private readonly scene = new THREE.Scene();
   private readonly cssScene = new THREE.Scene();
@@ -29,7 +35,7 @@ export class Application implements ThreeExperience {
   private started = false;
   private destroyed = false;
 
-  constructor(private readonly options: ThreeExperienceOptions) {
+  constructor(options: ThreeExperienceOptions) {
     this.camera = new Camera(this.scene, this.sizes, this.mouse, this.time, this.tweens);
     this.renderer = new Renderer(options.webglMount, options.cssMount, this.sizes);
     this.camera.createControls(this.renderer.webgl.domElement);

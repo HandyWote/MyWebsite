@@ -22,7 +22,6 @@ export class BakedModel {
 
   applyTexture(texture: LoadedTexture, fade: boolean): void {
     texture.flipY = false;
-    texture.encoding = THREE.sRGBEncoding;
     this.material.map = texture;
     this.material.needsUpdate = true;
 

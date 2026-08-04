@@ -1,5 +1,7 @@
+import { Group, Tween } from '@tweenjs/tween.js';
+import * as THREE from 'three';
 import { describe, expect, it, vi } from 'vitest';
-import type { Camera } from './Camera';
+import { Camera } from './Camera';
 import { MonitorPointerTracker } from './MonitorPointerTracker';
 import { Mouse } from './Mouse';
 import { Sizes } from './Sizes';
@@ -26,6 +28,21 @@ describe('runtime lifecycle services', () => {
     expect(scheduler.cancel).toHaveBeenCalledWith(42);
     expect(tick).not.toHaveBeenCalled();
     expect(scheduler.request).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps non-camera tweens when replacing a camera transition', () => {
+    const group = new Group();
+    const foreignState = { opacity: 0 };
+    const foreignTween = new Tween(foreignState, group).to({ opacity: 1 }, 500).start(0);
+    const sizes = new Sizes(window);
+    const camera = new Camera(new THREE.Scene(), sizes, new Mouse(), new Time(), group);
+
+    camera.transition('desk', 100);
+    camera.transition('idle', 100);
+
+    expect(group.getAll()).toContain(foreignTween);
+    camera.destroy();
+    sizes.destroy();
   });
 
   it('removes its resize listener idempotently', () => {

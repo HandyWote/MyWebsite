@@ -13,6 +13,8 @@ export class Camera {
   private readonly focalPoint = new THREE.Vector3();
   private readonly keyframes;
   private controls: OrbitControls | null = null;
+  private positionTween: Tween<THREE.Vector3> | null = null;
+  private focalPointTween: Tween<THREE.Vector3> | null = null;
   private current: CameraKey | null = 'loading';
   private target: CameraKey | null = null;
   private destroyed = false;
@@ -53,22 +55,26 @@ export class Camera {
     easing: (amount: number) => number = Easing.Quintic.InOut,
   ): void {
     if (this.destroyed || this.current === key || this.target === key) return;
-    this.tweens.removeAll();
+    this.stopTransitionTweens();
     this.current = null;
     this.target = key;
     const destination = this.keyframes[key];
 
-    new Tween(this.position, this.tweens)
+    this.positionTween = new Tween(this.position, this.tweens)
       .to(destination.position, duration)
       .easing(easing)
       .onComplete(() => {
         this.current = key;
         this.target = null;
+        this.positionTween = null;
       })
       .start();
-    new Tween(this.focalPoint, this.tweens)
+    this.focalPointTween = new Tween(this.focalPoint, this.tweens)
       .to(destination.focalPoint, duration)
       .easing(easing)
+      .onComplete(() => {
+        this.focalPointTween = null;
+      })
       .start();
   }
 
@@ -79,6 +85,13 @@ export class Camera {
   toggleDeskView(): void {
     if (this.current === 'desk' || this.target === 'desk') this.transition('idle');
     else this.transition('desk');
+  }
+
+  private stopTransitionTweens(): void {
+    this.positionTween?.stop();
+    this.focalPointTween?.stop();
+    this.positionTween = null;
+    this.focalPointTween = null;
   }
 
   resize(): void {
@@ -100,6 +113,7 @@ export class Camera {
   destroy(): void {
     if (this.destroyed) return;
     this.destroyed = true;
+    this.stopTransitionTweens();
     this.controls?.dispose();
     this.controls = null;
   }

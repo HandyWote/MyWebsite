@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { Resources } from './Resources';
-import type { LoadedModel, ResourceLoader, ResourceSource } from './types';
+import { createBrowserResourceLoader, Resources } from './Resources';
+import type { LoadedModel, ResourceLoader, ResourceSource, TextureSource } from './types';
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -112,6 +112,22 @@ describe('Resources', () => {
     await Promise.resolve();
     expect(loaded).toHaveBeenCalledTimes(1);
     expect(loaded.mock.calls[0][0].source.name).toBe('computerSetupModel');
+  });
+
+  it('rejects browser texture paths outside the static 3D asset allowlist before fetch', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    const loader = createBrowserResourceLoader();
+    const source = {
+      name: 'computerSetupTexture',
+      type: 'texture',
+      path: 'https://example.com/texture.webp',
+    } satisfies TextureSource;
+
+    await expect(loader.loadTexture(source, new AbortController().signal)).rejects.toThrow(
+      'Unsupported texture asset path',
+    );
+    expect(fetchSpy).not.toHaveBeenCalled();
+    fetchSpy.mockRestore();
   });
 
   it('disposes settled cache entries during teardown', async () => {

@@ -104,9 +104,15 @@ test('desktop renders nonblank 3D around the one real host and preserves it acro
   ))).toBe(true);
   await expect(canvas).toHaveCount(1);
 
+  // The camera eases into the monitor over ~1.6s; poll until the host's projected
+  // screen size stabilizes instead of sampling mid-transition.
+  await expect.poll(async () => {
+    const bounds = await host.boundingBox();
+    return bounds ? Math.round(bounds.width) : 0;
+  }, { timeout: 15_000, message: 'screen host should reach monitor size' }).toBeGreaterThan(900);
+  await page.waitForTimeout(2_500); // let the camera ease fully into the monitor
   const hostBounds = await host.boundingBox();
   expect(hostBounds).not.toBeNull();
-  expect(hostBounds!.width).toBeGreaterThan(500);
   expect(hostBounds!.height).toBeGreaterThan(400);
 
   const screenScreenshot = await host.screenshot({ path: testInfo.outputPath('desktop-screen-region.png') });

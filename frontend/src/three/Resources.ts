@@ -21,6 +21,14 @@ function basePath(path: string): string {
   return path.slice(0, path.lastIndexOf('/') + 1);
 }
 
+function safeAssetPath(source: ModelSource | TextureSource): string {
+  const pattern = source.type === 'model'
+    ? /^\/3d\/v1\/models\/[A-Za-z0-9._-]+\.glb$/
+    : /^\/3d\/v1\/textures\/[A-Za-z0-9._-]+\.webp$/;
+  if (!pattern.test(source.path)) throw new Error(`Unsupported ${source.type} asset path: ${source.path}`);
+  return source.path;
+}
+
 async function decodeImage(blob: Blob, signal: AbortSignal): Promise<ImageBitmap | HTMLImageElement> {
   if ('createImageBitmap' in window) return window.createImageBitmap(blob);
 
@@ -53,24 +61,27 @@ export function createBrowserResourceLoader(): ResourceLoader {
 
   return {
     async loadModel(source, signal) {
-      const response = await fetch(source.path, { signal });
-      if (!response.ok) throw new Error(`${source.path} returned ${response.status}`);
+      const path = safeAssetPath(source);
+      const response = await fetch(path, { signal });
+      if (!response.ok) throw new Error(`${path} returned ${response.status}`);
       const data = await response.arrayBuffer();
       if (signal.aborted) throw new DOMException('The operation was aborted', 'AbortError');
       return new Promise<LoadedModel>((resolve, reject) => {
-        gltfLoader.parse(data, basePath(source.path), resolve, reject);
+        gltfLoader.parse(data, basePath(path), resolve, reject);
       });
     },
     async loadTexture(source, signal) {
-      const response = await fetch(source.path, { signal });
-      if (!response.ok) throw new Error(`${source.path} returned ${response.status}`);
+      const path = safeAssetPath(source);
+      const response = await fetch(path, { signal });
+      if (!response.ok) throw new Error(`${path} returned ${response.status}`);
       const image = await decodeImage(await response.blob(), signal);
       if (signal.aborted) {
         if ('close' in image) image.close();
         throw new DOMException('The operation was aborted', 'AbortError');
       }
       const texture = new THREE.Texture(image as unknown as HTMLImageElement);
-      texture.encoding = THREE.sRGBEncoding;
+      // Legacy color pipeline (ColorManagement disabled): textures stay in the
+      // working color space exactly as the pre-upgrade r137 scene rendered them.
       texture.needsUpdate = true;
       return texture;
     },
