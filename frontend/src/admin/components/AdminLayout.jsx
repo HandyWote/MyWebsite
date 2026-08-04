@@ -4,7 +4,7 @@
 import { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Box, AppBar, Toolbar, Typography, Tabs, Tab, Button, useMediaQuery, Divider } from '@mui/material';
-import { FileText, MessageSquare, Settings, LogOut } from 'lucide-react';
+import { Database, FileText, MessageSquare, Settings, LogOut } from 'lucide-react';
 import { verifyToken, clearAuth, saveRedirectPath } from '../utils/auth';
 import { api, API_ENDPOINTS } from '../../config/api';
 import { colors, typography } from '../../components/pixel/tokens';
@@ -15,6 +15,7 @@ const tabList = [
   { label: 'Sidebar', path: '/admin/sidebar', icon: Settings },
   { label: 'Articles', path: '/admin/articles', icon: FileText },
   { label: 'Comments', path: '/admin/comments', icon: MessageSquare },
+  { label: 'Data', path: '/admin/data', icon: Database },
 ];
 
 export default function AdminLayout({ children }) {

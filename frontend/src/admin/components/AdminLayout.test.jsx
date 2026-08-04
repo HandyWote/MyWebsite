@@ -15,6 +15,7 @@ vi.mock('@mui/material', async () => {
 });
 
 vi.mock('lucide-react', () => ({
+  Database: () => <span>Database</span>,
   FileText: () => <span>FileText</span>,
   MessageSquare: () => <span>MessageSquare</span>,
   Settings: () => <span>Settings</span>,
@@ -39,18 +40,19 @@ vi.mock('@/stores/notificationStore', () => ({
 describe('AdminLayout', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('renders the three admin sections and App Router child content', () => {
+  it('renders every reachable admin section and App Router child content', () => {
     render(<AdminLayout><div>左侧内容栏管理页</div></AdminLayout>);
     expect(screen.getByText('Sidebar')).toBeInTheDocument();
     expect(screen.getByText('Articles')).toBeInTheDocument();
     expect(screen.getByText('Comments')).toBeInTheDocument();
+    expect(screen.getByText('Data')).toBeInTheDocument();
     expect(screen.getByText('左侧内容栏管理页')).toBeInTheDocument();
     expect(screen.queryByText('Avatars')).not.toBeInTheDocument();
   });
 
   it('uses Next router for tab navigation', () => {
     render(<AdminLayout><div>content</div></AdminLayout>);
-    fireEvent.click(screen.getByRole('tab', { name: /Articles/ }));
-    expect(pushMock).toHaveBeenCalledWith('/admin/articles');
+    fireEvent.click(screen.getByRole('tab', { name: /Data/ }));
+    expect(pushMock).toHaveBeenCalledWith('/admin/data');
   });
 });

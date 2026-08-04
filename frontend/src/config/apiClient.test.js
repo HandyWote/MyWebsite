@@ -1,6 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { apiClient, uploadFile, api, ApiError } from '../config/api';
 
+const { redirectToLoginMock } = vi.hoisted(() => ({ redirectToLoginMock: vi.fn() }));
+
+vi.mock('@/api/navigation', () => ({ redirectToLogin: redirectToLoginMock }));
+
 describe('apiClient (unified)', () => {
   const localStorageMock = (() => {
     let store = {};
@@ -16,8 +20,7 @@ describe('apiClient (unified)', () => {
     vi.stubGlobal('fetch', vi.fn());
     vi.stubGlobal('localStorage', localStorageMock);
     localStorageMock.clear();
-    delete window.location;
-    window.location = { href: '' };
+    redirectToLoginMock.mockClear();
   });
 
   afterEach(() => {
@@ -121,7 +124,7 @@ describe('apiClient (unified)', () => {
       await expect(apiClient('/api/admin/articles')).rejects.toThrow(ApiError);
 
       expect(localStorageMock.getItem('token')).toBeNull();
-      expect(window.location.href).toBe('/admin/login');
+      expect(redirectToLoginMock).toHaveBeenCalledTimes(1);
     });
 
     it('should not redirect on non-401 errors', async () => {
@@ -132,7 +135,7 @@ describe('apiClient (unified)', () => {
       });
 
       await expect(apiClient('/api/articles/999')).rejects.toThrow(ApiError);
-      expect(window.location.href).toBe('');
+      expect(redirectToLoginMock).not.toHaveBeenCalled();
     });
   });
 

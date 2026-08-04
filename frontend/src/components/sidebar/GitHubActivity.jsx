@@ -1,3 +1,5 @@
+'use client';
+
 import { Box } from '@mui/material';
 import { GitHubCalendar } from 'react-github-calendar';
 import useMediaQuery from '@mui/material/useMediaQuery';

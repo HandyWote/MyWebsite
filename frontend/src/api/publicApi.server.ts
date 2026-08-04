@@ -6,6 +6,7 @@ import { serverRequest } from './server';
 import type { Article, ArticlePage, Avatar, GitHubRepo, Project, SiteBlock } from './types';
 
 const DEFAULT_AVATAR = '/avatar.webp';
+const MAX_GITHUB_REPO_PAGES = 100;
 
 export async function getPublicProfile() {
   try {
@@ -70,6 +71,17 @@ function mapRepo(repo: GitHubRepo): Project {
   };
 }
 
+async function fetchGitHubRepoPage(username: string, sort: string, perPage: number, page: number): Promise<GitHubRepo[]> {
+  const response = await fetch(`https://api.github.com/users/${encodeURIComponent(username)}/repos?sort=${encodeURIComponent(sort)}&per_page=${perPage}&page=${page}`, {
+    cache: 'no-store',
+    headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'HandyWote-Portfolio' },
+  });
+  if (!response.ok) throw new Error(`GitHub API error: ${response.status}`);
+  const repos = await response.json() as unknown;
+  if (!Array.isArray(repos)) throw new Error('GitHub API returned an invalid repository list');
+  return repos as GitHubRepo[];
+}
+
 export async function getProjects() {
   let config = { ...SITE_BLOCK_DEFAULTS.projects_page };
   try {
@@ -82,12 +94,12 @@ export async function getProjects() {
   const sort = String(config.sort || SITE_BLOCK_DEFAULTS.projects_page.sort);
   const perPage = Math.min(100, Math.max(1, Number(config.per_page) || 100));
   try {
-    const response = await fetch(`https://api.github.com/users/${encodeURIComponent(username)}/repos?sort=${encodeURIComponent(sort)}&per_page=${perPage}`, {
-      cache: 'no-store',
-      headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'HandyWote-Portfolio' },
-    });
-    if (!response.ok) throw new Error(`GitHub API error: ${response.status}`);
-    const repos = await response.json() as GitHubRepo[];
+    const repos: GitHubRepo[] = [];
+    for (let page = 1; page <= MAX_GITHUB_REPO_PAGES; page += 1) {
+      const pageRepos = await fetchGitHubRepoPage(username, sort, perPage, page);
+      repos.push(...pageRepos);
+      if (pageRepos.length < perPage) break;
+    }
     return { config, projects: repos.map(mapRepo).sort((a, b) => b.stars - a.stars), error: '' };
   } catch (error) {
     return { config, projects: [], error: error instanceof Error ? error.message : String(config.error_text) };

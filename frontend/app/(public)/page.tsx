@@ -4,6 +4,8 @@ import { Box, Typography } from '@mui/material';
 import { getPublicProfile } from '@/api/publicApi.server';
 import { HomeEnterBoundary } from '@/components/public/HomeEnterBoundary';
 import { TerminalCommandBar } from '@/components/public/TerminalCommandBar';
+import GitHubActivity from '@/components/sidebar/GitHubActivity';
+import { normalizeGitHubUsername } from '@/utils/github';
 
 type SocialLink = { label?: string; href?: string; value?: string };
 type Education = { school?: string; degree?: string; period?: string };
@@ -16,6 +18,7 @@ export default async function HomePage() {
   const socialLinks = (sidebar.social_links as SocialLink[] | undefined) ?? [];
   const education = (sidebar.education as Education[] | undefined) ?? [];
   const techStack = (sidebar.tech_stack as Tech[] | undefined) ?? [];
+  const githubUsername = normalizeGitHubUsername(home.github_calendar_url);
   return (
     <HomeEnterBoundary>
       <Box sx={{ height: 'calc(100dvh - 24px)', display: 'grid', gridTemplateRows: 'minmax(0, 1fr) auto', border: 1, borderColor: 'divider', overflow: 'hidden' }}>
@@ -29,6 +32,7 @@ export default async function HomePage() {
               {socialLinks.length > 0 && <Box>{socialLinks.map((item, index) => <Box component={Link} href={item.href || '#'} key={`${item.label}-${index}`} sx={{ mx: 1 }}>{item.label || item.value}</Box>)}</Box>}
               {education.length > 0 && <Box>{education.map((item, index) => <Box component="span" key={`${item.school}-${index}`} sx={{ mx: 1 }}>{[item.school, item.degree, item.period].filter(Boolean).join(' / ')}</Box>)}</Box>}
               {techStack.length > 0 && <Box>{techStack.map((item, index) => <Box component="span" key={`${item.name}-${index}`} sx={{ mx: 0.75 }}>{item.name || item.label}</Box>)}</Box>}
+              <GitHubActivity username={githubUsername} compact={false} />
             </Box>
           </Box>
         </Box>

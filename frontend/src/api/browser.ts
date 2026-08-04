@@ -1,4 +1,5 @@
 import { clearAuth } from '@/utils/auth';
+import { redirectToLogin } from './navigation';
 
 export type ApiEnvelope<T> = {
   code?: number;
@@ -48,7 +49,7 @@ async function parseResponse<T>(response: Response): Promise<T> {
 
   if (response.status === 401 && typeof window !== 'undefined') {
     clearAuth();
-    window.location.href = '/admin/login';
+    redirectToLogin();
   }
   if (!response.ok || (typeof payload.code === 'number' && payload.code !== 0)) {
     throw new ApiError(response.status, getApiMessage(payload, 'Request failed'));
@@ -92,7 +93,7 @@ export async function downloadBrowserBlob(endpoint: string, options: RequestInit
   });
   if (response.status === 401 && typeof window !== 'undefined') {
     clearAuth();
-    window.location.href = '/admin/login';
+    redirectToLogin();
   }
   if (!response.ok) throw new ApiError(response.status, response.statusText);
   return response.blob();
