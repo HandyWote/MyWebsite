@@ -12,8 +12,6 @@ import { MarkdownContent } from '@/components/public/MarkdownContent';
 import { PdfViewerClient } from '@/components/public/PdfViewerClient';
 import { PublicShell } from '@/components/public/PublicShell';
 
-export const dynamic = 'force-dynamic';
-
 export default async function ArticlePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const article = await getArticle(id).catch((error: unknown) => {

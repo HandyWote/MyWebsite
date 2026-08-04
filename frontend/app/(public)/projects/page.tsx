@@ -1,11 +1,11 @@
+import { connection } from 'next/server';
 import { ExternalLink } from 'lucide-react';
 import { Box, Card, Chip, Typography } from '@mui/material';
 import { getProjects } from '@/api/publicApi.server';
 import { PublicShell } from '@/components/public/PublicShell';
 
-export const dynamic = 'force-dynamic';
-
 export default async function ProjectsPage() {
+  await connection();
   const { config, projects, error } = await getProjects();
   return (
     <PublicShell activePath="/projects">

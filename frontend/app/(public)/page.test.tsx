@@ -6,6 +6,7 @@ import HomePage from './page';
 const { getPublicProfileMock } = vi.hoisted(() => ({ getPublicProfileMock: vi.fn() }));
 
 vi.mock('@/api/publicApi.server', () => ({ getPublicProfile: getPublicProfileMock }));
+vi.mock('next/server', () => ({ connection: vi.fn() }));
 vi.mock('next/image', () => ({
   default: ({ priority: _priority, ...props }: ImgHTMLAttributes<HTMLImageElement> & { priority?: boolean }) => <img {...props} />,
 }));

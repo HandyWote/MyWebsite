@@ -1,13 +1,14 @@
+import { connection } from 'next/server';
 import { Box, Typography } from '@mui/material';
 import { getArticlePage, getArticlesPageConfig } from '@/api/publicApi.server';
 import { ArticleCards } from '@/components/public/ArticleCards';
 import { ArticleListMore } from '@/components/public/ArticleListMore';
 import { PublicShell } from '@/components/public/PublicShell';
 
-export const dynamic = 'force-dynamic';
 const PAGE_SIZE = 10;
 
 export default async function ArticlesPage() {
+  await connection();
   const [config, result] = await Promise.all([
     getArticlesPageConfig(),
     getArticlePage(1, PAGE_SIZE).then((value) => ({ value, error: '' })).catch((error: unknown) => ({ value: null, error: error instanceof Error ? error.message : 'Unable to load articles' })),

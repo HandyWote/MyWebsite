@@ -1,5 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
+import { connection } from 'next/server';
 import { Box, Typography } from '@mui/material';
 import { getPublicProfile } from '@/api/publicApi.server';
 import { HomeEnterBoundary } from '@/components/public/HomeEnterBoundary';
@@ -11,9 +12,8 @@ type SocialLink = { label?: string; href?: string; value?: string };
 type Education = { school?: string; degree?: string; period?: string };
 type Tech = { name?: string; label?: string };
 
-export const dynamic = 'force-dynamic';
-
 export default async function HomePage() {
+  await connection();
   const { home, sidebar, avatarUrl } = await getPublicProfile();
   const socialLinks = (sidebar.social_links as SocialLink[] | undefined) ?? [];
   const education = (sidebar.education as Education[] | undefined) ?? [];
