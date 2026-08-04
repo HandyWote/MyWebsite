@@ -1,3 +1,4 @@
 export function redirectToLogin(): void {
-  window.location.href = '/admin/login';
+	window.history.replaceState(null, "", "/admin/login");
+	window.location.reload();
 }
