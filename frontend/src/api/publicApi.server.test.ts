@@ -1,5 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { getProjects } from './publicApi.server';
+import {
+  clearProjectsStaleFallback,
+  getArticle,
+  getArticlePage,
+  getProjects,
+  getPublicProfile,
+  getSitemapArticlePage,
+} from './publicApi.server';
 
 const { serverRequestMock } = vi.hoisted(() => ({ serverRequestMock: vi.fn() }));
 
@@ -23,18 +30,49 @@ const response = (repos: ReturnType<typeof repo>[], ok = true, status = 200) => 
   json: vi.fn().mockResolvedValue(repos),
 });
 
+const projectsBlock = (perPage = 100) => [{
+  name: 'projects_page',
+  content: { github_username: 'octocat', sort: 'updated', per_page: perPage },
+}];
+
+describe('public server data cache policies', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('uses explicit 24 hour list, detail, sitemap, site-block, and profile policies', async () => {
+    serverRequestMock
+      .mockResolvedValueOnce({ items: [] })
+      .mockResolvedValueOnce({ id: 42 })
+      .mockResolvedValueOnce({ items: [] })
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+
+    await getArticlePage(2, 10);
+    await getArticle('42');
+    await getSitemapArticlePage(3, 100);
+    await getPublicProfile();
+
+    expect(serverRequestMock.mock.calls).toEqual([
+      ['/api/articles?page=2&per_page=10', { cache: 'force-cache', next: { revalidate: 86400, tags: ['articles:list'] } }],
+      ['/api/articles/42', { cache: 'force-cache', next: { revalidate: 86400, tags: ['article:42'] } }],
+      ['/api/articles?page=3&per_page=100', { cache: 'force-cache', next: { revalidate: 86400, tags: ['articles:list', 'sitemap'] } }],
+      ['/api/site-blocks', { cache: 'force-cache', next: { revalidate: 86400, tags: ['site-blocks'] } }],
+      ['/api/avatars', { cache: 'force-cache', next: { revalidate: 86400, tags: ['profile'] } }],
+    ]);
+  });
+});
+
 describe('getProjects', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    serverRequestMock.mockResolvedValue([{
-      name: 'projects_page',
-      content: { github_username: 'octocat', sort: 'updated', per_page: 100 },
-    }]);
+    clearProjectsStaleFallback();
+    serverRequestMock.mockResolvedValue(projectsBlock());
   });
 
   afterEach(() => vi.unstubAllGlobals());
 
-  it('fetches and maps every GitHub repository across pages', async () => {
+  it('fetches and maps every GitHub repository across cached pages', async () => {
     const firstPage = Array.from({ length: 100 }, (_, index) => repo(index + 1));
     const secondPage = Array.from({ length: 5 }, (_, index) => repo(index + 101));
     const fetchMock = vi.fn()
@@ -47,7 +85,12 @@ describe('getProjects', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(fetchMock.mock.calls[0][0]).toContain('per_page=100&page=1');
     expect(fetchMock.mock.calls[1][0]).toContain('per_page=100&page=2');
+    expect(fetchMock.mock.calls[0][1]).toEqual(expect.objectContaining({
+      cache: 'force-cache',
+      next: { revalidate: 10800, tags: ['projects'] },
+    }));
     expect(result.error).toBe('');
+    expect(result.stale).toBe(false);
     expect(result.projects).toHaveLength(105);
     expect(result.projects[0]).toMatchObject({
       id: 105,
@@ -60,7 +103,19 @@ describe('getProjects', () => {
     });
   });
 
-  it('returns the existing empty error fallback when a later page fails', async () => {
+  it('serves the last complete project set when a refresh fails', async () => {
+    serverRequestMock.mockResolvedValue(projectsBlock(2));
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(response([repo(1), repo(2)]))
+      .mockResolvedValueOnce(response([]))
+      .mockResolvedValueOnce(response([], false, 503));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(getProjects()).resolves.toMatchObject({ stale: false, error: '', projects: [{ id: 2 }, { id: 1 }] });
+    await expect(getProjects()).resolves.toMatchObject({ stale: true, error: '', projects: [{ id: 2 }, { id: 1 }] });
+  });
+
+  it('returns an observable error when no stale result exists', async () => {
     const firstPage = Array.from({ length: 100 }, (_, index) => repo(index + 1));
     vi.stubGlobal('fetch', vi.fn()
       .mockResolvedValueOnce(response(firstPage))
@@ -68,6 +123,7 @@ describe('getProjects', () => {
 
     await expect(getProjects()).resolves.toMatchObject({
       projects: [],
+      stale: false,
       error: 'GitHub API error: 503',
     });
   });

@@ -6,6 +6,8 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -126,8 +128,34 @@ func TestTwoRevalidationWorkersDeliverClaimedEventOnlyOnce(t *testing.T) {
 }
 
 func TestNewOutboxRecordRejectsCallerControlledEntityOrAction(t *testing.T) {
-	_, err := NewOutboxRecord(RevalidationEvent{Entity: "tag", Action: "arbitrary", IDs: []uint{1}}, time.Now())
-	assert.ErrorIs(t, err, ErrInvalidRevalidationEvent)
+	invalidEvents := []RevalidationEvent{
+		{Entity: "tag", Action: "arbitrary", IDs: []uint{1}},
+		{Entity: "article", Action: "publish", IDs: []uint{1}},
+		{Entity: "article", Action: "update"},
+		{Entity: "article", Action: "update", IDs: []uint{0}},
+	}
+	for _, event := range invalidEvents {
+		_, err := NewOutboxRecord(event, time.Now())
+		assert.ErrorIs(t, err, ErrInvalidRevalidationEvent)
+	}
+}
+
+func TestRevalidationEventContractFixtureMatchesOutboxPayload(t *testing.T) {
+	contents, err := os.ReadFile(filepath.Join("..", "..", "contracts", "revalidation-events.json"))
+	require.NoError(t, err)
+	var fixtures []struct {
+		Event RevalidationEvent `json:"event"`
+	}
+	require.NoError(t, json.Unmarshal(contents, &fixtures))
+	require.NotEmpty(t, fixtures)
+
+	for _, fixture := range fixtures {
+		record, err := NewOutboxRecord(fixture.Event, time.Now())
+		require.NoError(t, err, "%s/%s must remain accepted by Go", fixture.Event.Entity, fixture.Event.Action)
+		decoded, err := decodeOutboxEvent(record)
+		require.NoError(t, err)
+		assert.Equal(t, fixture.Event, decoded)
+	}
 }
 
 func TestEnqueueOutboxWrapsInvalidEventWithoutLosingCause(t *testing.T) {

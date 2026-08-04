@@ -36,8 +36,13 @@ var allowedRevalidationActions = map[string]map[string]bool{
 
 func NewOutboxRecord(event RevalidationEvent, now time.Time) (models.RevalidationOutbox, error) {
 	actions, ok := allowedRevalidationActions[event.Entity]
-	if !ok || !actions[event.Action] {
+	if !ok || !actions[event.Action] || len(event.IDs) == 0 {
 		return models.RevalidationOutbox{}, ErrInvalidRevalidationEvent
+	}
+	for _, id := range event.IDs {
+		if id == 0 {
+			return models.RevalidationOutbox{}, ErrInvalidRevalidationEvent
+		}
 	}
 	ids, err := json.Marshal(event.IDs)
 	if err != nil {
