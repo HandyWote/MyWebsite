@@ -8,7 +8,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/handywote/website/config"
 	"github.com/handywote/website/models"
-	"github.com/handywote/website/services"
 	"github.com/handywote/website/utils"
 )
 
@@ -19,7 +18,7 @@ func GetComments(c *gin.Context) {
 		return
 	}
 
-	comments, err := services.NewCommentService().ListByArticle(id)
+	comments, err := commentService.ListByArticle(id)
 	if err != nil {
 		utils.ErrorInternal(c, "Failed to fetch comments")
 		return
@@ -61,11 +60,11 @@ func CreateComment(c *gin.Context) {
 		var err error
 		switch {
 		case identityEmail != "":
-			count, err = services.NewCommentService().CountRecentBy("email", identityEmail, hoursAgo)
+			count, err = commentService.CountRecentBy("email", identityEmail, hoursAgo)
 		case identityIP != "":
-			count, err = services.NewCommentService().CountRecentBy("ip_address", identityIP, hoursAgo)
+			count, err = commentService.CountRecentBy("ip_address", identityIP, hoursAgo)
 		default:
-			count, err = services.NewCommentService().CountRecentBy("author", identifier, hoursAgo)
+			count, err = commentService.CountRecentBy("author", identifier, hoursAgo)
 		}
 		if err == nil && count >= int64(cfg.CommentLimitMaxCount) {
 			c.JSON(http.StatusTooManyRequests, utils.Response{
@@ -86,7 +85,7 @@ func CreateComment(c *gin.Context) {
 		Status:    "pending",
 	}
 
-	if err := services.NewCommentService().Create(&comment); err != nil {
+	if err := commentService.Create(&comment); err != nil {
 		utils.ErrorInternal(c, "Failed to create comment")
 		return
 	}

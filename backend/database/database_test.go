@@ -1,9 +1,9 @@
 package database
 
 import (
-	"testing"
-	"os"
 	"github.com/stretchr/testify/assert"
+	"os"
+	"testing"
 )
 
 func TestDSN(t *testing.T) {

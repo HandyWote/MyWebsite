@@ -2,14 +2,19 @@ package services
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
+	"time"
 
 	"github.com/handywote/website/config"
-	"github.com/handywote/website/database"
 	"github.com/handywote/website/models"
+	"github.com/handywote/website/repositories"
+	"gorm.io/gorm"
 )
 
 type AIRequest struct {
@@ -30,7 +35,23 @@ type Choice struct {
 	Message Message `json:"message"`
 }
 
-// 默认 AI 分析提示词
+type ResolvedAIConfig struct {
+	APIKey  string
+	Model   string
+	BaseURL string
+}
+
+type AISettingView struct {
+	ID           uint      `json:"id,omitempty"`
+	Prompt       string    `json:"prompt"`
+	Model        string    `json:"model"`
+	BaseURL      string    `json:"base_url"`
+	APIKey       string    `json:"api_key"`
+	APIKeyMasked string    `json:"api_key_masked"`
+	CreatedAt    time.Time `json:"created_at,omitempty"`
+	UpdatedAt    time.Time `json:"updated_at,omitempty"`
+}
+
 const defaultAIPrompt = `你是一位专业的内容分析师。请分析给定的文章内容，并返回符合以下 JSON 格式的分析结果：
 
 {
@@ -45,197 +66,179 @@ const defaultAIPrompt = `你是一位专业的内容分析师。请分析给定�
 3. 摘要应该独立成段，让读者快速了解文章要点
 4. 仅返回 JSON，不要添加任何其他说明文字`
 
-// getAIConfig 获取 AI 配置，优先使用数据库配置，否则使用环境变量
-func getAIConfig(cfg *config.Config) (apiKey, model, apiURL string) {
-	var setting models.AISetting
-	if err := database.GetDB().First(&setting).Error; err == nil {
-		// 数据库配置存在，优先使用
-		if setting.APIKey != "" {
-			apiKey = setting.APIKey
-		} else {
-			apiKey = cfg.OpenAIAPIKey
-		}
-		if setting.Model != "" {
-			model = setting.Model
-		} else {
-			model = cfg.OpenAIModel
-		}
-		if setting.BaseURL != "" {
-			apiURL = setting.BaseURL
-		} else {
-			apiURL = cfg.OpenAIAPIURL
-		}
-	} else {
-		// 数据库配置不存在，使用环境变量
-		apiKey = cfg.OpenAIAPIKey
-		model = cfg.OpenAIModel
-		apiURL = cfg.OpenAIAPIURL
-	}
-	return apiKey, model, apiURL
+type AIService struct {
+	settings *repositories.AISettingRepository
+	articles *repositories.ArticleRepository
+	client   *http.Client
 }
 
-// getAIPrompt 获取 AI 提示词，优先使用数据库配置，否则使用默认值
-func getAIPrompt() string {
-	var setting models.AISetting
-	if err := database.GetDB().First(&setting).Error; err == nil && setting.Prompt != "" {
-		return setting.Prompt
+func NewAIService(settings *repositories.AISettingRepository, articles *repositories.ArticleRepository, client *http.Client) *AIService {
+	if settings == nil {
+		settings = repositories.NewAISettingRepository()
 	}
-	return defaultAIPrompt
+	if articles == nil {
+		articles = repositories.NewArticleRepository()
+	}
+	if client == nil {
+		client = &http.Client{}
+	}
+	return &AIService{settings: settings, articles: articles, client: client}
 }
 
-// AnalyzeWithAI 使用 AI 分析文章
-func AnalyzeWithAI(articleID uint, cfg *config.Config) (string, error) {
-	var article models.Article
-	if err := database.GetDB().First(&article, articleID).Error; err != nil {
+func (s *AIService) ResolveConfig(ctx context.Context, cfg *config.Config) (ResolvedAIConfig, models.AISetting, error) {
+	setting, dbErr := s.settings.Get(ctx)
+	if dbErr == nil && validAIConfig(setting.APIKey, setting.Model, setting.BaseURL) {
+		return ResolvedAIConfig{APIKey: strings.TrimSpace(setting.APIKey), Model: strings.TrimSpace(setting.Model), BaseURL: strings.TrimSpace(setting.BaseURL)}, setting, nil
+	}
+	if dbErr != nil && !errors.Is(dbErr, gorm.ErrRecordNotFound) {
+		return ResolvedAIConfig{}, models.AISetting{}, dbErr
+	}
+	if cfg != nil && validAIConfig(cfg.OpenAIAPIKey, cfg.OpenAIModel, cfg.OpenAIAPIURL) {
+		return ResolvedAIConfig{APIKey: strings.TrimSpace(cfg.OpenAIAPIKey), Model: strings.TrimSpace(cfg.OpenAIModel), BaseURL: strings.TrimSpace(cfg.OpenAIAPIURL)}, setting, nil
+	}
+	return ResolvedAIConfig{}, setting, errors.New("AI is not configured")
+}
+
+func validAIConfig(apiKey, model, baseURL string) bool {
+	key := strings.TrimSpace(apiKey)
+	return key != "" && key != "sk-xxxx" && strings.TrimSpace(model) != "" && strings.TrimSpace(baseURL) != ""
+}
+
+func (s *AIService) AnalyzeArticle(ctx context.Context, articleID uint, cfg *config.Config) (string, error) {
+	article, err := s.articles.FindByID(ctx, articleID)
+	if err != nil {
 		return "", err
 	}
-
-	return AnalyzeTextWithAI(article.Title, article.Content, article.Summary, cfg)
+	return s.AnalyzeText(ctx, article.Title, article.Content, article.Summary, cfg)
 }
 
-// AnalyzeTextWithAI 使用 AI 直接分析传入文本
-func AnalyzeTextWithAI(title, content, summary string, cfg *config.Config) (string, error) {
-	systemPrompt := getAIPrompt()
-
+func (s *AIService) AnalyzeText(ctx context.Context, title, content, summary string, cfg *config.Config) (string, error) {
+	resolved, setting, err := s.ResolveConfig(ctx, cfg)
+	if err != nil {
+		return "", err
+	}
+	prompt := strings.TrimSpace(setting.Prompt)
+	if prompt == "" {
+		prompt = defaultAIPrompt
+	}
 	userContent := fmt.Sprintf("文章标题：%s\n\n文章内容：\n%s", title, content)
 	if summary != "" {
 		userContent = fmt.Sprintf("文章标题：%s\n\n已有摘要：%s\n\n文章内容：\n%s", title, summary, content)
 	}
-
-	// 限制内容长度，避免超过 token 限制
-	maxContentLen := 8000
-	if len(userContent) > maxContentLen {
-		userContent = userContent[:maxContentLen] + "\n...(内容已截断)"
+	if len(userContent) > 8000 {
+		userContent = userContent[:8000] + "\n...(内容已截断)"
 	}
+	return callChatCompletion(ctx, s.client, resolved, []Message{{Role: "system", Content: prompt}, {Role: "user", Content: userContent}}, 30*time.Second)
+}
 
-	// 获取配置：优先数据库，其次环境变量
-	apiKey, model, apiURL := getAIConfig(cfg)
-
-	// 检查配置
-	if apiKey == "" || apiKey == "sk-xxxx" {
-		return "", fmt.Errorf("AI API Key 未配置，请在 AI 设置中配置有效的 API Key")
+func callChatCompletion(ctx context.Context, client *http.Client, cfg ResolvedAIConfig, messages []Message, timeout time.Duration) (string, error) {
+	if !validAIConfig(cfg.APIKey, cfg.Model, cfg.BaseURL) {
+		return "", errors.New("AI is not configured")
 	}
-
-	reqBody := AIRequest{
-		Model: model,
-		Messages: []Message{
-			{Role: "system", Content: systemPrompt},
-			{Role: "user", Content: userContent},
-		},
+	if client == nil {
+		client = &http.Client{}
 	}
-
-	jsonData, err := json.Marshal(reqBody)
+	requestBody, err := json.Marshal(AIRequest{Model: cfg.Model, Messages: messages})
 	if err != nil {
-		return "", fmt.Errorf("构建请求失败: %w", err)
+		return "", fmt.Errorf("build AI request: %w", err)
 	}
-
-	req, err := http.NewRequest("POST", apiURL+"/chat/completions", bytes.NewBuffer(jsonData))
+	requestCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	endpoint := strings.TrimRight(cfg.BaseURL, "/") + "/chat/completions"
+	req, err := http.NewRequestWithContext(requestCtx, http.MethodPost, endpoint, bytes.NewReader(requestBody))
 	if err != nil {
-		return "", fmt.Errorf("创建请求失败: %w", err)
+		return "", fmt.Errorf("create AI request: %w", err)
 	}
-
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+apiKey)
-
-	client := &http.Client{Timeout: 30 * 1000000000} // 30秒超时
+	req.Header.Set("Authorization", "Bearer "+cfg.APIKey)
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("AI API 连接失败: %w", err)
+		return "", fmt.Errorf("AI request failed: %w", err)
 	}
 	defer resp.Body.Close()
-
-	// 读取响应体用于错误诊断
-	bodyBytes, err := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if err != nil {
-		return "", fmt.Errorf("读取响应失败: %w", err)
+		return "", fmt.Errorf("read AI response: %w", err)
 	}
-
-	if resp.StatusCode != 200 {
-		// 尝试解析错误信息
-		var errResp struct {
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		var upstream struct {
 			Error struct {
 				Message string `json:"message"`
-				Type    string `json:"type"`
 			} `json:"error"`
 		}
-		if json.Unmarshal(bodyBytes, &errResp) == nil && errResp.Error.Message != "" {
-			return "", fmt.Errorf("AI API 错误 (%d): %s", resp.StatusCode, errResp.Error.Message)
+		message := http.StatusText(resp.StatusCode)
+		if json.Unmarshal(body, &upstream) == nil && strings.TrimSpace(upstream.Error.Message) != "" {
+			message = upstream.Error.Message
 		}
-		return "", fmt.Errorf("AI API 返回状态码 %d: %s", resp.StatusCode, string(bodyBytes))
+		return "", fmt.Errorf("AI upstream returned %d: %s", resp.StatusCode, redactSecret(message, cfg.APIKey))
 	}
-
-	var aiResp AIResponse
-	if err := json.Unmarshal(bodyBytes, &aiResp); err != nil {
-		return "", fmt.Errorf("解析 AI 响应失败: %w", err)
+	var response AIResponse
+	if err := json.Unmarshal(body, &response); err != nil {
+		return "", fmt.Errorf("parse AI response: %w", err)
 	}
-
-	if len(aiResp.Choices) > 0 {
-		return aiResp.Choices[0].Message.Content, nil
+	if len(response.Choices) == 0 || strings.TrimSpace(response.Choices[0].Message.Content) == "" {
+		return "", errors.New("AI returned no choices")
 	}
-
-	return "", fmt.Errorf("AI 未返回有效响应")
+	return response.Choices[0].Message.Content, nil
 }
 
-// GetAISetting 获取 AI 配置
+func (s *AIService) GetSetting(ctx context.Context) (models.AISetting, error) {
+	return s.settings.Get(ctx)
+}
+
+func (s *AIService) SettingView(ctx context.Context, cfg *config.Config) (AISettingView, error) {
+	setting, err := s.settings.Get(ctx)
+	if err == nil {
+		return AISettingView{
+			ID: setting.ID, Prompt: setting.Prompt, Model: setting.Model, BaseURL: setting.BaseURL,
+			APIKeyMasked: MaskAPIKey(setting.APIKey), CreatedAt: setting.CreatedAt, UpdatedAt: setting.UpdatedAt,
+		}, nil
+	}
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return AISettingView{}, err
+	}
+	return AISettingView{Model: cfg.OpenAIModel, BaseURL: cfg.OpenAIAPIURL, APIKeyMasked: MaskAPIKey(cfg.OpenAIAPIKey)}, nil
+}
+
+func MaskAPIKey(raw string) string {
+	key := strings.TrimSpace(raw)
+	if key == "" {
+		return ""
+	}
+	if len(key) <= 8 {
+		return "****"
+	}
+	return key[:4] + "****" + key[len(key)-4:]
+}
+
+func (s *AIService) UpdateSetting(ctx context.Context, input models.AISetting) (models.AISetting, error) {
+	return s.settings.Save(ctx, input)
+}
+
+func (s *AIService) TestConnection(ctx context.Context, resolved ResolvedAIConfig) error {
+	_, err := callChatCompletion(ctx, s.client, resolved, []Message{{Role: "user", Content: "Hello"}}, 10*time.Second)
+	return err
+}
+
+func defaultAIService() *AIService { return NewAIService(nil, nil, nil) }
+
+func AnalyzeWithAI(articleID uint, cfg *config.Config) (string, error) {
+	return defaultAIService().AnalyzeArticle(context.Background(), articleID, cfg)
+}
+
+func AnalyzeTextWithAI(title, content, summary string, cfg *config.Config) (string, error) {
+	return defaultAIService().AnalyzeText(context.Background(), title, content, summary, cfg)
+}
+
 func GetAISetting() (models.AISetting, error) {
-	var setting models.AISetting
-	result := database.GetDB().First(&setting)
-	return setting, result.Error
+	return defaultAIService().GetSetting(context.Background())
 }
 
-// UpdateAISetting 更新 AI 配置
 func UpdateAISetting(input models.AISetting) (models.AISetting, error) {
-	var setting models.AISetting
-	result := database.GetDB().First(&setting)
-
-	if result.Error != nil {
-		// 不存在则创建
-		if err := database.GetDB().Create(&input).Error; err != nil {
-			return setting, err
-		}
-		return input, nil
-	}
-
-	// 存在则更新
-	if err := database.GetDB().Model(&setting).Updates(input).Error; err != nil {
-		return setting, err
-	}
-	return setting, nil
+	return defaultAIService().UpdateSetting(context.Background(), input)
 }
 
-// TestAIConnection 测试 AI 连接
 func TestAIConnection(cfg config.Config) error {
-	// 构建测试请求
-	reqBody := AIRequest{
-		Model: cfg.OpenAIModel,
-		Messages: []Message{
-			{Role: "user", Content: "Hello"},
-		},
-	}
-
-	jsonData, err := json.Marshal(reqBody)
-	if err != nil {
-		return err
-	}
-
-	req, err := http.NewRequest("POST", cfg.OpenAIAPIURL+"/chat/completions", bytes.NewBuffer(jsonData))
-	if err != nil {
-		return err
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+cfg.OpenAIAPIKey)
-
-	client := &http.Client{Timeout: 10 * 1000000000} // 10秒超时
-	resp, err := client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != 200 {
-		return fmt.Errorf("API returned status code: %d", resp.StatusCode)
-	}
-
-	return nil
+	resolved := ResolvedAIConfig{APIKey: cfg.OpenAIAPIKey, Model: cfg.OpenAIModel, BaseURL: cfg.OpenAIAPIURL}
+	return defaultAIService().TestConnection(context.Background(), resolved)
 }

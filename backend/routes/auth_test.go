@@ -35,12 +35,12 @@ func TestLoginSuccess(t *testing.T) {
 				"code": 0,
 				"data": gin.H{
 					"token": "mock-token",
-					"user": gin.H{"username": "admin"},
+					"user":  gin.H{"username": "admin"},
 				},
 			})
 		} else {
 			c.JSON(http.StatusUnauthorized, gin.H{
-				"code": 401,
+				"code":    401,
 				"message": "Invalid username or password",
 			})
 		}

@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/handywote/website/config"
 	"github.com/handywote/website/models"
 	"github.com/handywote/website/services"
 	"github.com/handywote/website/utils"
@@ -18,9 +17,7 @@ func AnalyzeArticle(c *gin.Context) {
 		return
 	}
 
-	cfg := config.LoadConfig()
-
-	result, err := services.AnalyzeWithAI(id, cfg)
+	result, err := aiService.AnalyzeArticle(c.Request.Context(), id, runtimeConfig)
 	if err != nil {
 		utils.ErrorInternal(c, "Failed to analyze article: "+err.Error())
 		return
@@ -42,8 +39,7 @@ func AnalyzeArticleByContent(c *gin.Context) {
 		return
 	}
 
-	cfg := config.LoadConfig()
-	result, err := services.AnalyzeTextWithAI(input.Title, input.Content, input.Summary, cfg)
+	result, err := aiService.AnalyzeText(c.Request.Context(), input.Title, input.Content, input.Summary, runtimeConfig)
 	if err != nil {
 		utils.ErrorInternal(c, "Failed to analyze article: "+err.Error())
 		return
@@ -54,30 +50,12 @@ func AnalyzeArticleByContent(c *gin.Context) {
 
 // GetAISetting 获取 AI 配置
 func GetAISetting(c *gin.Context) {
-	setting, err := services.GetAISetting()
+	view, err := aiService.SettingView(c.Request.Context(), runtimeConfig)
 	if err != nil {
-		// 没有配置记录时，从环境变量读取默认值
-		cfg := config.LoadConfig()
-		utils.Success(c, gin.H{
-			"prompt":         "", // 提示词使用代码内置默认值
-			"model":          cfg.OpenAIModel,
-			"base_url":       cfg.OpenAIAPIURL,
-			"api_key":        "",
-			"api_key_masked": maskAPIKey(cfg.OpenAIAPIKey),
-		})
+		utils.ErrorInternal(c, "Failed to fetch AI setting")
 		return
 	}
-
-	utils.Success(c, gin.H{
-		"id":             setting.ID,
-		"prompt":         setting.Prompt,
-		"model":          setting.Model,
-		"base_url":       setting.BaseURL,
-		"api_key":        "",
-		"api_key_masked": maskAPIKey(setting.APIKey),
-		"created_at":     setting.CreatedAt,
-		"updated_at":     setting.UpdatedAt,
-	})
+	utils.Success(c, view)
 }
 
 // UpdateAISetting 更新 AI 配置
@@ -92,13 +70,17 @@ func UpdateAISetting(c *gin.Context) {
 		input.APIKey = ""
 	}
 
-	setting, err := services.UpdateAISetting(input)
+	setting, err := aiService.UpdateSetting(c.Request.Context(), input)
 	if err != nil {
 		utils.ErrorInternal(c, "Failed to update AI setting")
 		return
 	}
 
-	utils.Success(c, setting)
+	utils.Success(c, gin.H{
+		"id": setting.ID, "prompt": setting.Prompt, "model": setting.Model,
+		"base_url": setting.BaseURL, "api_key": "", "api_key_masked": services.MaskAPIKey(setting.APIKey),
+		"created_at": setting.CreatedAt, "updated_at": setting.UpdatedAt,
+	})
 }
 
 // TestAISetting 测试 AI 配置
@@ -119,18 +101,11 @@ func TestAISetting(c *gin.Context) {
 		return
 	}
 
-	cfg := config.LoadConfig()
-
-	// 临时使用输入的配置进行测试
-	testCfg := *cfg
-	testCfg.OpenAIAPIKey = input.APIKey
-	testCfg.OpenAIModel = input.Model
-	if input.URL != "" {
-		testCfg.OpenAIAPIURL = input.URL
+	baseURL := input.URL
+	if baseURL == "" {
+		baseURL = runtimeConfig.OpenAIAPIURL
 	}
-
-	// 简单测试：检查 API key 是否可以连接
-	err := services.TestAIConnection(testCfg)
+	err := aiService.TestConnection(c.Request.Context(), services.ResolvedAIConfig{APIKey: input.APIKey, Model: input.Model, BaseURL: baseURL})
 	if err != nil {
 		utils.ErrorInternal(c, "AI connection failed: "+err.Error())
 		return
@@ -225,14 +200,7 @@ func normalizeTags(tags interface{}) []string {
 }
 
 func maskAPIKey(raw string) string {
-	key := strings.TrimSpace(raw)
-	if key == "" {
-		return ""
-	}
-	if len(key) <= 8 {
-		return "****"
-	}
-	return key[:4] + "****" + key[len(key)-4:]
+	return services.MaskAPIKey(raw)
 }
 
 func shouldIgnoreAPIKeyUpdate(key string) bool {

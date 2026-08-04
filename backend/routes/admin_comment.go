@@ -4,7 +4,6 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/handywote/website/services"
 	"github.com/handywote/website/utils"
 )
 
@@ -14,8 +13,6 @@ func AdminGetComments(c *gin.Context) {
 
 	status := strings.TrimSpace(c.Query("status"))
 	search := strings.TrimSpace(c.Query("search"))
-
-	commentService := services.NewCommentService()
 
 	comments, total, err := commentService.ListAdmin(status, search, page, pageSize)
 	if err != nil {
@@ -79,7 +76,7 @@ func AdminUpdateComment(c *gin.Context) {
 		return
 	}
 
-	if err := services.NewCommentService().UpdateStatus(id, input.Status); err != nil {
+	if err := commentService.UpdateStatus(id, input.Status); err != nil {
 		utils.ErrorInternal(c, "Failed to update comment")
 		return
 	}
@@ -94,7 +91,7 @@ func AdminDeleteComment(c *gin.Context) {
 		return
 	}
 
-	if err := services.NewCommentService().Delete(id); err != nil {
+	if err := commentService.Delete(id); err != nil {
 		utils.ErrorInternal(c, "Failed to delete comment")
 		return
 	}
@@ -102,7 +99,7 @@ func AdminDeleteComment(c *gin.Context) {
 	utils.Success(c, gin.H{"message": "Comment deleted"})
 }
 
-// AdminUpdateCommentStatus 更新评论状态（管理后台路由别名，兼容 /comments/:id 与 /comments/:id/status）
+// AdminUpdateCommentStatus updates status through the single canonical route.
 func AdminUpdateCommentStatus(c *gin.Context) {
 	AdminUpdateComment(c)
 }

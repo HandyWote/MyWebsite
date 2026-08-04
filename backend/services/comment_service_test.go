@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"log"
 	"os"
 	"testing"
@@ -94,6 +95,18 @@ func TestCommentService_AdminListAndStatus(t *testing.T) {
 	require.NoError(t, svc.Delete(updated[0].ID))
 	after, _, _ := svc.ListAdmin("", "", 1, 10)
 	assert.Len(t, after, 1, "删除后只剩 1 条")
+}
+
+func TestCommentService_Export(t *testing.T) {
+	database.GetDB().Where("1 = 1").Delete(&models.Comment{})
+	svc := NewCommentService()
+	require.NoError(t, svc.Create(&models.Comment{ArticleID: 1, Author: "alice", Content: "keep", Status: "normal"}))
+	require.NoError(t, svc.Create(&models.Comment{ArticleID: 1, Author: "bob", Content: "skip", Status: "spam"}))
+
+	comments, err := svc.Export(context.Background(), "normal", "KEEP")
+	require.NoError(t, err)
+	require.Len(t, comments, 1)
+	assert.Equal(t, "alice", comments[0].Author)
 }
 
 func TestCommentService_ListArticleTitles(t *testing.T) {

@@ -9,25 +9,42 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestCORS(t *testing.T) {
+func corsTestRouter() *gin.Engine {
 	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	router.Use(CORS("http://localhost:3000", "https://admin.example.com"))
+	router.GET("/test", func(c *gin.Context) { c.JSON(http.StatusOK, gin.H{"status": "ok"}) })
+	return router
+}
 
-	// 创建测试路由
-	r := gin.New()
-	r.Use(CORS())
-	r.GET("/test", func(c *gin.Context) {
-		c.JSON(200, gin.H{"status": "ok"})
-	})
+func TestCORSAllowsConfiguredOrigin(t *testing.T) {
+	router := corsTestRouter()
+	request := httptest.NewRequest(http.MethodOptions, "/test", nil)
+	request.Header.Set("Origin", "http://localhost:3000")
+	request.Header.Set("Access-Control-Request-Method", http.MethodGet)
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, request)
 
-	// 发送OPTIONS预检请求
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("OPTIONS", "/test", nil)
-	req.Header.Set("Origin", "http://localhost:3000")
-	req.Header.Set("Access-Control-Request-Method", "GET")
-	r.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusNoContent, response.Code)
+	assert.Equal(t, "http://localhost:3000", response.Header().Get("Access-Control-Allow-Origin"))
+	assert.Equal(t, "true", response.Header().Get("Access-Control-Allow-Credentials"))
+	assert.Equal(t, "Content-Type,Content-Length,Accept-Encoding,X-Requested-With,Authorization", response.Header().Get("Access-Control-Allow-Headers"))
+}
 
-	// 验证CORS头
-	assert.Equal(t, "*", w.Header().Get("Access-Control-Allow-Origin"))
-	assert.Equal(t, "Content-Type,Content-Length,Accept-Encoding,X-Requested-With,Authorization", w.Header().Get("Access-Control-Allow-Headers"))
-	assert.Equal(t, "GET,POST,PUT,DELETE,OPTIONS", w.Header().Get("Access-Control-Allow-Methods"))
+func TestCORSRejectsUnknownPreflightOrigin(t *testing.T) {
+	request := httptest.NewRequest(http.MethodOptions, "/test", nil)
+	request.Header.Set("Origin", "https://attacker.example")
+	response := httptest.NewRecorder()
+	corsTestRouter().ServeHTTP(response, request)
+
+	assert.Equal(t, http.StatusForbidden, response.Code)
+	assert.Empty(t, response.Header().Get("Access-Control-Allow-Origin"))
+}
+
+func TestCORSSameOriginRequestNeedsNoHeader(t *testing.T) {
+	response := httptest.NewRecorder()
+	corsTestRouter().ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/test", nil))
+
+	assert.Equal(t, http.StatusOK, response.Code)
+	assert.Empty(t, response.Header().Get("Access-Control-Allow-Origin"))
 }
