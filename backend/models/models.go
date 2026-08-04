@@ -95,6 +95,8 @@ type RevalidationOutbox struct {
 	Attempts      int        `gorm:"not null;default:0" json:"attempts"`
 	NextAttemptAt time.Time  `gorm:"not null;index:idx_revalidation_due" json:"next_attempt_at"`
 	LastError     string     `gorm:"type:text" json:"last_error"`
+	LeaseUntil    *time.Time `gorm:"index:idx_revalidation_due" json:"lease_until,omitempty"`
+	LeaseToken    string     `gorm:"size:64;index" json:"-"`
 	ProcessedAt   *time.Time `gorm:"index" json:"processed_at,omitempty"`
 	CreatedAt     time.Time  `json:"created_at"`
 	UpdatedAt     time.Time  `json:"updated_at"`

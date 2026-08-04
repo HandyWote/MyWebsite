@@ -3,6 +3,7 @@ package routes
 import (
 	"errors"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/handywote/website/models"
@@ -74,8 +75,13 @@ func SetCurrentAvatar(c *gin.Context) {
 }
 
 func UploadAvatar(c *gin.Context) {
+	limitUploadBody(c)
 	file, err := c.FormFile("file")
 	if err != nil {
+		if isRequestTooLarge(err) {
+			utils.ErrorPayloadTooLarge(c, "Upload exceeds size limit")
+			return
+		}
 		utils.ErrorBadRequest(c, "No file uploaded")
 		return
 	}
@@ -87,6 +93,10 @@ func UploadAvatar(c *gin.Context) {
 	defer source.Close()
 	avatar, err := avatarService.Upload(c.Request.Context(), file.Filename, source, file.Size)
 	if err != nil {
+		if errors.Is(err, services.ErrMediaTooLarge) {
+			utils.ErrorPayloadTooLarge(c, "Upload exceeds size limit")
+			return
+		}
 		utils.ErrorBadRequest(c, err.Error())
 		return
 	}
@@ -110,10 +120,15 @@ func DeleteAvatar(c *gin.Context) {
 }
 
 func GetAvatarFile(c *gin.Context) {
-	filename := c.Param("filename")
-	if filename == "" {
+	key := strings.TrimPrefix(c.Param("key"), "/")
+	if key == "" {
 		utils.ErrorBadRequest(c, "Filename is required")
 		return
 	}
-	c.Redirect(302, mediaService.PublicURL(filename))
+	publicURL := mediaService.AvatarURL(c.Request.Context(), key)
+	if publicURL == "" {
+		utils.ErrorBadRequest(c, "Invalid media key")
+		return
+	}
+	c.Redirect(302, publicURL)
 }

@@ -38,7 +38,7 @@ func SetupRoutes(r *gin.Engine, cfg *config.Config) {
 		api.GET("/articles/:id", GetArticle)
 		api.GET("/articles/:id/comments", GetComments)
 		api.POST("/articles/:id/comments", CreateComment)
-		api.GET("/articles/pdf/:filename", GetArticlePDF)
+		api.GET("/articles/pdf/*key", GetArticlePDF)
 
 		// Categories & Tags
 		api.GET("/categories", GetCategories)
@@ -47,7 +47,7 @@ func SetupRoutes(r *gin.Engine, cfg *config.Config) {
 		// Public data
 		api.GET("/site-blocks", GetSiteBlocks)
 		api.GET("/avatars", GetAvatars)
-		api.GET("/avatars/file/:filename", GetAvatarFile)
+		api.GET("/avatars/file/*key", GetAvatarFile)
 
 		// Auth
 		api.POST("/auth/login", Login)

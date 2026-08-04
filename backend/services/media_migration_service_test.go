@@ -3,6 +3,7 @@ package services
 import (
 	"bytes"
 	"context"
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -69,7 +70,7 @@ func TestMediaMigrationStopsOnExistingConflictWithoutDatabaseUpdate(t *testing.T
 	require.NoError(t, os.WriteFile(filepath.Join(source, "cover.webp"), []byte("source"), 0o644))
 	article := models.Article{Title: "article", Content: "body", Cover: "cover.webp"}
 	require.NoError(t, db.Create(&article).Error)
-	require.NoError(t, target.Save(context.Background(), "articles/covers/cover.webp", bytes.NewReader([]byte("different size")), int64(len("different size")), "image/webp"))
+	require.NoError(t, target.Save(context.Background(), "articles/covers/cover.webp", bytes.NewReader([]byte("different size")), int64(len("different size")), "image/webp", nil))
 
 	result, err := service.Run(context.Background(), MediaMigrationApply)
 	require.Error(t, err)
@@ -80,4 +81,74 @@ func TestMediaMigrationStopsOnExistingConflictWithoutDatabaseUpdate(t *testing.T
 	var outboxCount int64
 	require.NoError(t, db.Model(&models.RevalidationOutbox{}).Count(&outboxCount).Error)
 	assert.Zero(t, outboxCount)
+}
+
+type recordingMigrationStorage struct {
+	*storage.LocalStorage
+	metadata map[string]string
+}
+
+func (s *recordingMigrationStorage) Save(ctx context.Context, key string, body io.ReadSeeker, size int64, contentType string, metadata map[string]string) error {
+	s.metadata = make(map[string]string, len(metadata))
+	for name, value := range metadata {
+		s.metadata[name] = value
+	}
+	return s.LocalStorage.Save(ctx, key, body, size, contentType, metadata)
+}
+
+type checksumlessMigrationStorage struct {
+	*storage.LocalStorage
+}
+
+func (s *checksumlessMigrationStorage) Head(ctx context.Context, key string) (storage.ObjectInfo, error) {
+	info, err := s.LocalStorage.Head(ctx, key)
+	info.Metadata = nil
+	return info, err
+}
+
+func TestMediaMigrationWritesSHA256MetadataForNewObjects(t *testing.T) {
+	db, source, target, _ := mediaMigrationTestService(t)
+	content := []byte("new image bytes")
+	require.NoError(t, os.WriteFile(filepath.Join(source, "cover.webp"), content, 0o644))
+	article := models.Article{Title: "article", Content: "body", Cover: "cover.webp"}
+	require.NoError(t, db.Create(&article).Error)
+	recorder := &recordingMigrationStorage{LocalStorage: target}
+	service := NewMediaMigrationService(source, recorder, repositories.NewArticleRepository(db), repositories.NewAvatarRepository(db))
+
+	result, err := service.Run(context.Background(), MediaMigrationApply)
+	require.NoError(t, err)
+	assert.Equal(t, 1, result.Uploaded)
+	assert.Len(t, recorder.metadata[storage.SHA256MetadataKey], 64)
+	assert.Equal(t, result.Items[0].Checksum, recorder.metadata[storage.SHA256MetadataKey])
+}
+
+func TestMediaMigrationConflictsOnSameSizeAndMIMEWithDifferentChecksum(t *testing.T) {
+	db, source, target, service := mediaMigrationTestService(t)
+	require.NoError(t, os.WriteFile(filepath.Join(source, "cover.webp"), []byte("source"), 0o644))
+	article := models.Article{Title: "article", Content: "body", Cover: "cover.webp"}
+	require.NoError(t, db.Create(&article).Error)
+	require.NoError(t, target.Save(context.Background(), "articles/covers/cover.webp", bytes.NewReader([]byte("target")), 6, "image/webp", nil))
+
+	result, err := service.Run(context.Background(), MediaMigrationApply)
+	require.Error(t, err)
+	require.Len(t, result.Items, 1)
+	assert.Equal(t, "conflict", result.Items[0].Status)
+	require.NoError(t, db.First(&article, article.ID).Error)
+	assert.Equal(t, "cover.webp", article.Cover)
+}
+
+func TestMediaMigrationKeepsChecksumlessExistingObjectCompatibility(t *testing.T) {
+	db, source, target, _ := mediaMigrationTestService(t)
+	require.NoError(t, os.WriteFile(filepath.Join(source, "cover.webp"), []byte("source"), 0o644))
+	article := models.Article{Title: "article", Content: "body", Cover: "cover.webp"}
+	require.NoError(t, db.Create(&article).Error)
+	require.NoError(t, target.Save(context.Background(), "articles/covers/cover.webp", bytes.NewReader([]byte("target")), 6, "image/webp", nil))
+	legacyStorage := &checksumlessMigrationStorage{LocalStorage: target}
+	service := NewMediaMigrationService(source, legacyStorage, repositories.NewArticleRepository(db), repositories.NewAvatarRepository(db))
+
+	result, err := service.Run(context.Background(), MediaMigrationApply)
+	require.NoError(t, err)
+	assert.Equal(t, 1, result.Skipped)
+	require.NoError(t, db.First(&article, article.ID).Error)
+	assert.Equal(t, "articles/covers/cover.webp", article.Cover)
 }

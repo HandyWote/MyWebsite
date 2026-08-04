@@ -57,6 +57,15 @@ func ErrorNotFound(c *gin.Context, message string) {
 	})
 }
 
+// ErrorPayloadTooLarge returns a real HTTP 413 because clients and proxies
+// must be able to distinguish rejected uploads from application errors.
+func ErrorPayloadTooLarge(c *gin.Context, message string) {
+	c.JSON(http.StatusRequestEntityTooLarge, Response{
+		Code:    http.StatusRequestEntityTooLarge,
+		Message: message,
+	})
+}
+
 // ErrorInternal 500 错误
 func ErrorInternal(c *gin.Context, message string) {
 	c.JSON(http.StatusInternalServerError, Response{

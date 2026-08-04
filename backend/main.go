@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"log"
 	"time"
 
@@ -13,6 +15,7 @@ import (
 	"github.com/handywote/website/repositories"
 	"github.com/handywote/website/routes"
 	"github.com/handywote/website/services"
+	"gorm.io/gorm"
 )
 
 func main() {
@@ -24,16 +27,9 @@ func main() {
 		log.Fatalf("Database connection failed: %v", err)
 	}
 
-	// Auto migrate
-	database.GetDB().AutoMigrate(
-		&models.Article{},
-		&models.Comment{},
-		&models.Avatar{},
-		&models.SiteBlock{},
-		&models.AISetting{},
-		&models.RevalidationOutbox{},
-		&models.MediaDeleteTask{},
-	)
+	if err := runDatabaseMigrations(database.GetDB()); err != nil {
+		log.Fatalf("Migration failed: %v", err)
+	}
 
 	// Run smart column migrations (only add missing columns)
 	if err := migrations.RunMigrations(database.GetDB()); err != nil {
@@ -68,6 +64,24 @@ func main() {
 	if err := r.Run(":" + port); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}
+}
+
+func runDatabaseMigrations(db *gorm.DB) error {
+	if db == nil {
+		return errors.New("database is not initialized")
+	}
+	if err := db.AutoMigrate(
+		&models.Article{},
+		&models.Comment{},
+		&models.Avatar{},
+		&models.SiteBlock{},
+		&models.AISetting{},
+		&models.RevalidationOutbox{},
+		&models.MediaDeleteTask{},
+	); err != nil {
+		return fmt.Errorf("auto migrate schema: %w", err)
+	}
+	return nil
 }
 
 // seedData 初始化数据

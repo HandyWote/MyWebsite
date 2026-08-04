@@ -67,28 +67,48 @@ func newS3StorageWithClient(client s3API, bucket, publicBase string) *S3Storage 
 	return &S3Storage{client: client, bucket: bucket, publicBase: strings.TrimRight(publicBase, "/")}
 }
 
-func (s *S3Storage) Save(ctx context.Context, key string, body io.Reader, size int64, contentType string) error {
-	_, err := s.client.PutObject(ctx, &s3.PutObjectInput{
-		Bucket: aws.String(s.bucket), Key: aws.String(key), Body: body, ContentLength: aws.Int64(size), ContentType: aws.String(contentType),
+func (s *S3Storage) Save(ctx context.Context, key string, body io.ReadSeeker, size int64, contentType string, metadata map[string]string) error {
+	normalized, err := NormalizeObjectKey(key)
+	if err != nil {
+		return err
+	}
+	if err := validateBodySize(body, size); err != nil {
+		return err
+	}
+	_, err = s.client.PutObject(ctx, &s3.PutObjectInput{
+		Bucket: aws.String(s.bucket), Key: aws.String(normalized), Body: body, ContentLength: aws.Int64(size),
+		ContentType: aws.String(contentType), Metadata: metadata,
 	})
 	return err
 }
 
 func (s *S3Storage) Delete(ctx context.Context, key string) error {
-	_, err := s.client.DeleteObject(ctx, &s3.DeleteObjectInput{Bucket: aws.String(s.bucket), Key: aws.String(key)})
+	normalized, err := NormalizeObjectKey(key)
+	if err != nil {
+		return err
+	}
+	_, err = s.client.DeleteObject(ctx, &s3.DeleteObjectInput{Bucket: aws.String(s.bucket), Key: aws.String(normalized)})
 	return err
 }
 
 func (s *S3Storage) Head(ctx context.Context, key string) (ObjectInfo, error) {
-	output, err := s.client.HeadObject(ctx, &s3.HeadObjectInput{Bucket: aws.String(s.bucket), Key: aws.String(key)})
+	normalized, err := NormalizeObjectKey(key)
 	if err != nil {
 		return ObjectInfo{}, err
 	}
-	return ObjectInfo{Key: key, Size: aws.ToInt64(output.ContentLength), ContentType: aws.ToString(output.ContentType), Metadata: output.Metadata}, nil
+	output, err := s.client.HeadObject(ctx, &s3.HeadObjectInput{Bucket: aws.String(s.bucket), Key: aws.String(normalized)})
+	if err != nil {
+		return ObjectInfo{}, err
+	}
+	return ObjectInfo{Key: normalized, Size: aws.ToInt64(output.ContentLength), ContentType: aws.ToString(output.ContentType), Metadata: output.Metadata}, nil
 }
 
 func (s *S3Storage) PublicURL(key string) string {
-	return s.publicBase + "/" + escapeObjectKey(key)
+	normalized, err := NormalizeObjectKey(key)
+	if err != nil {
+		return ""
+	}
+	return s.publicBase + "/" + escapeObjectKey(normalized)
 }
 
 func (s *S3Storage) List(ctx context.Context, prefix string) ([]ObjectInfo, error) {

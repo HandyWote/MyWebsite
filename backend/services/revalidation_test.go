@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -94,6 +95,33 @@ func TestRevalidationWorkerRejectsEmptyTokenAndTimesOut(t *testing.T) {
 	require.Len(t, pending, 1)
 	assert.Equal(t, 1, pending[0].Attempts)
 	assert.True(t, strings.Contains(strings.ToLower(pending[0].LastError), "timeout") || strings.Contains(strings.ToLower(pending[0].LastError), "deadline"))
+}
+
+func TestTwoRevalidationWorkersDeliverClaimedEventOnlyOnce(t *testing.T) {
+	_, repository := outboxTestRepository(t)
+	createDueEvent(t, repository)
+	started := make(chan struct{}, 1)
+	release := make(chan struct{})
+	var deliveries atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		deliveries.Add(1)
+		started <- struct{}{}
+		<-release
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+
+	first := NewRevalidationWorker(repository, server.URL, "token", server.Client())
+	second := NewRevalidationWorker(repository, server.URL, "token", server.Client())
+	firstResult := make(chan error, 1)
+	go func() { firstResult <- first.RunOnce(context.Background()) }()
+	<-started
+
+	require.NoError(t, second.RunOnce(context.Background()))
+	assert.Equal(t, int32(1), deliveries.Load())
+	close(release)
+	require.NoError(t, <-firstResult)
+	assert.Equal(t, int32(1), deliveries.Load())
 }
 
 func TestNewOutboxRecordRejectsCallerControlledEntityOrAction(t *testing.T) {
