@@ -8,8 +8,10 @@ import (
 
 // SetupRoutes 设置所有路由
 func SetupRoutes(r *gin.Engine, cfg *config.Config) {
+	configureServices(cfg)
+
 	// Middleware
-	r.Use(middleware.CORS())
+	r.Use(middleware.CORS(cfg.CORSAllowedOrigins...))
 	r.Use(gin.Logger())
 	r.Use(gin.Recovery())
 
@@ -36,9 +38,7 @@ func SetupRoutes(r *gin.Engine, cfg *config.Config) {
 		api.GET("/articles/:id", GetArticle)
 		api.GET("/articles/:id/comments", GetComments)
 		api.POST("/articles/:id/comments", CreateComment)
-		api.GET("/articles/pdf/:filename", func(c *gin.Context) {
-			c.File(cfg.UploadFolder + "/pdfs/" + c.Param("filename"))
-		})
+		api.GET("/articles/pdf/:filename", GetArticlePDF)
 
 		// Categories & Tags
 		api.GET("/categories", GetCategories)
@@ -89,7 +89,6 @@ func SetupRoutes(r *gin.Engine, cfg *config.Config) {
 		admin.GET("/comments/export", AdminExportComments)
 		admin.GET("/comments/limits", AdminGetCommentLimits)
 		admin.DELETE("/comments/:id", AdminDeleteComment)
-		admin.PUT("/comments/:id", AdminUpdateCommentStatus)
 		admin.PUT("/comments/:id/status", AdminUpdateCommentStatus)
 
 		// AI
@@ -103,5 +102,9 @@ func SetupRoutes(r *gin.Engine, cfg *config.Config) {
 		admin.GET("/export", ExportData)
 		admin.POST("/import", ImportData)
 		admin.GET("/stats", GetStats)
+
+		// Revalidation outbox
+		admin.GET("/revalidation/pending", AdminPendingRevalidation)
+		admin.POST("/revalidation/retry", AdminRetryRevalidation)
 	}
 }

@@ -3,6 +3,8 @@ package config
 import (
 	"os"
 	"strconv"
+	"strings"
+
 	"github.com/joho/godotenv"
 )
 
@@ -20,15 +22,28 @@ type Config struct {
 	AdminUsername string
 	AdminPassword string
 
-	UploadFolder         string
-	MaxContentLength     int64
+	UploadFolder           string
+	MaxContentLength       int64
 	AllowedImageExtensions []string
 
-	OpenAIAPIKey    string
-	OpenAIModel     string
-	OpenAIAPIURL    string
+	StorageDriver    string
+	S3Endpoint       string
+	S3Region         string
+	S3Bucket         string
+	S3AccessKeyID    string
+	S3SecretKey      string
+	S3PublicBaseURL  string
+	S3ForcePathStyle bool
 
-	JWTAccessTokenExpires  int
+	RevalidationURL    string
+	RevalidationToken  string
+	CORSAllowedOrigins []string
+
+	OpenAIAPIKey string
+	OpenAIModel  string
+	OpenAIAPIURL string
+
+	JWTAccessTokenExpires   int
 	JWTRememberTokenExpires int
 
 	CommentLimitEnabled     bool
@@ -54,15 +69,28 @@ func LoadConfig() *Config {
 		AdminUsername: getEnv("ADMIN_USERNAME", "admin"),
 		AdminPassword: getEnv("ADMIN_PASSWORD", "admin123"),
 
-		UploadFolder:         getEnv("UPLOAD_FOLDER", "uploads"),
-		MaxContentLength:     getEnvInt64("MAX_CONTENT_LENGTH", 52428800),
+		UploadFolder:           getEnv("UPLOAD_FOLDER", "uploads"),
+		MaxContentLength:       getEnvInt64("MAX_CONTENT_LENGTH", 52428800),
 		AllowedImageExtensions: []string{"jpg", "jpeg", "png", "webp"},
 
-		OpenAIAPIKey:  getEnv("OPENAI_API_KEY", "sk-xxxx"),
-		OpenAIModel:   getEnv("OPENAI_MODEL", "gpt-3.5-turbo"),
-		OpenAIAPIURL:  getEnv("OPENAI_API_URL", "https://api.openai.com/v1"),
+		StorageDriver:    strings.ToLower(getEnv("STORAGE_DRIVER", "local")),
+		S3Endpoint:       getEnv("S3_ENDPOINT", ""),
+		S3Region:         getEnv("S3_REGION", "us-east-1"),
+		S3Bucket:         getEnv("S3_BUCKET", ""),
+		S3AccessKeyID:    getEnv("S3_ACCESS_KEY_ID", ""),
+		S3SecretKey:      getEnv("S3_SECRET_ACCESS_KEY", ""),
+		S3PublicBaseURL:  getEnv("S3_PUBLIC_BASE_URL", ""),
+		S3ForcePathStyle: getEnv("S3_FORCE_PATH_STYLE", "false") == "true",
 
-		JWTAccessTokenExpires:  getEnvInt("JWT_ACCESS_TOKEN_EXPIRES", 86400),
+		RevalidationURL:    getEnv("NEXT_REVALIDATION_URL", ""),
+		RevalidationToken:  getEnv("REVALIDATION_TOKEN", ""),
+		CORSAllowedOrigins: splitCSV(getOptionalEnv("CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:5173")),
+
+		OpenAIAPIKey: getEnv("OPENAI_API_KEY", ""),
+		OpenAIModel:  getEnv("OPENAI_MODEL", "gpt-3.5-turbo"),
+		OpenAIAPIURL: getEnv("OPENAI_API_URL", "https://api.openai.com/v1"),
+
+		JWTAccessTokenExpires:   getEnvInt("JWT_ACCESS_TOKEN_EXPIRES", 86400),
 		JWTRememberTokenExpires: getEnvInt("JWT_REMEMBER_TOKEN_EXPIRES", 604800),
 
 		CommentLimitEnabled:     getEnv("COMMENT_LIMIT_ENABLED", "true") == "true",
@@ -74,6 +102,13 @@ func LoadConfig() *Config {
 
 func getEnv(key, defaultValue string) string {
 	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
+}
+
+func getOptionalEnv(key, defaultValue string) string {
+	if value, exists := os.LookupEnv(key); exists {
 		return value
 	}
 	return defaultValue
@@ -95,4 +130,15 @@ func getEnvInt64(key string, defaultValue int64) int64 {
 		}
 	}
 	return defaultValue
+}
+
+func splitCSV(value string) []string {
+	parts := strings.Split(value, ",")
+	result := make([]string, 0, len(parts))
+	for _, part := range parts {
+		if origin := strings.TrimSpace(part); origin != "" && origin != "*" {
+			result = append(result, strings.TrimRight(origin, "/"))
+		}
+	}
+	return result
 }

@@ -5,8 +5,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/handywote/website/database"
-	"github.com/handywote/website/models"
 	"github.com/handywote/website/utils"
 )
 
@@ -28,8 +26,11 @@ func RobotsTxt(c *gin.Context) {
 func SitemapXml(c *gin.Context) {
 	baseURL := "https://" + c.Request.Host
 
-	var articles []models.Article
-	database.GetDB().Where("deleted_at IS NULL").Find(&articles)
+	articles, err := articleService.All(c.Request.Context())
+	if err != nil {
+		utils.ErrorInternal(c, "Failed to build sitemap")
+		return
+	}
 
 	xml := `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`
 

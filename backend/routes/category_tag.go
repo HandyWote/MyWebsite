@@ -2,15 +2,16 @@ package routes
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/handywote/website/database"
-	"github.com/handywote/website/models"
 	"github.com/handywote/website/utils"
 )
 
 // GetCategories 获取文章分类列表
 func GetCategories(c *gin.Context) {
-	var categories []string
-	database.GetDB().Model(&models.Article{}).Distinct("category").Pluck("category", &categories)
+	categories, err := articleService.Categories(c.Request.Context())
+	if err != nil {
+		utils.ErrorInternal(c, "Failed to fetch categories")
+		return
+	}
 
 	// 过滤空值
 	var result []string
@@ -25,8 +26,11 @@ func GetCategories(c *gin.Context) {
 
 // GetTags 获取文章标签列表
 func GetTags(c *gin.Context) {
-	var tags []string
-	database.GetDB().Model(&models.Article{}).Distinct("tags").Pluck("tags", &tags)
+	tags, err := articleService.Tags(c.Request.Context())
+	if err != nil {
+		utils.ErrorInternal(c, "Failed to fetch tags")
+		return
+	}
 
 	// 解析并统计所有标签
 	tagCount := make(map[string]int)

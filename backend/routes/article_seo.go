@@ -2,6 +2,7 @@ package routes
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html/template"
 	"log"
@@ -13,8 +14,8 @@ import (
 	_ "embed"
 
 	"github.com/gin-gonic/gin"
-	"github.com/handywote/website/database"
 	"github.com/handywote/website/models"
+	"github.com/handywote/website/services"
 )
 
 //go:embed templates/article_seo.html
@@ -51,9 +52,13 @@ func ArticleSEO(c *gin.Context) {
 		return
 	}
 
-	var article models.Article
-	if err := database.GetDB().First(&article, id).Error; err != nil {
+	article, err := articleService.Get(c.Request.Context(), id)
+	if errors.Is(err, services.ErrArticleNotFound) {
 		c.String(http.StatusNotFound, "Article not found")
+		return
+	}
+	if err != nil {
+		c.String(http.StatusInternalServerError, "Failed to fetch article")
 		return
 	}
 

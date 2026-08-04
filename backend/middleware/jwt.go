@@ -53,7 +53,7 @@ func JWTAuth(secretKey string) gin.HandlerFunc {
 func GenerateToken(username, secretKey string, expiresIn int) (string, error) {
 	claims := jwt.MapClaims{
 		"username": username,
-		"exp":     time.Now().Add(time.Duration(expiresIn) * time.Second).Unix(),
+		"exp":      time.Now().Add(time.Duration(expiresIn) * time.Second).Unix(),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
