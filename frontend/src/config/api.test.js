@@ -11,6 +11,10 @@ import {
   ApiError,
 } from './api.js';
 
+const { redirectToLoginMock } = vi.hoisted(() => ({ redirectToLoginMock: vi.fn() }));
+
+vi.mock('@/api/navigation', () => ({ redirectToLogin: redirectToLoginMock }));
+
 describe('API Configuration', () => {
   describe('API_CONFIG', () => {
     it('should have BASE_URL defined', () => {
@@ -91,6 +95,7 @@ describe('API Configuration', () => {
       originalFetch = global.fetch;
       global.fetch = vi.fn();
       localStorage.clear();
+      redirectToLoginMock.mockClear();
     });
 
     afterEach(() => {
@@ -154,18 +159,11 @@ describe('API Configuration', () => {
         statusText: 'Unauthorized',
       });
 
-      // Mock window.location
-      const originalLocation = window.location;
-      delete window.location;
-      window.location = { href: '' };
-
       await expect(downloadBlob('/api/admin/comments/export'))
         .rejects.toThrow();
 
       expect(localStorage.getItem('token')).toBeNull();
-      expect(window.location.href).toBe('/admin/login');
-
-      window.location = originalLocation;
+      expect(redirectToLoginMock).toHaveBeenCalledTimes(1);
     });
 
     it('应该传递自定义 headers 和 query params', async () => {

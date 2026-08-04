@@ -109,7 +109,7 @@ export default function AvatarsManager() {
 
   useEffect(() => {
     fetchAvatars();
-  }, []);
+  }, [fetchAvatars]);
 
   // 拖拽排序
   const handleDragEnd = async (event) => {

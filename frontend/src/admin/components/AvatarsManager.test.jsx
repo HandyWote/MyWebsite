@@ -2,10 +2,6 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import AvatarsManager from './AvatarsManager';
 
-vi.mock('react-router-dom', () => ({
-  useNavigate: () => vi.fn(),
-}));
-
 vi.mock('@dnd-kit/core', () => ({
   DndContext: ({ children }) => <div>{children}</div>,
   closestCenter: vi.fn(),
@@ -50,40 +46,14 @@ vi.mock('./shared', () => ({
   ),
 }));
 
-// Mock the unified api module
-vi.mock('../../config/api', () => ({
-  getApiUrl: {
-    adminAvatars: () => '/api/admin/avatars',
-    adminAvatarSetCurrent: (id) => `/api/admin/avatars/${id}/set_current`,
-    adminAvatarDelete: (id) => `/api/admin/avatars/${id}`,
-    avatarFile: (filename) => `/api/avatars/file/${filename}`,
-    baseUrl: () => '',
-  },
-  api: {
-    get: vi.fn(),
-    put: vi.fn(),
-    del: vi.fn(),
-    post: vi.fn(),
+vi.mock('../../api/avatarApi', () => ({
+  avatarApi: {
+    fetchAll: vi.fn(),
     upload: vi.fn(),
+    remove: vi.fn(),
+    setCurrent: vi.fn(),
+    publicUrl: (filename) => `/api/avatars/file/${filename}`,
   },
-  apiClient: vi.fn(),
-  uploadFile: vi.fn(),
-  ApiError: class ApiError extends Error {
-    constructor(status, message) { super(message); this.status = status; this.name = 'ApiError'; }
-  },
-  buildApiUrl: (ep) => ep,
-  unwrapApiPayload: (r) => r?.data ?? r,
-  getApiMessage: (r, fb) => r?.msg || r?.message || fb,
-  API_ENDPOINTS: {
-    PUBLIC: {},
-    ADMIN: {
-      AVATARS: '/api/admin/avatars',
-      AVATAR_DELETE: (id) => `/api/admin/avatars/${id}`,
-      AVATAR_SET_CURRENT: (id) => `/api/admin/avatars/${id}/set_current`,
-    },
-  },
-  API_CONFIG: { BASE_URL: '', TIMEOUT: 10000 },
-  default: {},
 }));
 
 // Mock useNotification hook (Zustand-backed)
@@ -98,7 +68,7 @@ vi.mock('../../hooks/useNotification', () => ({
   }),
 }));
 
-import { api } from '../../config/api';
+import { avatarApi } from '../../api/avatarApi';
 
 describe('AvatarsManager', () => {
   beforeEach(() => {
@@ -107,7 +77,7 @@ describe('AvatarsManager', () => {
   });
 
   it('uses avatar.is_current instead of list index to mark current avatar', async () => {
-    api.get.mockResolvedValue([
+    avatarApi.fetchAll.mockResolvedValue([
       { id: 1, filename: 'newer.webp', is_current: false, uploaded_at: '2026-03-23T10:00:00Z' },
       { id: 2, filename: 'older.webp', is_current: true, uploaded_at: '2026-03-22T10:00:00Z' },
     ]);

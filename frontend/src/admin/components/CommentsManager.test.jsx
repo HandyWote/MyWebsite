@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
 import CommentsManager from './CommentsManager';
 
 const commentPayload = {
@@ -51,21 +50,25 @@ vi.mock('../../config/api', () => ({
 }));
 
 // Mock useNotification hook (Zustand-backed)
-vi.mock('../../hooks/useNotification', () => ({
-  default: () => ({
-    snackbarOpen: false,
-    snackbarMessage: '',
-    snackbarSeverity: 'success',
-    showNotification: vi.fn(),
-    hideNotification: vi.fn(),
-    notify: () => ({
-      success: vi.fn(),
-      error: vi.fn(),
-      info: vi.fn(),
-      warning: vi.fn(),
+vi.mock('../../hooks/useNotification', () => {
+  const methods = {
+    success: vi.fn(),
+    error: vi.fn(),
+    info: vi.fn(),
+    warning: vi.fn(),
+  };
+  const notify = () => methods;
+  return {
+    default: () => ({
+      snackbarOpen: false,
+      snackbarMessage: '',
+      snackbarSeverity: 'success',
+      showNotification: vi.fn(),
+      hideNotification: vi.fn(),
+      notify,
     }),
-  }),
-}));
+  };
+});
 
 import { api } from '../../config/api';
 
@@ -81,11 +84,7 @@ describe('CommentsManager', () => {
   });
 
   it('有评论数据时正常渲染状态标签', async () => {
-    render(
-      <MemoryRouter>
-        <CommentsManager />
-      </MemoryRouter>
-    );
+    render(<CommentsManager />);
 
     expect(await screen.findByText('评论者')).toBeInTheDocument();
     expect(screen.getByText('正常')).toBeInTheDocument();

@@ -59,14 +59,13 @@ describe('ConfirmDialog', () => {
   it('severity=error 时确认按钮为红色', () => {
     render(<ConfirmDialog {...defaultProps} severity="error" />);
     const confirmButton = screen.getByText('确认');
-    // MUI Button with color="error" should have the class
-    expect(confirmButton.className).toMatch(/MuiButton-containedError/);
+    expect(confirmButton.className).toMatch(/MuiButton-colorError/);
   });
 
   it('severity 未设置时确认按钮为默认 primary', () => {
     render(<ConfirmDialog {...defaultProps} />);
     const confirmButton = screen.getByText('确认');
-    expect(confirmButton.className).toMatch(/MuiButton-containedPrimary/);
+    expect(confirmButton.className).toMatch(/MuiButton-colorPrimary/);
   });
 
   it('点击对话框背景（关闭）时调用 onCancel', () => {

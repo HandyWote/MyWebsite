@@ -11,7 +11,7 @@ import {
   FormControl,
   InputLabel,
   Select,
-  Grid2,
+  Grid,
   MenuItem,
   Pagination,
   CircularProgress,
@@ -58,16 +58,16 @@ export default function CommentsManager() {
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
 
   // 通知
-  const notify = useNotification();
+  const { notify } = useNotification();
 
   // 获取评论列表
   const handleFetchComments = useCallback(async () => {
     try {
       await fetchComments();
     } catch (error) {
-      notify.notify().error('获取评论列表失败: ' + error.message);
+      notify().error('获取评论列表失败: ' + error.message);
     }
-  }, [fetchComments]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [fetchComments, notify]);
 
   useEffect(() => {
     handleFetchComments();
@@ -79,9 +79,9 @@ export default function CommentsManager() {
 
     try {
       await deleteComment(commentToDelete.id);
-      notify.notify().success('评论删除成功');
+      notify().success('评论删除成功');
     } catch (error) {
-      notify.notify().error('删除评论失败: ' + error.message);
+      notify().error('删除评论失败: ' + error.message);
     }
   };
 
@@ -89,9 +89,9 @@ export default function CommentsManager() {
   const handleStatusChange = async (commentId, status) => {
     try {
       await updateCommentStatus(commentId, status);
-      notify.notify().success('评论状态更新成功');
+      notify().success('评论状态更新成功');
     } catch (error) {
-      notify.notify().error('更新评论状态失败: ' + error.message);
+      notify().error('更新评论状态失败: ' + error.message);
     }
   };
 
@@ -99,9 +99,9 @@ export default function CommentsManager() {
   const handleExport = async () => {
     try {
       await exportComments();
-      notify.notify().success('评论数据导出成功');
+      notify().success('评论数据导出成功');
     } catch (error) {
-      notify.notify().error('导出失败: ' + error.message);
+      notify().error('导出失败: ' + error.message);
     }
   };
 
@@ -113,44 +113,44 @@ export default function CommentsManager() {
 
       {/* 统计信息 */}
       <Paper sx={{ p: 3, mb: 3 }}>
-        <Grid2 container spacing={2}>
-          <Grid2 size={{ xs: 12, sm: 3 }}>
+        <Grid container spacing={2}>
+          <Grid size={{ xs: 12, sm: 3 }}>
             <Box textAlign="center">
               <Typography variant="h4" color="primary">{total}</Typography>
               <Typography variant="body2" color="text.secondary">总评论数</Typography>
             </Box>
-          </Grid2>
-          <Grid2 size={{ xs: 12, sm: 3 }}>
+          </Grid>
+          <Grid size={{ xs: 12, sm: 3 }}>
             <Box textAlign="center">
               <Typography variant="h4" color="success.main">
                 {comments.filter(c => c && c.status === COMMENT_STATUS.NORMAL).length}
               </Typography>
               <Typography variant="body2" color="text.secondary">正常评论</Typography>
             </Box>
-          </Grid2>
-          <Grid2 size={{ xs: 12, sm: 3 }}>
+          </Grid>
+          <Grid size={{ xs: 12, sm: 3 }}>
             <Box textAlign="center">
               <Typography variant="h4" color="warning.main">
                 {comments.filter(c => c && c.status === COMMENT_STATUS.PENDING).length}
               </Typography>
               <Typography variant="body2" color="text.secondary">待审核</Typography>
             </Box>
-          </Grid2>
-          <Grid2 size={{ xs: 12, sm: 3 }}>
+          </Grid>
+          <Grid size={{ xs: 12, sm: 3 }}>
             <Box textAlign="center">
               <Typography variant="h4" color="error.main">
                 {comments.filter(c => c && c.status === COMMENT_STATUS.SPAM).length}
               </Typography>
               <Typography variant="body2" color="text.secondary">垃圾评论</Typography>
             </Box>
-          </Grid2>
-        </Grid2>
+          </Grid>
+        </Grid>
       </Paper>
 
       {/* 搜索和过滤 */}
       <Paper sx={{ p: 2, mb: 3 }}>
-        <Grid2 container spacing={2} alignItems="center">
-          <Grid2 size={{ xs: 12, sm: 6 }}>
+        <Grid container spacing={2} alignItems="center">
+          <Grid size={{ xs: 12, sm: 6 }}>
             <TextField
               fullWidth
               placeholder="搜索评论内容、作者、IP地址..."
@@ -164,8 +164,8 @@ export default function CommentsManager() {
                 ),
               }}
             />
-          </Grid2>
-          <Grid2 size={{ xs: 12, sm: 3 }}>
+          </Grid>
+          <Grid size={{ xs: 12, sm: 3 }}>
             <FormControl fullWidth>
               <InputLabel>状态筛选</InputLabel>
               <Select
@@ -179,8 +179,8 @@ export default function CommentsManager() {
                 <MenuItem value={COMMENT_STATUS.SPAM}>垃圾评论</MenuItem>
               </Select>
             </FormControl>
-          </Grid2>
-          <Grid2 size={{ xs: 12, sm: 3 }}>
+          </Grid>
+          <Grid size={{ xs: 12, sm: 3 }}>
             <Stack direction="row" spacing={1}>
               <Button
                 variant="outlined"
@@ -198,8 +198,8 @@ export default function CommentsManager() {
                 导出
               </Button>
             </Stack>
-          </Grid2>
-        </Grid2>
+          </Grid>
+        </Grid>
       </Paper>
 
       {/* 评论列表 */}

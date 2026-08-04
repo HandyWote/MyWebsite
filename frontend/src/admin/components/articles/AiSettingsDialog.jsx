@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
   TextField,
-  Grid2,
+  Grid,
   Stack,
   Button,
   Typography,
@@ -21,7 +21,6 @@ import useNotification from '../../../hooks/useNotification';
  */
 export default function AiSettingsDialog({ open, onClose }) {
   const {
-    aiSettings: storeSettings,
     settingsLoading,
     settingsSaving,
     settingsTesting,
@@ -35,19 +34,29 @@ export default function AiSettingsDialog({ open, onClose }) {
   // 本地表单状态
   const [form, setForm] = useState({});
 
-  // 打开时从 store 同步设置（仅依赖 open，避免 store 函数变更触发重复请求）
+  const openedRef = useRef(false);
+  const requestIdRef = useRef(0);
+
+  // Fetch exactly once for each closed -> open transition. Store updates must not overwrite edits.
   useEffect(() => {
-    if (open) {
-      // 先获取最新设置，再同步到本地表单
-      fetchAiSettings().then((settings) => {
-        if (settings) setForm(settings);
-      }).catch(() => {
-        // fetchAiSettings 失败时使用 store 中已有的值
-        if (storeSettings) setForm(storeSettings);
-      });
+    if (!open) {
+      openedRef.current = false;
+      requestIdRef.current += 1;
+      return;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+    if (openedRef.current) return;
+
+    openedRef.current = true;
+    const requestId = ++requestIdRef.current;
+    fetchAiSettings()
+      .then((settings) => {
+        if (requestId === requestIdRef.current && settings) setForm(settings);
+      })
+      .catch(() => {
+        const settings = useAiStore.getState().aiSettings;
+        if (requestId === requestIdRef.current && settings) setForm(settings);
+      });
+  }, [fetchAiSettings, open]);
 
   const handleFieldChange = (field) => (e) => {
     setForm((prev) => ({ ...prev, [field]: e.target.value }));
@@ -82,8 +91,8 @@ export default function AiSettingsDialog({ open, onClose }) {
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           前端仅负责提交请求，实际调用模型的代理由后端完成。请在此配置提示词、模型、Base URL 与 API Key。
         </Typography>
-        <Grid2 container spacing={2}>
-          <Grid2 size={{ xs: 12 }}>
+        <Grid container spacing={2}>
+          <Grid size={{ xs: 12 }}>
             <TextField
               label="提示词"
               placeholder="用于引导模型生成建议"
@@ -94,8 +103,8 @@ export default function AiSettingsDialog({ open, onClose }) {
               minRows={3}
               disabled={settingsLoading}
             />
-          </Grid2>
-          <Grid2 size={{ xs: 12, sm: 6 }}>
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6 }}>
             <TextField
               label="模型"
               placeholder="如 gpt-4o-mini"
@@ -104,8 +113,8 @@ export default function AiSettingsDialog({ open, onClose }) {
               fullWidth
               disabled={settingsLoading}
             />
-          </Grid2>
-          <Grid2 size={{ xs: 12, sm: 6 }}>
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6 }}>
             <TextField
               label="Base URL"
               placeholder="https://api.openai.com/v1"
@@ -114,8 +123,8 @@ export default function AiSettingsDialog({ open, onClose }) {
               fullWidth
               disabled={settingsLoading}
             />
-          </Grid2>
-          <Grid2 size={{ xs: 12 }}>
+          </Grid>
+          <Grid size={{ xs: 12 }}>
             <TextField
               label="API Key"
               type="password"
@@ -125,8 +134,8 @@ export default function AiSettingsDialog({ open, onClose }) {
               fullWidth
               disabled={settingsLoading}
             />
-          </Grid2>
-        </Grid2>
+          </Grid>
+        </Grid>
       </DialogContent>
       <DialogActions sx={{ p: 2 }}>
         <Stack direction="row" spacing={1} sx={{ flexGrow: 1 }}>

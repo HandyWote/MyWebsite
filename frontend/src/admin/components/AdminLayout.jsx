@@ -1,8 +1,10 @@
+'use client';
+
 // AdminLayout组件 - Terminal Aesthetics 风格
 import { useEffect } from 'react';
-import { Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { usePathname, useRouter } from 'next/navigation';
 import { Box, AppBar, Toolbar, Typography, Tabs, Tab, Button, useMediaQuery, Divider } from '@mui/material';
-import { FileText, MessageSquare, Settings, LogOut } from 'lucide-react';
+import { Database, FileText, MessageSquare, Settings, LogOut } from 'lucide-react';
 import { verifyToken, clearAuth, saveRedirectPath } from '../utils/auth';
 import { api, API_ENDPOINTS } from '../../config/api';
 import { colors, typography } from '../../components/pixel/tokens';
@@ -13,13 +15,14 @@ const tabList = [
   { label: 'Sidebar', path: '/admin/sidebar', icon: Settings },
   { label: 'Articles', path: '/admin/articles', icon: FileText },
   { label: 'Comments', path: '/admin/comments', icon: MessageSquare },
+  { label: 'Data', path: '/admin/data', icon: Database },
 ];
 
-export default function AdminLayout() {
-  const navigate = useNavigate();
-  const location = useLocation();
+export default function AdminLayout({ children }) {
+  const router = useRouter();
+  const pathname = usePathname();
   const isMobile = useMediaQuery('(max-width:900px)');
-  const tabValue = tabList.findIndex(tab => location.pathname === tab.path) ?? 0;
+  const tabValue = tabList.findIndex(tab => pathname === tab.path);
 
   // 全局通知
   const { open, message, severity, hide } = useNotificationStore();
@@ -29,21 +32,18 @@ export default function AdminLayout() {
       const result = await verifyToken();
       if (!result.valid) {
         clearAuth();
-        saveRedirectPath(location.pathname);
-        navigate('/admin/login', {
-          state: { message: '登录已过期，请重新登录' },
-          replace: true
-        });
+        saveRedirectPath(pathname);
+        router.replace('/admin/login?message=' + encodeURIComponent('登录已过期，请重新登录'));
       }
     };
 
     checkTokenPeriodically();
     const interval = setInterval(checkTokenPeriodically, 5 * 60 * 1000);
     return () => clearInterval(interval);
-  }, [navigate, location.pathname]);
+  }, [pathname, router]);
 
-  const handleTabChange = (e, idx) => {
-    navigate(tabList[idx].path);
+  const handleTabChange = (_event, idx) => {
+    router.push(tabList[idx].path);
   };
 
   const handleLogout = async () => {
@@ -53,7 +53,7 @@ export default function AdminLayout() {
       // 即使后端登出失败，前端也清除认证
     }
     clearAuth();
-    navigate('/admin/login', { replace: true });
+    router.replace('/admin/login');
   };
 
   const renderTabs = (orientation = 'vertical') => (
@@ -63,10 +63,12 @@ export default function AdminLayout() {
       onChange={handleTabChange}
       variant="scrollable"
       allowScrollButtonsMobile
-      TabIndicatorProps={{
-        sx: orientation === 'vertical'
-          ? { left: 0, width: 3, bgcolor: 'primary.main' }
-          : { height: 3 }
+      slotProps={{
+        indicator: {
+          sx: orientation === 'vertical'
+            ? { left: 0, width: 3, bgcolor: 'primary.main' }
+            : { height: 3 },
+        },
       }}
     >
       {tabList.map(tab => {
@@ -195,7 +197,7 @@ export default function AdminLayout() {
               py: { xs: 3, md: 4 },
             }}
           >
-            <Outlet />
+            {children}
           </Box>
         </Box>
       </Box>

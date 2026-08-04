@@ -157,24 +157,21 @@ describe('commentStore', () => {
   });
 
   describe('exportComments', () => {
-    let createObjectURLSpy;
-
     beforeEach(() => {
-      // jsdom 不支持 URL.createObjectURL / revokeObjectURL，需要先定义再 mock
+      // jsdom 不支持对象 URL，也不应在单元测试中执行真实 anchor 导航。
       if (!global.URL.createObjectURL) {
         global.URL.createObjectURL = vi.fn();
       }
       if (!global.URL.revokeObjectURL) {
         global.URL.revokeObjectURL = vi.fn();
       }
-      createObjectURLSpy = vi.spyOn(global.URL, 'createObjectURL').mockReturnValue('blob:mock');
+      vi.spyOn(global.URL, 'createObjectURL').mockReturnValue('blob:mock');
       vi.spyOn(global.URL, 'revokeObjectURL').mockImplementation(() => {});
-      vi.spyOn(document.body, 'appendChild').mockReturnValue({ click: vi.fn() });
-      vi.spyOn(document.body, 'removeChild').mockImplementation(() => {});
+      vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
     });
 
     afterEach(() => {
-      createObjectURLSpy.mockRestore?.();
+      vi.restoreAllMocks();
     });
 
     it('应该成功导出评论（使用 api.download）', async () => {

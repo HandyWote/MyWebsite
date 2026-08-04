@@ -1,12 +1,14 @@
+'use client';
+
 // Login组件 - Terminal Aesthetics 风格
 import { useState, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Box, Typography,
   Alert, Checkbox, FormControlLabel
 } from '@mui/material';
 import { getAndClearRedirectPath } from '../utils/auth';
-import { getApiMessage, getApiUrl, unwrapApiPayload } from '../../config/api';
+import { authApi } from '../../api/authApi';
 import { PixelCard, PixelButton, PixelInput } from '../../components/pixel';
 import { colors, typography } from '../../components/pixel/tokens';
 
@@ -17,18 +19,18 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const location = useLocation();
-  const navigate = useNavigate();
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
-  const stateMessage = location.state?.message;
+  const stateMessage = searchParams.get('message');
 
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
       const redirectPath = getAndClearRedirectPath();
-      navigate(redirectPath, { replace: true });
+      router.replace(redirectPath);
     }
-  }, [navigate]);
+  }, [router]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -36,25 +38,15 @@ const Login = () => {
     setError('');
 
     try {
-      const res = await fetch(getApiUrl.adminLogin(), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password, remember }),
-        credentials: 'include'
-      });
-
-      const data = await res.json();
-      const payload = unwrapApiPayload(data);
-
-      if (res.ok && data.code === 0 && payload?.token) {
-        localStorage.setItem('token', payload.token);
-        const redirectPath = getAndClearRedirectPath();
-        navigate(redirectPath, { replace: true });
-      } else {
-        setError(getApiMessage(data, '登录失败'));
+      const payload = await authApi.login({ username, password, remember });
+      if (!payload?.token) {
+        throw new Error('登录响应缺少 token');
       }
-    } catch {
-      setError('网络错误，请检查连接');
+      localStorage.setItem('token', payload.token);
+      const redirectPath = getAndClearRedirectPath();
+      router.replace(redirectPath);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : '网络错误，请检查连接');
     } finally {
       setLoading(false);
     }

@@ -1,12 +1,6 @@
 // frontend/src/stores/uploadStore.js
 import { create } from 'zustand';
-import { api, uploadFile, API_ENDPOINTS } from '@/config/api';
-
-const {
-  ARTICLE_COVER,
-  ARTICLE_PDF_UPLOAD,
-  ARTICLE_IMPORT_MD,
-} = API_ENDPOINTS.ADMIN;
+import { uploadApi } from '@/api/uploadApi';
 
 const useUploadStore = create((set) => ({
   coverPreview: null,
@@ -16,7 +10,7 @@ const useUploadStore = create((set) => ({
   uploadCover: async (file) => {
     set({ coverUploading: true });
     try {
-      const data = await uploadFile(ARTICLE_COVER, file);
+      const data = await uploadApi.cover(file);
       const url = data.url;
       set({ coverPreview: url, coverUploading: false });
       return url;
@@ -29,7 +23,7 @@ const useUploadStore = create((set) => ({
   uploadPdf: async (file) => {
     set({ pdfUploading: true });
     try {
-      const data = await uploadFile(ARTICLE_PDF_UPLOAD, file);
+      const data = await uploadApi.pdf(file);
       const filename = data.filename;
       set({ pdfUploading: false });
       return filename;
@@ -39,7 +33,7 @@ const useUploadStore = create((set) => ({
     }
   },
 
-  importMarkdown: (files) => api.uploadFiles(ARTICLE_IMPORT_MD, files, 'files'),
+  importMarkdown: (files) => uploadApi.markdown(files),
 
   resetUploads: () => set({
     coverPreview: null,

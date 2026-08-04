@@ -82,7 +82,7 @@ body::before {
   z-index: 9999;
 }
 
-#root {
+#app-root {
   min-height: 100vh;
   padding: 12px;
 }
@@ -209,7 +209,7 @@ a:hover {
     --content-max-width: 720px;
     --section-gap: 24px;
   }
-  #root {
+  #app-root {
     padding: 10px;
   }
   .container {

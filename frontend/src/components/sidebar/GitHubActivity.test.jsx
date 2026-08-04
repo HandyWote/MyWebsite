@@ -39,6 +39,20 @@ describe('GitHubActivity', () => {
     expect(output[output.length - 1]).toEqual(input[input.length - 1]);
   });
 
+  it('uses the full-year client calendar on the home page', () => {
+    render(<GitHubActivity username="octocat" compact={false} />);
+
+    const props = mockCalendar.mock.calls.at(-1)?.[0];
+    const input = Array.from({ length: 400 }, (_, index) => ({
+      date: `day-${index}`,
+      count: index,
+      level: index % 5,
+    }));
+    expect(props.transformData(input)).toEqual(input.slice(-(53 * 7)));
+    expect(props.style.minWidth).toBe('720px');
+    expect(screen.getByTestId('github-calendar-scroll')).toHaveStyle({ overflowX: 'hidden' });
+  });
+
   it('does not render legacy full-link footer in compact sidebar mode', () => {
     render(<GitHubActivity username="octocat" />);
     expect(screen.queryByRole('link', { name: '查看完整贡献图' })).not.toBeInTheDocument();
