@@ -40,7 +40,7 @@ export default function FrontendConfigManager() {
 
   useEffect(() => {
     fetchBlocks().catch(() => {});
-  }, []);
+  }, [fetchBlocks]);
 
   const setField = (section, field, value) => {
     updateForm((prev) => ({

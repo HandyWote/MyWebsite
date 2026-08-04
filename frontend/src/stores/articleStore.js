@@ -75,25 +75,6 @@ const useArticleStore = create((set, get) => ({
 			get().fetchArticles();
 		}),
 
-	// ========== SEO 数据注入 ==========
-	/**
-	 * 从 Go SEO 模板注入的 __INITIAL_DATA__ 读取文章数据。
-	 * 如果存在初始数据，直接注入 store，跳过 API 调用。
-	 */
-	injectInitialData: () => {
-		const el = document.getElementById("__INITIAL_DATA__");
-		if (!el) return null;
-
-		try {
-			const article = JSON.parse(el.textContent);
-			el.remove();
-			return article;
-		} catch (e) {
-			console.error("[SEO] 解析 __INITIAL_DATA__ 失败:", e);
-			return null;
-		}
-	},
-
 	// ========== 工具方法 ==========
 	setPagination: (updates) =>
 		set((state) => ({

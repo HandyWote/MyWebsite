@@ -5,7 +5,7 @@ import {
   DialogContent,
   DialogActions,
   TextField,
-  Grid2,
+  Grid,
   Stack,
   Button,
   Typography,
@@ -46,8 +46,7 @@ export default function AiSettingsDialog({ open, onClose }) {
         if (storeSettings) setForm(storeSettings);
       });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  }, [fetchAiSettings, open, storeSettings]);
 
   const handleFieldChange = (field) => (e) => {
     setForm((prev) => ({ ...prev, [field]: e.target.value }));
@@ -82,8 +81,8 @@ export default function AiSettingsDialog({ open, onClose }) {
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           前端仅负责提交请求，实际调用模型的代理由后端完成。请在此配置提示词、模型、Base URL 与 API Key。
         </Typography>
-        <Grid2 container spacing={2}>
-          <Grid2 size={{ xs: 12 }}>
+        <Grid container spacing={2}>
+          <Grid size={{ xs: 12 }}>
             <TextField
               label="提示词"
               placeholder="用于引导模型生成建议"
@@ -94,8 +93,8 @@ export default function AiSettingsDialog({ open, onClose }) {
               minRows={3}
               disabled={settingsLoading}
             />
-          </Grid2>
-          <Grid2 size={{ xs: 12, sm: 6 }}>
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6 }}>
             <TextField
               label="模型"
               placeholder="如 gpt-4o-mini"
@@ -104,8 +103,8 @@ export default function AiSettingsDialog({ open, onClose }) {
               fullWidth
               disabled={settingsLoading}
             />
-          </Grid2>
-          <Grid2 size={{ xs: 12, sm: 6 }}>
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6 }}>
             <TextField
               label="Base URL"
               placeholder="https://api.openai.com/v1"
@@ -114,8 +113,8 @@ export default function AiSettingsDialog({ open, onClose }) {
               fullWidth
               disabled={settingsLoading}
             />
-          </Grid2>
-          <Grid2 size={{ xs: 12 }}>
+          </Grid>
+          <Grid size={{ xs: 12 }}>
             <TextField
               label="API Key"
               type="password"
@@ -125,8 +124,8 @@ export default function AiSettingsDialog({ open, onClose }) {
               fullWidth
               disabled={settingsLoading}
             />
-          </Grid2>
-        </Grid2>
+          </Grid>
+        </Grid>
       </DialogContent>
       <DialogActions sx={{ p: 2 }}>
         <Stack direction="row" spacing={1} sx={{ flexGrow: 1 }}>

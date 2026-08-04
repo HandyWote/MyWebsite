@@ -1,10 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { MemoryRouter } from 'react-router-dom';
 import FrontendConfigManager from './FrontendConfigManager';
-
-const renderWithRouter = (ui) => render(<MemoryRouter>{ui}</MemoryRouter>);
 
 // Mock the unified api module
 vi.mock('../../config/api', () => ({
@@ -65,7 +62,7 @@ describe('FrontendConfigManager', () => {
     // api.get returns auto-unwrapped data
     api.get.mockResolvedValue([]);
 
-    renderWithRouter(<FrontendConfigManager />);
+    render(<FrontendConfigManager />);
 
     await waitFor(() => {
       expect(api.get).toHaveBeenCalled();
@@ -91,7 +88,7 @@ describe('FrontendConfigManager', () => {
     api.get.mockResolvedValue([]);
     api.put.mockResolvedValue(null);
 
-    renderWithRouter(<FrontendConfigManager />);
+    render(<FrontendConfigManager />);
 
     await user.click(screen.getByRole('button', { name: '保存配置' }));
 

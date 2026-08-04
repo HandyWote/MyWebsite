@@ -1,4 +1,4 @@
-import { apiClient } from "../../config/api";
+import { authApi } from "../../api/authApi";
 import { clearAuth } from "../../utils/auth";
 
 export { clearAuth };
@@ -11,15 +11,7 @@ export const verifyToken = async () => {
 	}
 
 	try {
-		// 使用 noAuth 避免双重注入——我们需要手动控制 credentials
-		const payload = await apiClient("/api/admin/verify", {
-			noAuth: true,
-			headers: {
-				Authorization: `Bearer ${token}`,
-				"Content-Type": "application/json",
-			},
-			credentials: "include",
-		});
+		const payload = await authApi.verify(token);
 		return { valid: !!payload?.valid };
 	} catch {
 		return { valid: false, error: "Token已过期或无效" };
@@ -33,5 +25,5 @@ export const saveRedirectPath = (path) => {
 export const getAndClearRedirectPath = () => {
 	const path = sessionStorage.getItem("redirectPath");
 	sessionStorage.removeItem("redirectPath");
-	return path || "/admin";
+	return path?.startsWith("/admin") && !path.startsWith("//") ? path : "/admin";
 };

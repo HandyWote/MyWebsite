@@ -16,6 +16,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import { getApiUrl } from '../../../config/api';
 import PdfViewerOnCanvas from '../../../components/PdfViewerOnCanvas';
+import { normalizeBrowserPdfUrl } from '../../../utils/pdfUrl';
 
 const PdfUploadPreview = ({
   filename,
@@ -27,6 +28,7 @@ const PdfUploadPreview = ({
   const inputRef = useRef(null);
   const [localError, setLocalError] = useState('');
   const pdfUrl = filename ? getApiUrl.articlePdf(filename) : '';
+  const safePdfUrl = normalizeBrowserPdfUrl(pdfUrl);
 
   const handleFileChange = (event) => {
     const file = event.target.files?.[0];
@@ -115,9 +117,15 @@ const PdfUploadPreview = ({
             </Typography>
           )}
 
-          {filename && pdfUrl && (
+          {filename && safePdfUrl && (
             <Tooltip title="在新窗口打开">
-              <IconButton size="small" onClick={() => window.open(pdfUrl, '_blank')}>
+              <IconButton
+                component="a"
+                size="small"
+                href={safePdfUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
                 <OpenInNewIcon fontSize="small" />
               </IconButton>
             </Tooltip>

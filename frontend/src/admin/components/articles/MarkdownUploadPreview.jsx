@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState } from 'react';
 import { Box, Button, Chip, Stack, Typography} from '@mui/material';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import 'katex/dist/katex.min.css';
@@ -12,15 +12,6 @@ const MarkdownUploadPreview = ({
 }) => {
   const inputRef = useRef(null);
   const [fileName, setFileName] = useState('');
-
-  useEffect(() => {
-    if (!content) {
-      setFileName('');
-      if (inputRef.current) {
-        inputRef.current.value = '';
-      }
-    }
-  }, [content]);
 
   const handleUpload = e => {
     const file = e.target.files?.[0];
@@ -84,6 +75,7 @@ const MarkdownUploadPreview = ({
             <Button variant="outlined" component="label" startIcon={<UploadFileIcon />}>
               选择 Markdown 文件
               <input
+                key={content ? 'loaded' : 'empty'}
                 ref={inputRef}
                 type="file"
                 accept=".md,text/markdown"
@@ -94,7 +86,7 @@ const MarkdownUploadPreview = ({
           </Box>
         </Stack>
         <Box sx={{ mt: 1, display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
-          {fileName ? (
+          {content && fileName ? (
             <Chip label={fileName} onDelete={handleClear} color="primary" variant="outlined" />
           ) : (
             content && null

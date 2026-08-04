@@ -3,29 +3,37 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-describe('app shell', () => {
-  it('does not load KaTeX CSS from jsDelivr in index.html', () => {
-    const currentDir = path.dirname(fileURLToPath(import.meta.url));
-    const indexHtml = fs.readFileSync(path.resolve(currentDir, '../index.html'), 'utf8');
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-    expect(indexHtml).not.toContain('https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.css');
+describe('Next app shell', () => {
+  it('uses a persistent ordinary DOM ScreenHost in the public layout', () => {
+    const source = fs.readFileSync(path.join(root, 'app/(public)/layout.tsx'), 'utf8');
+    expect(source).toContain('id="screen-host"');
+    expect(source).toContain('data-screen-host="public"');
+    expect(source).not.toContain('createPortal');
   });
 
-  it('uses /app/ as production base path in vite config', () => {
-    const currentDir = path.dirname(fileURLToPath(import.meta.url));
-    const viteConfig = fs.readFileSync(path.resolve(currentDir, '../vite.config.js'), 'utf8');
-
-    expect(viteConfig).toContain("base: process.env.NODE_ENV === 'production' ? '/app/' : './'");
+  it('keeps server and browser API addresses separated', () => {
+    const server = fs.readFileSync(path.join(root, 'src/api/server.ts'), 'utf8');
+    const browser = fs.readFileSync(path.join(root, 'src/api/browser.ts'), 'utf8');
+    expect(server).toContain("import 'server-only'");
+    expect(server).toContain('BACKEND_INTERNAL_URL');
+    expect(browser).toContain('endpoint must be relative');
+    expect(browser).not.toContain('BACKEND_INTERNAL_URL');
   });
 
-  it('does not hardcode avatar fallback to root path in app components', () => {
-    const currentDir = path.dirname(fileURLToPath(import.meta.url));
-    const welcomeSource = fs.readFileSync(path.resolve(currentDir, './components/terminal/TerminalWelcome.jsx'), 'utf8');
-    const shellSource = fs.readFileSync(path.resolve(currentDir, './components/terminal/TerminalShellLayout.jsx'), 'utf8');
+  it('defines permanent redirects for legacy /app routes', () => {
+    const source = fs.readFileSync(path.join(root, 'next.config.ts'), 'utf8');
+    expect(source).toContain("source: '/app/articles/:id'");
+    expect(source).toContain("destination: '/articles/:id'");
+    expect(source).toContain("source: '/app/admin/:path*'");
+    expect(source).toContain('permanent: true');
+  });
 
-    expect(welcomeSource).not.toContain("'/avatar.webp'");
-    expect(welcomeSource).not.toContain('"/avatar.webp"');
-    expect(shellSource).not.toContain("'/avatar.webp'");
-    expect(shellSource).not.toContain('"/avatar.webp"');
+  it('has no Vite or React Router entry files', () => {
+    expect(fs.existsSync(path.join(root, 'index.html'))).toBe(false);
+    expect(fs.existsSync(path.join(root, 'vite.config.js'))).toBe(false);
+    expect(fs.existsSync(path.join(root, 'src/main.jsx'))).toBe(false);
+    expect(fs.existsSync(path.join(root, 'src/App.jsx'))).toBe(false);
   });
 });

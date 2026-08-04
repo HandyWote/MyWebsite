@@ -1,5 +1,4 @@
-export { PixelProvider, default } from './PixelProvider';
-export { default as pixelTheme, colors, spacing, typography, borders, shadows, animations } from './tokens';
+export { pixelTheme, colors, spacing, typography, borders, shadows, animations } from './tokens';
 export { PixelButton } from './ui/PixelButton';
 export { PixelCard } from './ui/PixelCard';
 export { PixelChip } from './ui/PixelChip';
@@ -8,4 +7,3 @@ export { PixelInput } from './ui/PixelInput';
 export { PixelTypography, CodeBlock, TerminalLine } from './ui/PixelTypography';
 export { PixelContainer } from './layout/PixelContainer';
 export { PixelSidebar } from './layout/PixelSidebar';
-export { PixelNavbar } from './layout/PixelNavbar';

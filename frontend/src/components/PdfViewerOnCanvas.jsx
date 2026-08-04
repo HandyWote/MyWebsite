@@ -14,14 +14,15 @@ import {
   ZoomOut as ZoomOutIcon,
   OpenInNew as OpenInNewIcon
 } from '@mui/icons-material';
-import 'react-pdf/dist/Page/AnnotationLayer.css';
-import 'react-pdf/dist/Page/TextLayer.css';
 import { getApiUrl } from '../config/api';
+import { normalizeBrowserPdfUrl } from '../utils/pdfUrl';
 
 // 配置PDF.js worker - 使用本地worker文件（ES模块版本）
 import { pdfjs } from 'react-pdf';
-import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
-pdfjs.GlobalWorkerOptions.workerSrc = pdfWorker;
+pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.min.mjs',
+  import.meta.url,
+).toString();
 
 const PdfViewerOnCanvas = ({ filename, url }) => {
   const [loading, setLoading] = useState(true);
@@ -29,22 +30,13 @@ const PdfViewerOnCanvas = ({ filename, url }) => {
   const [numPages, setNumPages] = useState(null);
   const [scale, setScale] = useState(1.0);
   const [pdfUrl, setPdfUrl] = useState(null);
-  const [sourceUrl, setSourceUrl] = useState(null);
 
   const resolvePdfUrl = useCallback(() => {
-    if (url) {
-      return url;
-    }
+    if (url) return normalizeBrowserPdfUrl(url) || '';
     if (!filename) return '';
-    if (/^https?:\/\//.test(filename)) {
-      return filename;
-    }
-    if (filename.startsWith('/api/')) {
-      const base = getApiUrl.baseUrl();
-      const normalizedBase = base && base.endsWith('/') ? base.slice(0, -1) : base;
-      return `${normalizedBase || ''}${filename}`;
-    }
-    return getApiUrl.articlePdf(filename);
+
+    const normalized = normalizeBrowserPdfUrl(filename);
+    return normalized || getApiUrl.articlePdf(filename);
   }, [url, filename]);
 
   useEffect(() => {
@@ -63,8 +55,6 @@ const PdfViewerOnCanvas = ({ filename, url }) => {
         if (!finalUrl) {
           throw new Error('无法解析PDF地址');
         }
-        setSourceUrl(finalUrl);
-
         // 注意：这里保留原生 fetch 而不是 apiClient/api.download：
         // 1) 需要 AbortSignal 支持组件卸载时取消请求；
         // 2) 返回 Blob 而非 JSON，且需区分 404 与通用错误；
@@ -137,15 +127,6 @@ const PdfViewerOnCanvas = ({ filename, url }) => {
     setScale((prev) => Math.max(0.5, prev - 0.1));
   };
 
-  // 在新窗口打开PDF
-  const openInNewWindow = () => {
-    if (pdfUrl) {
-      window.open(pdfUrl, '_blank', 'noopener');
-    } else if (sourceUrl) {
-      window.open(sourceUrl, '_blank', 'noopener');
-    }
-  };
-
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
@@ -168,7 +149,7 @@ const PdfViewerOnCanvas = ({ filename, url }) => {
       sx={{
         borderRadius: 2,
         overflow: 'hidden',
-        backgroundColor: '#f5f5f5',
+        backgroundColor: 'common.white',
         display: 'flex',
         flexDirection: 'column',
         height: 800
@@ -178,8 +159,9 @@ const PdfViewerOnCanvas = ({ filename, url }) => {
       <Box
         sx={{
           p: 2,
-          borderBottom: '1px solid #ddd',
-          backgroundColor: 'white',
+          borderBottom: 1,
+          borderColor: 'divider',
+          backgroundColor: 'background.default',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
@@ -218,7 +200,13 @@ const PdfViewerOnCanvas = ({ filename, url }) => {
 
           {/* 新窗口打开 */}
           <Tooltip title="在新窗口打开">
-            <IconButton size="small" onClick={openInNewWindow}>
+            <IconButton
+              component="a"
+              size="small"
+              href={pdfUrl || undefined}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               <OpenInNewIcon fontSize="small" />
             </IconButton>
           </Tooltip>
@@ -230,7 +218,7 @@ const PdfViewerOnCanvas = ({ filename, url }) => {
         sx={{
           flex: 1,
           overflow: 'auto',
-          backgroundColor: '#e0e0e0',
+          backgroundColor: 'grey.300',
           position: 'relative',
           display: 'flex',
           justifyContent: 'center',
@@ -251,7 +239,7 @@ const PdfViewerOnCanvas = ({ filename, url }) => {
             <Alert severity="error">PDF加载失败，请检查文件是否存在或格式是否正确</Alert>
           }
         >
-          {Array.from(new Array(numPages), (el, index) => (
+          {Array.from({ length: numPages }, (el, index) => (
             <Page
               key={`page_${index + 1}`}
               pageNumber={index + 1}

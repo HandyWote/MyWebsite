@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -13,7 +13,7 @@ import {
   CircularProgress,
   Alert,
   Paper,
-  Grid2,
+  Grid,
   FormControl,
   RadioGroup,
   FormControlLabel,
@@ -65,9 +65,20 @@ const SectionCard = ({ icon, title, subtitle, children, spacing = 2 }) => (
   </Paper>
 );
 
-const DEFAULT_COVER = `${import.meta.env.BASE_URL}default-cover.svg`;
+const DEFAULT_COVER = '/default-cover.svg';
 
 const validateTags = (tags) => /^[一-龥a-zA-Z0-9_,\-\s]+$/.test(tags);
+
+const createInitialForm = (article) => ({
+  title: article?.title || '',
+  category: article?.category || '',
+  tags: article?.tags || '',
+  summary: article?.summary || '',
+  content: article?.content || '',
+  content_type: article?.content_type || 'markdown',
+  cover: article?.cover || '',
+  pdf_filename: article?.pdf_filename || '',
+});
 
 const getCoverUrl = (cover) => {
   if (!cover) return DEFAULT_COVER;
@@ -86,18 +97,9 @@ const getCoverUrl = (cover) => {
  *   onClose  - 关闭回调
  *   onSave   - 保存回调（接收最终文章数据）
  */
-const ArticleEditDialog = ({ open, isEdit, article, onClose, onSave }) => {
+const ArticleEditDialogForm = ({ open, isEdit, article, onClose, onSave }) => {
   // ========== 本地表单状态 ==========
-  const [form, setForm] = useState({
-    title: '',
-    category: '',
-    tags: '',
-    summary: '',
-    content: '',
-    content_type: 'markdown',
-    cover: '',
-    pdf_filename: '',
-  });
+  const [form, setForm] = useState(() => createInitialForm(article));
 
   // ========== Store 状态 ==========
   const loading = useArticleStore((s) => s.loading);
@@ -117,22 +119,6 @@ const ArticleEditDialog = ({ open, isEdit, article, onClose, onSave }) => {
   } = useAiStore();
 
   const notify = useNotification();
-
-  // ========== 同步 prop → 本地状态 ==========
-  useEffect(() => {
-    if (open && article) {
-      setForm({
-        title: article.title || '',
-        category: article.category || '',
-        tags: article.tags || '',
-        summary: article.summary || '',
-        content: article.content || '',
-        content_type: article.content_type || 'markdown',
-        cover: article.cover || '',
-        pdf_filename: article.pdf_filename || '',
-      });
-    }
-  }, [open, article]);
 
   // ========== 表单操作 ==========
   const handleFieldChange = useCallback((field) => (e) => {
@@ -233,13 +219,13 @@ const ArticleEditDialog = ({ open, isEdit, article, onClose, onSave }) => {
         <DialogContent
           dividers
           sx={{
-            background: 'linear-gradient(180deg, rgba(25,118,210,0.04) 0%, rgba(25,118,210,0.01) 100%)',
+            backgroundColor: 'action.hover',
           }}
         >
           <Stack spacing={3} sx={{ mt: 1 }}>
             <SectionCard title="基础信息" subtitle="文章标题、分类、标签与摘要">
-              <Grid2 container spacing={2}>
-                <Grid2 size={{ xs: 12 }}>
+              <Grid container spacing={2}>
+                <Grid size={{ xs: 12 }}>
                   <TextField
                     label="标题"
                     value={form.title || ''}
@@ -247,16 +233,16 @@ const ArticleEditDialog = ({ open, isEdit, article, onClose, onSave }) => {
                     fullWidth
                     required
                   />
-                </Grid2>
-                <Grid2 size={{ xs: 12, md: 6 }}>
+                </Grid>
+                <Grid size={{ xs: 12, md: 6 }}>
                   <TextField
                     label="分类"
                     value={form.category || ''}
                     onChange={handleFieldChange('category')}
                     fullWidth
                   />
-                </Grid2>
-                <Grid2 size={{ xs: 12, md: 6 }}>
+                </Grid>
+                <Grid size={{ xs: 12, md: 6 }}>
                   <TextField
                     label="标签（逗号分隔）"
                     value={form.tags || ''}
@@ -265,8 +251,8 @@ const ArticleEditDialog = ({ open, isEdit, article, onClose, onSave }) => {
                     error={!!form.tags && !validateTags(form.tags)}
                     helperText={!!form.tags && !validateTags(form.tags) ? '标签格式不合法' : ''}
                   />
-                </Grid2>
-                <Grid2 size={{ xs: 12 }}>
+                </Grid>
+                <Grid size={{ xs: 12 }}>
                   <TextField
                     label="摘要"
                     value={form.summary || ''}
@@ -275,8 +261,8 @@ const ArticleEditDialog = ({ open, isEdit, article, onClose, onSave }) => {
                     multiline
                     minRows={3}
                   />
-                </Grid2>
-              </Grid2>
+                </Grid>
+              </Grid>
             </SectionCard>
 
             <SectionCard title="内容类型" subtitle="选择文章的内容格式">
@@ -430,5 +416,12 @@ const ArticleEditDialog = ({ open, isEdit, article, onClose, onSave }) => {
     </Dialog>
   );
 };
+
+const ArticleEditDialog = (props) => (
+  <ArticleEditDialogForm
+    key={`${props.open ? 'open' : 'closed'}-${props.article?.id ?? 'new'}`}
+    {...props}
+  />
+);
 
 export default ArticleEditDialog;

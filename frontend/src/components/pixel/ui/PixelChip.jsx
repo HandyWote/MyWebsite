@@ -1,6 +1,6 @@
 // frontend/src/components/pixel/ui/PixelChip.jsx
 import { Chip as MuiChip } from '@mui/material';
-import { colors, typography, animations } from '../tokens';
+import { typography, animations } from '../tokens';
 
 /**
  * PixelChip - 终端风格标签组件
@@ -10,34 +10,34 @@ export function PixelChip({ label, variant = 'default', ...props }) {
     switch (variant) {
       case 'accent':
         return {
-          bgcolor: colors.accent.blue,
-          color: colors.bg.primary,
-          borderColor: colors.accent.blue,
+          bgcolor: 'primary.main',
+          color: 'background.default',
+          borderColor: 'primary.main',
         };
       case 'success':
         return {
           bgcolor: 'transparent',
-          color: colors.accent.green,
-          borderColor: colors.accent.green,
+          color: 'success.main',
+          borderColor: 'success.main',
         };
       case 'warning':
         return {
           bgcolor: 'transparent',
-          color: '#d29922',
-          borderColor: '#d29922',
+          color: 'warning.main',
+          borderColor: 'warning.main',
         };
       case 'error':
         return {
           bgcolor: 'transparent',
-          color: colors.accent.red,
-          borderColor: colors.accent.red,
+          color: 'error.main',
+          borderColor: 'error.main',
         };
       case 'default':
       default:
         return {
-          bgcolor: colors.bg.tertiary,
-          color: colors.text.secondary,
-          borderColor: colors.border.default,
+          bgcolor: 'background.paper',
+          color: 'text.secondary',
+          borderColor: 'divider',
         };
     }
   };
@@ -53,7 +53,8 @@ export function PixelChip({ label, variant = 'default', ...props }) {
         fontWeight: 500,
         borderRadius: 0,
         height: '24px',
-        border: `1px solid ${colors.border.default}`,
+        border: 1,
+        borderColor: 'divider',
         transition: animations.fast,
         ...getVariantStyles(),
         ...props.sx,

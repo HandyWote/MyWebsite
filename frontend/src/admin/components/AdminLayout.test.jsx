@@ -1,21 +1,17 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import AdminLayout from './AdminLayout';
-import AdminRoutes from '../routes';
 
-vi.mock('../components/Login', () => ({ default: () => <div>登录页</div> }));
-vi.mock('../components/ArticlesManager', () => ({ default: () => <div>Articles页</div> }));
-vi.mock('../components/CommentsManager', () => ({ default: () => <div>Comments页</div> }));
-vi.mock('../components/DataImportExport', () => ({ default: () => <div>Data页</div> }));
-vi.mock('../components/FrontendConfigManager', () => ({ default: () => <div>左侧内容栏管理页</div> }));
+const { pushMock, replaceMock } = vi.hoisted(() => ({ pushMock: vi.fn(), replaceMock: vi.fn() }));
+
+vi.mock('next/navigation', () => ({
+  usePathname: () => '/admin/sidebar',
+  useRouter: () => ({ push: pushMock, replace: replaceMock }),
+}));
 
 vi.mock('@mui/material', async () => {
   const actual = await vi.importActual('@mui/material');
-  return {
-    ...actual,
-    useMediaQuery: () => false,
-  };
+  return { ...actual, useMediaQuery: () => false };
 });
 
 vi.mock('lucide-react', () => ({
@@ -32,65 +28,29 @@ vi.mock('../utils/auth', () => ({
 }));
 
 vi.mock('../../config/api', () => ({
-  getApiUrl: {
-    adminLogout: () => '/api/admin/logout',
-  },
-  api: {
-    get: vi.fn(),
-    put: vi.fn(),
-    del: vi.fn(),
-    post: vi.fn().mockResolvedValue(null),
-    upload: vi.fn(),
-  },
+  API_ENDPOINTS: { ADMIN: { LOGOUT: '/api/admin/logout' } },
+  api: { post: vi.fn().mockResolvedValue(null) },
 }));
 
 vi.mock('@/stores/notificationStore', () => ({
-  useNotificationStore: () => ({
-    open: false,
-    message: '',
-    severity: 'info',
-    hide: vi.fn(),
-    show: vi.fn(),
-  }),
+  useNotificationStore: () => ({ open: false, message: '', severity: 'info', hide: vi.fn() }),
 }));
 
 describe('AdminLayout', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+  beforeEach(() => vi.clearAllMocks());
 
-  it('renders only the three simplified top-level sections', () => {
-    render(
-      <MemoryRouter initialEntries={['/admin/sidebar']}>
-        <Routes>
-          <Route path="/admin" element={<AdminLayout />}>
-            <Route path="sidebar" element={<div>左侧内容栏管理页</div>} />
-          </Route>
-        </Routes>
-      </MemoryRouter>
-    );
-
+  it('renders the three admin sections and App Router child content', () => {
+    render(<AdminLayout><div>左侧内容栏管理页</div></AdminLayout>);
     expect(screen.getByText('Sidebar')).toBeInTheDocument();
     expect(screen.getByText('Articles')).toBeInTheDocument();
     expect(screen.getByText('Comments')).toBeInTheDocument();
-
-    expect(screen.queryByText('Frontend')).not.toBeInTheDocument();
-    expect(screen.queryByText('Skills')).not.toBeInTheDocument();
-    expect(screen.queryByText('Contacts')).not.toBeInTheDocument();
+    expect(screen.getByText('左侧内容栏管理页')).toBeInTheDocument();
     expect(screen.queryByText('Avatars')).not.toBeInTheDocument();
   });
 
-  it('routes /admin to sidebar content manager by default', async () => {
-    render(
-      <MemoryRouter initialEntries={['/admin']}>
-        <Routes>
-          <Route path="/admin/*" element={<AdminRoutes />} />
-        </Routes>
-      </MemoryRouter>
-    );
-
-    await waitFor(() => {
-      expect(screen.getByText('左侧内容栏管理页')).toBeInTheDocument();
-    });
+  it('uses Next router for tab navigation', () => {
+    render(<AdminLayout><div>content</div></AdminLayout>);
+    fireEvent.click(screen.getByRole('tab', { name: /Articles/ }));
+    expect(pushMock).toHaveBeenCalledWith('/admin/articles');
   });
 });
