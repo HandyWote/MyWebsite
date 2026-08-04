@@ -117,9 +117,9 @@ export class MonitorScreen {
   private createOcclusionPlane(): void {
     const material = new THREE.MeshBasicMaterial({
       side: THREE.DoubleSide,
-      opacity: 0,
-      transparent: true,
-      blending: THREE.NoBlending,
+      colorWrite: false,
+      depthTest: true,
+      depthWrite: true,
     });
     const mesh = new THREE.Mesh(new THREE.PlaneGeometry(SCREEN_SIZE.x, SCREEN_SIZE.y), material);
     mesh.position.copy(SCREEN_POSITION);

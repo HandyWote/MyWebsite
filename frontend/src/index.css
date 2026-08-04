@@ -31,6 +31,7 @@
   --section-padding-inline: clamp(16px, 7vw, 48px);
   --section-gap: clamp(24px, 4vh, 48px);
   --content-max-width: 960px;
+  --public-viewport-height: calc(100dvh - 24px);
 }
 
 * {
@@ -85,6 +86,98 @@ body::before {
 #app-root {
   min-height: 100vh;
   padding: 12px;
+}
+
+.public-experience,
+.public-screen-parking,
+#screen-host {
+  min-height: var(--public-viewport-height);
+}
+
+.public-scene {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  display: none;
+  overflow: hidden;
+  background: #030506;
+}
+
+.public-css-mount,
+.public-webgl-mount,
+.public-css-renderer,
+.public-scene-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.public-css-mount {
+  z-index: 1;
+}
+
+.public-webgl-mount {
+  z-index: 2;
+  pointer-events: none;
+}
+
+.public-scene-canvas {
+  display: block;
+  pointer-events: none;
+}
+
+.public-experience[data-public-experience^='desktop-'] .public-scene {
+  display: block;
+}
+
+.public-experience[data-public-experience^='desktop-'] > .public-screen-parking {
+  position: fixed;
+  width: 1px;
+  height: 1px;
+  min-height: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+#screen-host[data-three-screen-attached='true'] {
+  --public-viewport-height: 100%;
+  contain: layout paint;
+}
+
+.public-scene-error {
+  position: fixed;
+  top: 24px;
+  left: 50%;
+  z-index: 4;
+  width: min(420px, calc(100vw - 32px));
+  padding: 16px;
+  border: 1px solid var(--accent-red);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  text-align: center;
+  transform: translateX(-50%);
+}
+
+.public-scene-error-detail {
+  margin-block: 6px 12px;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.public-scene-error button {
+  padding: 8px 12px;
+  border: 1px solid var(--accent-blue);
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  font: inherit;
+  cursor: pointer;
+}
+
+.public-scene-error button:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
 }
 
 /* 点阵背景纹理 */

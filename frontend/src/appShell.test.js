@@ -1,16 +1,24 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
+import PublicLayout from '../app/(public)/layout';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 describe('Next app shell', () => {
-  it('uses a persistent ordinary DOM ScreenHost in the public layout', () => {
-    const source = fs.readFileSync(path.join(root, 'app/(public)/layout.tsx'), 'utf8');
-    expect(source).toContain('id="screen-host"');
-    expect(source).toContain('data-screen-host="public"');
-    expect(source).not.toContain('createPortal');
+  it('server-renders one persistent ordinary DOM ScreenHost in the public layout', () => {
+    const html = renderToStaticMarkup(PublicLayout({
+      children: createElement('article', null, 'Server content'),
+    }));
+    const document = new DOMParser().parseFromString(html, 'text/html');
+    const hosts = document.querySelectorAll('#screen-host[data-screen-host="public"]');
+
+    expect(hosts).toHaveLength(1);
+    expect(hosts[0].textContent).toBe('Server content');
+    expect(hosts[0].parentElement?.getAttribute('data-screen-parking')).toBe('true');
   });
 
   it('keeps server and browser API addresses separated', () => {

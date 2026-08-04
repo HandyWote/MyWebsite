@@ -118,6 +118,11 @@ export class Resources extends TypedEventEmitter<ResourceEventMap> {
     this.generation += 1;
     for (const controller of this.controllers.values()) controller.abort();
     this.controllers.clear();
+    for (const source of this.sourceList) {
+      const value = this.loaded.get(source.name);
+      if (value) this.dispose(source, value);
+    }
+    this.loaded.clear();
     this.clear();
   }
 
