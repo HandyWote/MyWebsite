@@ -2,8 +2,11 @@ package services
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"mime"
 	"os"
 	"path/filepath"
@@ -24,10 +27,11 @@ const (
 )
 
 type MediaMigrationItem struct {
-	Source string `json:"source"`
-	Key    string `json:"key"`
-	Size   int64  `json:"size"`
-	Status string `json:"status"`
+	Source   string `json:"source"`
+	Key      string `json:"key"`
+	Size     int64  `json:"size"`
+	Checksum string `json:"sha256"`
+	Status   string `json:"status"`
 }
 
 type MediaMigrationResult struct {
@@ -100,12 +104,14 @@ func (s *MediaMigrationService) Run(ctx context.Context, mode MediaMigrationMode
 				if err != nil {
 					return result, err
 				}
-				err = s.storage.Save(ctx, plan.item.Key, file, plan.item.Size, plan.typeName)
+				err = s.storage.Save(ctx, plan.item.Key, file, plan.item.Size, plan.typeName, map[string]string{
+					storage.SHA256MetadataKey: plan.item.Checksum,
+				})
 				file.Close()
 				if err != nil {
 					return result, fmt.Errorf("upload %s: %w", plan.item.Key, err)
 				}
-				if err := s.validateTarget(ctx, plan.item.Key, plan.item.Size, plan.typeName); err != nil {
+				if err := s.validateTarget(ctx, plan.item.Key, plan.item.Size, plan.typeName, plan.item.Checksum); err != nil {
 					return result, err
 				}
 				plan.item.Status = "uploaded"
@@ -118,7 +124,7 @@ func (s *MediaMigrationService) Run(ctx context.Context, mode MediaMigrationMode
 				return result, err
 			}
 		case MediaMigrationVerify:
-			if err := s.validateTarget(ctx, plan.item.Key, plan.item.Size, plan.typeName); err != nil {
+			if err := s.validateTarget(ctx, plan.item.Key, plan.item.Size, plan.typeName, plan.item.Checksum); err != nil {
 				return result, err
 			}
 			if err := verifyReferences(plan.item.Key, plan.refs); err != nil {
@@ -187,11 +193,15 @@ func (s *MediaMigrationService) plan(ctx context.Context) ([]mediaMigrationPlan,
 		if err != nil {
 			return err
 		}
+		checksum, err := fileSHA256(filename)
+		if err != nil {
+			return err
+		}
 		contentType := mime.TypeByExtension(filepath.Ext(base))
 		if contentType == "" {
 			contentType = "application/octet-stream"
 		}
-		plan := mediaMigrationPlan{item: MediaMigrationItem{Source: filename, Key: key, Size: info.Size()}, refs: refs, typeName: contentType}
+		plan := mediaMigrationPlan{item: MediaMigrationItem{Source: filename, Key: key, Size: info.Size(), Checksum: checksum}, refs: refs, typeName: contentType}
 		if previous, exists := keys[key]; exists && previous != filename {
 			plan.item.Status = "conflict"
 			plans = append(plans, plan)
@@ -203,7 +213,7 @@ func (s *MediaMigrationService) plan(ctx context.Context) ([]mediaMigrationPlan,
 			plan.missing = true
 		} else if headErr != nil {
 			return headErr
-		} else if head.Size != info.Size() || (head.ContentType != "" && contentType != "" && head.ContentType != contentType) {
+		} else if head.Size != info.Size() || (head.ContentType != "" && contentType != "" && head.ContentType != contentType) || checksumConflict(head.Metadata, checksum) {
 			plan.item.Status = "conflict"
 		}
 		plans = append(plans, plan)
@@ -216,15 +226,37 @@ func (s *MediaMigrationService) plan(ctx context.Context) ([]mediaMigrationPlan,
 	return plans, err
 }
 
-func (s *MediaMigrationService) validateTarget(ctx context.Context, key string, size int64, contentType string) error {
+func (s *MediaMigrationService) validateTarget(ctx context.Context, key string, size int64, contentType, checksum string) error {
 	info, err := s.storage.Head(ctx, key)
 	if err != nil {
 		return fmt.Errorf("head %s: %w", key, err)
 	}
-	if info.Size != size || (info.ContentType != "" && contentType != "" && info.ContentType != contentType) {
+	if info.Size != size || (info.ContentType != "" && contentType != "" && info.ContentType != contentType) || checksumConflict(info.Metadata, checksum) {
 		return fmt.Errorf("media validation failed for %s", key)
 	}
 	return nil
+}
+
+func checksumConflict(metadata map[string]string, expected string) bool {
+	for key, value := range metadata {
+		if strings.EqualFold(key, storage.SHA256MetadataKey) && strings.TrimSpace(value) != "" {
+			return !strings.EqualFold(strings.TrimSpace(value), expected)
+		}
+	}
+	return false
+}
+
+func fileSHA256(filename string) (string, error) {
+	file, err := os.Open(filename)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+	hash := sha256.New()
+	if _, err := io.Copy(hash, file); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(hash.Sum(nil)), nil
 }
 
 func (s *MediaMigrationService) updateReferences(ctx context.Context, key string, refs []mediaReference) error {

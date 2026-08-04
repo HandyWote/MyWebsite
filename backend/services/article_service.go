@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"errors"
+	"fmt"
 	"path/filepath"
 	"strings"
 	"time"
@@ -12,7 +13,15 @@ import (
 	"gorm.io/gorm"
 )
 
-var ErrArticleNotFound = errors.New("article not found")
+var (
+	ErrArticleNotFound = errors.New("article not found")
+	ErrInvalidArticle  = errors.New("invalid article")
+)
+
+var allowedArticleContentTypes = map[string]bool{
+	"markdown": true,
+	"pdf":      true,
+}
 
 type ArticleWriteInput struct {
 	Title       *string `json:"title"`
@@ -61,11 +70,11 @@ func (s *ArticleService) Get(ctx context.Context, id uint) (models.Article, erro
 
 func (s *ArticleService) Create(ctx context.Context, input ArticleWriteInput) (models.Article, error) {
 	article := articleFromInput(input)
-	if strings.TrimSpace(article.Title) == "" || strings.TrimSpace(article.Content) == "" {
-		return models.Article{}, errors.New("title and content are required")
-	}
 	if article.ContentType == "" {
 		article.ContentType = "markdown"
+	}
+	if err := validateArticle(article); err != nil {
+		return models.Article{}, err
 	}
 	err := s.repository.Transaction(ctx, func(uow *repositories.UnitOfWork) error {
 		if err := uow.Articles.Create(ctx, &article); err != nil {
@@ -87,6 +96,11 @@ func (s *ArticleService) Update(ctx context.Context, id uint, input ArticleWrite
 			return err
 		}
 		fields := articleUpdateFields(input)
+		merged := article
+		applyArticleFields(&merged, fields)
+		if err := validateArticle(merged); err != nil {
+			return err
+		}
 		if len(fields) > 0 {
 			if err := uow.Articles.Update(ctx, &article, fields); err != nil {
 				return err
@@ -163,7 +177,11 @@ func (s *ArticleService) Tags(ctx context.Context) ([]string, error) {
 
 func articleFromInput(input ArticleWriteInput) models.Article {
 	article := models.Article{}
-	fields := articleUpdateFields(input)
+	applyArticleFields(&article, articleUpdateFields(input))
+	return article
+}
+
+func applyArticleFields(article *models.Article, fields map[string]interface{}) {
 	if value, ok := fields["title"].(string); ok {
 		article.Title = value
 	}
@@ -188,7 +206,16 @@ func articleFromInput(input ArticleWriteInput) models.Article {
 	if value, ok := fields["pdf_filename"].(string); ok {
 		article.PDFFilename = value
 	}
-	return article
+}
+
+func validateArticle(article models.Article) error {
+	if strings.TrimSpace(article.Title) == "" || strings.TrimSpace(article.Content) == "" || strings.TrimSpace(article.ContentType) == "" {
+		return fmt.Errorf("%w: title, content, and content_type are required", ErrInvalidArticle)
+	}
+	if !allowedArticleContentTypes[article.ContentType] {
+		return fmt.Errorf("%w: unsupported content_type %q", ErrInvalidArticle, article.ContentType)
+	}
+	return nil
 }
 
 func articleUpdateFields(input ArticleWriteInput) map[string]interface{} {

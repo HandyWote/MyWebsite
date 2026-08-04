@@ -46,6 +46,10 @@ func AdminCreateArticle(c *gin.Context) {
 		return
 	}
 	article, err := articleService.Create(c.Request.Context(), input)
+	if errors.Is(err, services.ErrInvalidArticle) {
+		utils.ErrorBadRequest(c, err.Error())
+		return
+	}
 	if err != nil {
 		utils.ErrorInternal(c, "Failed to create article")
 		return
@@ -66,6 +70,10 @@ func AdminUpdateArticle(c *gin.Context) {
 	article, err := articleService.Update(c.Request.Context(), id, input)
 	if errors.Is(err, services.ErrArticleNotFound) {
 		utils.ErrorNotFound(c, "Article not found")
+		return
+	}
+	if errors.Is(err, services.ErrInvalidArticle) {
+		utils.ErrorBadRequest(c, err.Error())
 		return
 	}
 	if err != nil {

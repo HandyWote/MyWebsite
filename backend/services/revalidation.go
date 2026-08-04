@@ -20,6 +20,8 @@ var (
 	ErrMissingRevalidationToken = errors.New("revalidation token is required")
 )
 
+const revalidationClaimLease = 30 * time.Second
+
 type RevalidationEvent struct {
 	Entity string `json:"entity"`
 	Action string `json:"action"`
@@ -104,19 +106,20 @@ func (w *RevalidationWorker) RunOnce(ctx context.Context) error {
 	if w.url == "" {
 		return errors.New("revalidation URL is required")
 	}
-	events, err := w.repository.FindDue(ctx, w.now(), 25)
+	now := w.now()
+	events, err := w.repository.ClaimDue(ctx, now, 25, revalidationClaimLease)
 	if err != nil {
 		return err
 	}
 	for _, record := range events {
 		if err := w.deliver(ctx, record); err != nil {
 			attempts := record.Attempts + 1
-			if markErr := w.repository.MarkFailed(ctx, record.ID, attempts, w.now().Add(retryDelay(attempts)), redactSecret(err.Error(), w.token)); markErr != nil {
+			if markErr := w.repository.MarkFailed(ctx, record.ID, record.LeaseToken, attempts, w.now().Add(retryDelay(attempts)), redactSecret(err.Error(), w.token)); markErr != nil {
 				return markErr
 			}
 			continue
 		}
-		if err := w.repository.MarkProcessed(ctx, record.ID, w.now()); err != nil {
+		if err := w.repository.MarkProcessed(ctx, record.ID, record.LeaseToken, w.now()); err != nil {
 			return err
 		}
 	}

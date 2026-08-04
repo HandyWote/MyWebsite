@@ -13,6 +13,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/handywote/website/database"
 	"github.com/handywote/website/models"
+	"github.com/handywote/website/services"
+	mediastorage "github.com/handywote/website/storage"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -262,6 +264,20 @@ func TestArticleSEO_T4_manifest为nil时降级且SEO不降级(t *testing.T) {
 	// JSON-LD 仍非空且可解析
 	ld := extractScriptJSON(t, body, "application/ld+json")
 	assert.Equal(t, "Article", ld["@type"], "降级时 JSON-LD 仍应完整可解析")
+}
+
+func TestArticleSEOCoverUsesConfiguredStoragePublicURL(t *testing.T) {
+	oldMedia := mediaService
+	mediaService = services.NewMediaStorageService(mediastorage.NewLocalStorage(t.TempDir(), "/media"), nil, 1024, []string{"webp"})
+	defer func() { mediaService = oldMedia }()
+	id := seedArticle(t, models.Article{
+		Title: "Storage cover", Content: "body", Cover: "articles/covers/cover.webp",
+	})
+
+	body, code := renderSEO(t, strconv.FormatUint(uint64(id), 10), "seo.example.com")
+	assert.Equal(t, http.StatusOK, code)
+	ld := extractScriptJSON(t, body, "application/ld+json")
+	assert.Equal(t, "https://seo.example.com/media/articles/covers/cover.webp", ld["image"])
 }
 
 func TestResolveViteManifestURL_默认使用frontend服务名(t *testing.T) {

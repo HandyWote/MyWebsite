@@ -18,6 +18,7 @@ func TestS3StorageContractWithCustomPathStyleEndpoint(t *testing.T) {
 	var mu sync.Mutex
 	objects := make(map[string][]byte)
 	contentTypes := make(map[string]string)
+	checksums := make(map[string]string)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		key := r.URL.Path
 		mu.Lock()
@@ -27,6 +28,7 @@ func TestS3StorageContractWithCustomPathStyleEndpoint(t *testing.T) {
 			body, _ := io.ReadAll(r.Body)
 			objects[key] = body
 			contentTypes[key] = r.Header.Get("Content-Type")
+			checksums[key] = r.Header.Get("X-Amz-Meta-Sha256")
 			w.WriteHeader(http.StatusOK)
 		case http.MethodHead:
 			body, ok := objects[key]
@@ -36,6 +38,7 @@ func TestS3StorageContractWithCustomPathStyleEndpoint(t *testing.T) {
 			}
 			w.Header().Set("Content-Length", strconv.Itoa(len(body)))
 			w.Header().Set("Content-Type", contentTypes[key])
+			w.Header().Set("X-Amz-Meta-Sha256", checksums[key])
 			w.WriteHeader(http.StatusOK)
 		case http.MethodDelete:
 			delete(objects, key)
@@ -53,11 +56,14 @@ func TestS3StorageContractWithCustomPathStyleEndpoint(t *testing.T) {
 	require.NoError(t, err)
 
 	body := []byte("pdf payload")
-	require.NoError(t, driver.Save(context.Background(), "articles/pdfs/a.pdf", bytes.NewReader(body), int64(len(body)), "application/pdf"))
+	require.NoError(t, driver.Save(context.Background(), "articles/pdfs/a.pdf", bytes.NewReader(body), int64(len(body)), "application/pdf", map[string]string{
+		SHA256MetadataKey: "abc123",
+	}))
 	info, err := driver.Head(context.Background(), "articles/pdfs/a.pdf")
 	require.NoError(t, err)
 	assert.Equal(t, int64(len(body)), info.Size)
 	assert.Equal(t, "application/pdf", info.ContentType)
+	assert.Equal(t, "abc123", info.Metadata[SHA256MetadataKey])
 	assert.Equal(t, "https://cdn.example/media/articles/pdfs/a.pdf", driver.PublicURL("articles/pdfs/a.pdf"))
 
 	require.NoError(t, driver.Delete(context.Background(), "articles/pdfs/a.pdf"))

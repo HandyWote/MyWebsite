@@ -1,18 +1,27 @@
 package routes
 
 import (
+	"errors"
+	"net/http"
+	"strings"
+
 	"github.com/gin-gonic/gin"
 	"github.com/handywote/website/services"
 	"github.com/handywote/website/utils"
 )
 
 func GetArticlePDF(c *gin.Context) {
-	filename := c.Param("filename")
-	if filename == "" {
+	key := strings.TrimPrefix(c.Param("key"), "/")
+	if key == "" {
 		utils.ErrorBadRequest(c, "Filename is required")
 		return
 	}
-	c.Redirect(302, mediaService.PDFURL(c.Request.Context(), filename))
+	publicURL := mediaService.PDFURL(c.Request.Context(), key)
+	if publicURL == "" {
+		utils.ErrorBadRequest(c, "Invalid media key")
+		return
+	}
+	c.Redirect(http.StatusFound, publicURL)
 }
 
 func AdminBatchDeleteArticles(c *gin.Context) {
@@ -39,8 +48,13 @@ func AdminUploadPdf(c *gin.Context) {
 }
 
 func uploadArticleMedia(c *gin.Context, kind services.MediaKind) {
+	limitUploadBody(c)
 	file, err := c.FormFile("file")
 	if err != nil {
+		if isRequestTooLarge(err) {
+			utils.ErrorPayloadTooLarge(c, "Upload exceeds size limit")
+			return
+		}
 		utils.ErrorBadRequest(c, "No file uploaded")
 		return
 	}
@@ -52,8 +66,23 @@ func uploadArticleMedia(c *gin.Context, kind services.MediaKind) {
 	defer source.Close()
 	saved, err := mediaService.Save(c.Request.Context(), kind, file.Filename, source, file.Size)
 	if err != nil {
+		if errors.Is(err, services.ErrMediaTooLarge) {
+			utils.ErrorPayloadTooLarge(c, "Upload exceeds size limit")
+			return
+		}
 		utils.ErrorBadRequest(c, err.Error())
 		return
 	}
 	utils.Success(c, gin.H{"filename": saved.Key, "key": saved.Key, "url": saved.URL})
+}
+
+func limitUploadBody(c *gin.Context) {
+	if limit := mediaService.MaxRequestSize(); limit > 0 {
+		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, limit)
+	}
+}
+
+func isRequestTooLarge(err error) bool {
+	var maxBytesError *http.MaxBytesError
+	return errors.As(err, &maxBytesError)
 }

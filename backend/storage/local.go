@@ -2,6 +2,8 @@ package storage
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"io"
 	"mime"
@@ -22,9 +24,12 @@ func NewLocalStorage(root, publicBase string) *LocalStorage {
 	return &LocalStorage{root: root, publicBase: strings.TrimRight(publicBase, "/")}
 }
 
-func (s *LocalStorage) Save(_ context.Context, key string, body io.Reader, _ int64, _ string) error {
+func (s *LocalStorage) Save(_ context.Context, key string, body io.ReadSeeker, size int64, _ string, _ map[string]string) error {
 	filename, err := s.objectPath(key)
 	if err != nil {
+		return err
+	}
+	if err := validateBodySize(body, size); err != nil {
 		return err
 	}
 	if err := os.MkdirAll(filepath.Dir(filename), 0o755); err != nil {
@@ -36,7 +41,7 @@ func (s *LocalStorage) Save(_ context.Context, key string, body io.Reader, _ int
 	}
 	temporaryName := temporary.Name()
 	defer os.Remove(temporaryName)
-	if _, err := io.Copy(temporary, body); err != nil {
+	if _, err := io.CopyN(temporary, body, size); err != nil {
 		temporary.Close()
 		return err
 	}
@@ -63,15 +68,31 @@ func (s *LocalStorage) Head(_ context.Context, key string) (ObjectInfo, error) {
 	if err != nil {
 		return ObjectInfo{}, err
 	}
-	info, err := os.Stat(filename)
+	file, err := os.Open(filename)
 	if err != nil {
 		return ObjectInfo{}, err
 	}
-	return ObjectInfo{Key: key, Size: info.Size(), ContentType: mime.TypeByExtension(filepath.Ext(key))}, nil
+	defer file.Close()
+	info, err := file.Stat()
+	if err != nil {
+		return ObjectInfo{}, err
+	}
+	hash := sha256.New()
+	if _, err := io.Copy(hash, file); err != nil {
+		return ObjectInfo{}, err
+	}
+	return ObjectInfo{
+		Key: key, Size: info.Size(), ContentType: mime.TypeByExtension(filepath.Ext(key)),
+		Metadata: map[string]string{SHA256MetadataKey: hex.EncodeToString(hash.Sum(nil))},
+	}, nil
 }
 
 func (s *LocalStorage) PublicURL(key string) string {
-	return s.publicBase + "/" + strings.TrimLeft(filepath.ToSlash(key), "/")
+	normalized, err := NormalizeObjectKey(key)
+	if err != nil {
+		return ""
+	}
+	return s.publicBase + "/" + normalized
 }
 
 func (s *LocalStorage) List(_ context.Context, prefix string) ([]ObjectInfo, error) {
@@ -106,8 +127,12 @@ func (s *LocalStorage) List(_ context.Context, prefix string) ([]ObjectInfo, err
 }
 
 func (s *LocalStorage) objectPath(key string) (string, error) {
-	clean := filepath.Clean(filepath.FromSlash(key))
-	if clean == "." || filepath.IsAbs(clean) || clean == ".." || strings.HasPrefix(clean, ".."+string(filepath.Separator)) {
+	normalized, err := NormalizeObjectKey(key)
+	if err != nil {
+		return "", err
+	}
+	clean := filepath.FromSlash(normalized)
+	if filepath.IsAbs(clean) || strings.Contains(clean, ".."+string(filepath.Separator)) {
 		return "", errors.New("invalid object key")
 	}
 	return filepath.Join(s.root, clean), nil

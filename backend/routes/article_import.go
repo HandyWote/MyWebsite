@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"errors"
 	"io"
 	"mime/multipart"
 	"path/filepath"
@@ -10,6 +11,10 @@ import (
 	"github.com/handywote/website/services"
 	"github.com/handywote/website/utils"
 )
+
+const maxMarkdownImportSize int64 = 8 << 20
+
+var errMarkdownTooLarge = errors.New("markdown file exceeds 8 MiB limit")
 
 func AdminImportMarkdown(c *gin.Context) {
 	if err := c.Request.ParseMultipartForm(32 << 20); err != nil {
@@ -45,8 +50,12 @@ func AdminImportMarkdown(c *gin.Context) {
 			failedFiles = append(failedFiles, file.Filename+": failed to open")
 			continue
 		}
-		content, readErr := io.ReadAll(io.LimitReader(source, 8<<20))
+		content, readErr := readMarkdown(source)
 		source.Close()
+		if errors.Is(readErr, errMarkdownTooLarge) {
+			utils.ErrorPayloadTooLarge(c, file.Filename+": exceeds 8 MiB limit")
+			return
+		}
 		if readErr != nil {
 			failedFiles = append(failedFiles, file.Filename+": failed to read")
 			continue
@@ -59,4 +68,15 @@ func AdminImportMarkdown(c *gin.Context) {
 		return
 	}
 	utils.Success(c, gin.H{"markdown": len(created), "failed": failedFiles})
+}
+
+func readMarkdown(source io.Reader) ([]byte, error) {
+	content, err := io.ReadAll(io.LimitReader(source, maxMarkdownImportSize+1))
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(content)) > maxMarkdownImportSize {
+		return nil, errMarkdownTooLarge
+	}
+	return content, nil
 }

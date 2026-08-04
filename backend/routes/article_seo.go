@@ -62,10 +62,11 @@ func ArticleSEO(c *gin.Context) {
 		return
 	}
 
-	// 构建绝对 cover URL
+	// Resolve object keys through the configured storage driver. Local storage
+	// returns a path, while S3/CDN storage returns an absolute public URL.
 	baseURL := "https://" + c.Request.Host
-	coverURL := article.Cover
-	if coverURL != "" && !strings.HasPrefix(coverURL, "http") {
+	coverURL := mediaService.PublicURL(article.Cover)
+	if strings.HasPrefix(coverURL, "/") {
 		coverURL = baseURL + coverURL
 	}
 

@@ -51,6 +51,39 @@ func TestArticleServiceExplicitlyClearsNullableTextFieldsAndWritesOutbox(t *test
 	assert.Equal(t, "update", events[1].Action)
 }
 
+func TestArticleServiceValidatesMergedRequiredFieldsAndContentType(t *testing.T) {
+	db := articleServiceTestDB(t, true)
+	service := NewArticleService(repositories.NewArticleRepository(db))
+	ctx := context.Background()
+	article, err := service.Create(ctx, ArticleWriteInput{Title: stringPointer("title"), Content: stringPointer("body")})
+	require.NoError(t, err)
+
+	tests := []struct {
+		name  string
+		input ArticleWriteInput
+	}{
+		{name: "empty title", input: ArticleWriteInput{Title: stringPointer(" ")}},
+		{name: "empty content", input: ArticleWriteInput{Content: stringPointer("")}},
+		{name: "empty content type", input: ArticleWriteInput{ContentType: stringPointer("")}},
+		{name: "unsupported content type", input: ArticleWriteInput{ContentType: stringPointer("html")}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			_, err := service.Update(ctx, article.ID, test.input)
+			assert.ErrorIs(t, err, ErrInvalidArticle)
+		})
+	}
+
+	stored, err := service.Get(ctx, article.ID)
+	require.NoError(t, err)
+	assert.Equal(t, "title", stored.Title)
+	assert.Equal(t, "body", stored.Content)
+	assert.Equal(t, "markdown", stored.ContentType)
+	var eventCount int64
+	require.NoError(t, db.Model(&models.RevalidationOutbox{}).Count(&eventCount).Error)
+	assert.Equal(t, int64(1), eventCount, "invalid updates must not write outbox events")
+}
+
 func TestArticleServiceRollsBackWhenOutboxCannotBeWritten(t *testing.T) {
 	db := articleServiceTestDB(t, false)
 	service := NewArticleService(repositories.NewArticleRepository(db))
