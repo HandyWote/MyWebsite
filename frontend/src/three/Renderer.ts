@@ -14,7 +14,7 @@ export class Renderer {
     private readonly sizes: Sizes,
   ) {
     this.webgl = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
-    this.webgl.outputEncoding = THREE.sRGBEncoding;
+    this.webgl.outputColorSpace = THREE.SRGBColorSpace;
     this.webgl.setClearColor(0x000000, 0);
     this.webgl.domElement.dataset.threeCanvas = 'public';
     this.webgl.domElement.className = 'public-scene-canvas';
