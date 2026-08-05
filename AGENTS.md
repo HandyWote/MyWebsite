@@ -1,29 +1,29 @@
 # Repository Guidelines
 
 # Top Rules
+
 1. think about reuse
 
 ## Project Structure & Module Organization
 
-This repository contains a personal website split into three main areas:
+This repository contains a personal website split into these main areas:
 
-- `backend/`: Go 1.25 Gin/GORM API, routes, middleware, migrations, models, and service code.
-- `frontend/`: React 19 + Vite application. Source lives in `frontend/src`, with admin UI under `src/admin`, shared UI under `src/components`, state stores under `src/stores`, and config/utilities under `src/config` and `src/utils`.
-- `3Dend/`: separate Vite/Three.js TypeScript experience, with app code in `3Dend/src` and Jest tests in `3Dend/tests`.
+- `backend/`: Go 1.25 Gin/GORM API, routes, middleware, migrations, models, repositories, storage, and service code.
+- `frontend/`: Next.js 16 App Router application with React 19, MUI, and Three.js. Routes live in `frontend/app`, public/admin UI and shared runtime code live in `frontend/src`, and 3D assets live in `frontend/public/3d`.
 - `docs/`: readme translations and planning/design notes.
 
-Static assets are kept near their owning app, such as `frontend/public` and `3Dend/static`.
+Static assets are kept near the owning app, primarily under `frontend/public`.
 
 ## Build, Test, and Development Commands
 
 - `docker-compose up -d --build`: build and run the full site, exposed at `http://localhost:4419`.
 - `cd backend && go run main.go`: start the API locally on port `5000`.
 - `cd backend && go test ./...`: run all backend unit and route tests.
-- `cd frontend && npm run dev`: start the Vite frontend dev server.
+- `cd frontend && npm run dev`: start the Next frontend dev server.
 - `cd frontend && npm run build`: create a production frontend build.
 - `cd frontend && npm run lint`: run ESLint.
 - `cd frontend && npm run test:run`: run Vitest once.
-- `cd 3Dend && npm run dev` / `npm run build`: develop or build the 3D app.
+- `cd frontend && npm run test:e2e`: run Playwright browser checks for the public 3D experience.
 
 ## Coding Style & Naming Conventions
 
@@ -31,7 +31,7 @@ Use existing file patterns when adding modules. Go code should be formatted with
 
 ## Testing Guidelines
 
-Backend tests use Go’s test runner plus `testify`; add focused tests near changed packages. Frontend tests use Vitest with jsdom and Testing Library; matching files are `frontend/src/**/*.{test,spec}.{js,jsx}`. Coverage is available with `npm run test:coverage`. The 3D app uses Jest with `ts-jest` and `tests/*.test.ts`.
+Backend tests use Go’s test runner plus `testify`; add focused tests near changed packages. Frontend tests use Vitest with jsdom and Testing Library; matching files are `frontend/**/*.{test,spec}.{js,jsx,ts,tsx}`. Coverage is available with `npm run test:coverage`. Browser coverage uses Playwright under `frontend/e2e`.
 
 ## Commit & Pull Request Guidelines
 
@@ -39,4 +39,4 @@ Recent history follows conventional-style messages such as `feat(routes): ...`, 
 
 ## Security & Configuration Tips
 
-Copy environment templates before local runs: `backend/.env.example` and `frontend/.env.example`. Do not commit secrets. Production deployments must override default admin, JWT, and application secret values.
+Copy environment templates before local runs: `.env.example`, `backend/.env.example`, and `frontend/.env.example`. Do not commit secrets. Production deployments must override default admin, JWT, revalidation, and application secret values.

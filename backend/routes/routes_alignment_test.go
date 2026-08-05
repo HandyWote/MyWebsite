@@ -63,6 +63,32 @@ func TestSetupRoutesPropagatesDependencyErrorsWithoutReplacingInjectedServices(t
 	assert.Empty(t, r.Routes())
 }
 
+func TestRouteAlignment_SEORoutesAreNotServedByBackend(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	cfg := &config.Config{JWTSecretKey: "test-secret", UploadFolder: "uploads"}
+	require.NoError(t, SetupRoutes(r, cfg))
+
+	cases := []struct {
+		name   string
+		method string
+		path   string
+	}{
+		{name: "article html", method: http.MethodGet, path: "/articles/1"},
+		{name: "robots", method: http.MethodGet, path: "/robots.txt"},
+		{name: "sitemap", method: http.MethodGet, path: "/sitemap.xml"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(tc.method, tc.path, nil)
+			w := httptest.NewRecorder()
+			r.ServeHTTP(w, req)
+			assert.Equal(t, http.StatusNotFound, w.Code)
+		})
+	}
+}
+
 func TestRouteAlignment_LegacySkillsAndContactsRoutesRemoved(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()

@@ -14,12 +14,16 @@ RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g' /etc/apk/repositorie
 
 WORKDIR /app
 
-RUN apk --no-cache add ca-certificates curl
+RUN apk --no-cache add ca-certificates curl && \
+    addgroup -S app && \
+    adduser -S -G app app
 
 # 创建 uploads 目录（运行时通过 volume 挂载）
-RUN mkdir -p uploads
+RUN mkdir -p uploads && chown -R app:app /app
 
-COPY --from=builder /app/server .
+COPY --from=builder --chown=app:app /app/server .
+
+USER app
 
 EXPOSE 5000
 

@@ -1,31 +1,49 @@
-name: Deploy
+name: Release
 
 on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Git tag or commit to deploy
+        required: true
+        type: string
   push:
     tags:
       - "v*"
-    branches:
-      - main
-    paths:
-      - ".gitea/workflows/release.yml"
 
 jobs:
   deploy:
     runs-on: ubuntu-local
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+      - name: Resolve deploy ref
+        id: deploy-ref
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          MANUAL_REF: ${{ inputs.ref }}
+          PUSH_REF: ${{ github.ref_name }}
+        run: |
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            printf 'ref=%s\n' "$MANUAL_REF" >> "$GITHUB_OUTPUT"
+          else
+            printf 'ref=%s\n' "$PUSH_REF" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          DEPLOY_REF: ${{ steps.deploy-ref.outputs.ref }}
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           password: ${{ secrets.DEPLOY_PASSWORD }}
+          envs: DEPLOY_PATH,DEPLOY_REF
           script: |
-            cd ${{ secrets.DEPLOY_PATH }}
-            git pull
+            set -euo pipefail
+            cd "$DEPLOY_PATH"
+            git fetch --tags origin
+            git checkout --detach "$DEPLOY_REF"
+            docker compose build --pull
             docker compose down
-            docker compose up -d --build
+            docker compose up -d
+            docker compose ps

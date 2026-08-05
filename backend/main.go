@@ -55,10 +55,6 @@ func main() {
 		go worker.Run(context.Background(), 30*time.Second)
 	}
 
-	// 后台拉取 Vite 构建产物映射，供 SEO HTML 注入正确的 JS/CSS 路径。
-	// frontend 容器可能晚于 backend 就绪，后台重试可避免启动顺序导致 manifest 永久缺失。
-	routes.StartViteManifestFetch("")
-
 	// Start server on configured port
 	port := cfg.Port
 

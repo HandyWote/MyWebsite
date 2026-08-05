@@ -1,0 +1,21 @@
+.git
+.DS_Store
+.env
+backend/.env
+frontend/.env
+*.log
+
+# Local data and generated outputs
+data/
+frontend/node_modules/
+frontend/.next/
+frontend/playwright-report/
+frontend/test-results/
+frontend/coverage/
+frontend/tsconfig.tsbuildinfo
+backend/uploads/
+
+# Removed legacy app and non-frontend source are not needed for Next image context.
+3Dend/
+backend/
+docs/
