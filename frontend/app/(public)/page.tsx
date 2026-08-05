@@ -34,6 +34,7 @@ export default async function HomePage() {
 	return (
 		<HomeEnterBoundary>
 			<Box
+				className="screen-page"
 				sx={{
 					height: "var(--public-viewport-height)",
 					display: "grid",
@@ -41,6 +42,7 @@ export default async function HomePage() {
 					border: 1,
 					borderColor: "divider",
 					overflow: "hidden",
+					bgcolor: "background.default",
 				}}
 			>
 				<Box
