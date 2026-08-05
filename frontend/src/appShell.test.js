@@ -56,6 +56,7 @@ describe("Next app shell", () => {
 		expect(fs.existsSync(path.join(root, "vite.config.js"))).toBe(false);
 		expect(fs.existsSync(path.join(root, "src/main.jsx"))).toBe(false);
 		expect(fs.existsSync(path.join(root, "src/App.jsx"))).toBe(false);
+		expect(fs.existsSync(path.join(root, "public/robots.txt"))).toBe(false);
 		expect(fs.existsSync(path.join(repoRoot, "3Dend"))).toBe(false);
 		expect(fs.existsSync(path.join(repoRoot, "Dockerfile.web"))).toBe(false);
 		expect(fs.existsSync(path.join(repoRoot, "nginx.web.conf"))).toBe(false);
