@@ -272,39 +272,63 @@ export function TerminalCommandBar({
 					Guess@{cwd} $
 				</Box>
 				<Box
-					component="span"
-					className="cursor-blink"
 					sx={{
-						display: command === "" ? "inline-block" : "none",
-						width: 8,
-						height: 16,
-						bgcolor: "primary.main",
-						flexShrink: 0,
-					}}
-				/>
-				<Box
-					id={`command-${cwd}`}
-					component="input"
-					value={command}
-					onChange={(event) => {
-						setCommand(event.target.value);
-						setActiveIndex(0);
-					}}
-					onKeyDown={onKeyDown}
-					aria-label="Terminal command"
-					autoComplete="off"
-					spellCheck={false}
-					sx={{
+						position: "relative",
 						flex: 1,
 						minWidth: 0,
-						border: 0,
-						outline: "none",
-						bgcolor: "transparent",
-						color: "text.primary",
+						display: "flex",
+						alignItems: "center",
 						fontFamily: "JetBrains Mono, monospace",
 						fontSize: "0.8125rem",
 					}}
-				/>
+				>
+					{/* 镜像文本 + 光标（视觉层）：光标紧跟输入内容末尾 */}
+					<Box
+						component="span"
+						aria-hidden="true"
+						sx={{ color: "text.primary", whiteSpace: "pre" }}
+					>
+						{command}
+						<Box
+							component="span"
+							className="cursor-blink"
+							sx={{
+								display: "inline-block",
+								width: 8,
+								height: 16,
+								bgcolor: "primary.main",
+								ml: 0.25,
+								flexShrink: 0,
+							}}
+						/>
+					</Box>
+					{/* 真实 input（交互层）：透明文字 + 透明 caret，覆盖镜像捕获输入 */}
+					<Box
+						id={`command-${cwd}`}
+						component="input"
+						value={command}
+						onChange={(event) => {
+							setCommand(event.target.value);
+							setActiveIndex(0);
+						}}
+						onKeyDown={onKeyDown}
+						aria-label="Terminal command"
+						autoComplete="off"
+						spellCheck={false}
+						sx={{
+							position: "absolute",
+							inset: 0,
+							width: "100%",
+							border: 0,
+							outline: "none",
+							bgcolor: "transparent",
+							color: "transparent",
+							caretColor: "transparent",
+							fontFamily: "JetBrains Mono, monospace",
+							fontSize: "0.8125rem",
+						}}
+					/>
+				</Box>
 			</Box>
 		</Box>
 	);
