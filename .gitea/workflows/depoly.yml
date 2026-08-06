@@ -7,9 +7,6 @@ on:
         description: Git tag or commit to deploy
         required: true
         type: string
-  push:
-    tags:
-      - "v*"
 
 jobs:
   deploy:
