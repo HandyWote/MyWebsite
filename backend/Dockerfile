@@ -1,4 +1,4 @@
-FROM docker.1ms.run/golang:1.25-alpine AS builder
+FROM golang:1.25-alpine AS builder
 
 WORKDIR /app
 
@@ -8,7 +8,7 @@ RUN go env -w GOPROXY=https://goproxy.cn,direct && go mod download
 COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -o server .
 
-FROM docker.1ms.run/alpine:latest
+FROM alpine:latest
 
 RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g' /etc/apk/repositories
 
