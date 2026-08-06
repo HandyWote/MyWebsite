@@ -121,6 +121,7 @@ body:has(.public-experience[data-public-experience^="desktop-"])::before {
 
 .public-css-mount {
 	z-index: 1;
+	cursor: pointer;
 }
 
 .public-webgl-mount {
