@@ -7,7 +7,10 @@ import { getProfileForPage } from "@/seo/data.server";
 import { pageMetadata, SITE_DESCRIPTION } from "@/seo/site";
 import { HomeEnterBoundary } from "@/components/public/HomeEnterBoundary";
 import { TerminalCommandBar } from "@/components/public/TerminalCommandBar";
+import Education from "@/components/sidebar/Education";
 import GitHubActivity from "@/components/sidebar/GitHubActivity";
+import SocialLinks from "@/components/sidebar/SocialLinks";
+import TechStack from "@/components/sidebar/TechStack";
 import { normalizeGitHubUsername } from "@/utils/github";
 
 type SocialLink = { label?: string; href?: string; value?: string };
@@ -74,6 +77,10 @@ export default async function HomePage() {
 							height={84}
 							priority
 							className="home-avatar"
+							style={{
+								width: "clamp(64px, 20vw, 84px)",
+								height: "clamp(64px, 20vw, 84px)",
+							}}
 						/>
 						<Typography
 							component="h1"
@@ -97,6 +104,17 @@ export default async function HomePage() {
 							}}
 						>
 							$ {String(home.subtitle)}
+							<Box
+								component="span"
+								className="cursor-blink"
+								sx={{
+									display: "inline-block",
+									width: 8,
+									height: 16,
+									bgcolor: "primary.main",
+									ml: 0.5,
+								}}
+							/>
 						</Typography>
 						<Box
 							component="nav"
@@ -116,55 +134,54 @@ export default async function HomePage() {
 						<Box
 							sx={{
 								display: "grid",
-								gap: 1.5,
-								color: "text.secondary",
-								fontFamily: "JetBrains Mono, monospace",
-								fontSize: "0.8125rem",
+								gridTemplateColumns: "1fr",
+								gap: { xs: 1, sm: 1.75 },
+								textAlign: "center",
+								justifyItems: "center",
+								"& > *": {
+									mb: "0 !important",
+									width: "100%",
+									maxWidth: "100%",
+									minWidth: 0,
+								},
+								"& > * > div:first-of-type": {
+									justifyContent: "center",
+									fontSize: "0.75rem",
+									color: "text.muted",
+									"&::first-letter": {
+										letterSpacing: 0,
+									},
+									"&::before": {
+										content: '""',
+									},
+									"&::after": {
+										display: "none",
+									},
+								},
+								"& > * > div:nth-of-type(2)": {
+									justifyContent: "center",
+									alignItems: "center",
+								},
+								"& a": {
+									justifyContent: "center",
+								},
 							}}
 						>
-							{socialLinks.length > 0 && (
-								<Box>
-									{socialLinks.map((item, index) => (
-										<Link
-											href={item.href || "#"}
-											key={`${item.label}-${index}`}
-											className="home-social-link"
-										>
-											{item.label || item.value}
-										</Link>
-									))}
-								</Box>
-							)}
-							{education.length > 0 && (
-								<Box>
-									{education.map((item, index) => (
-										<Box
-											component="span"
-											key={`${item.school}-${index}`}
-											sx={{ mx: 1 }}
-										>
-											{[item.school, item.degree, item.period]
-												.filter(Boolean)
-												.join(" / ")}
-										</Box>
-									))}
-								</Box>
-							)}
-							{techStack.length > 0 && (
-								<Box>
-									{techStack.map((item, index) => (
-										<Box
-											component="span"
-											key={`${item.name}-${index}`}
-											sx={{ mx: 0.75 }}
-										>
-											{item.name || item.label}
-										</Box>
-									))}
-								</Box>
-							)}
+							<SocialLinks links={socialLinks as never[]} />
+							<Education items={education as never[]} />
+							<TechStack items={techStack as never[]} />
 							<GitHubActivity username={githubUsername} compact={false} />
 						</Box>
+						<Typography
+							sx={{
+								mt: { xs: 1.75, sm: 2.5 },
+								fontFamily: "JetBrains Mono, monospace",
+								color: "text.muted",
+								fontSize: "0.75rem",
+							}}
+						>
+							Double click anywhere, type a command, or click a hint below.
+						</Typography>
 					</Box>
 				</Box>
 				<TerminalCommandBar
