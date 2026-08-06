@@ -31,6 +31,8 @@ describe('API Configuration', () => {
       expect(API_ENDPOINTS.PUBLIC).toBeDefined();
       expect(API_ENDPOINTS.PUBLIC.ARTICLES).toBe('/api/articles');
       expect(API_ENDPOINTS.PUBLIC.AVATAR_FILE('avatar.webp')).toBe('/api/avatars/file/avatar.webp');
+      expect(API_ENDPOINTS.PUBLIC.AVATAR_FILE('avatars/avatar 1.webp')).toBe('/api/avatars/file/avatars/avatar%201.webp');
+      expect(API_ENDPOINTS.PUBLIC.ARTICLE_PDF('articles/pdfs/paper 1.pdf')).toBe('/api/articles/pdf/articles/pdfs/paper%201.pdf');
     });
 
     it('should have ADMIN endpoints', () => {

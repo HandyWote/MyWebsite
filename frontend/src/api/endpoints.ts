@@ -1,3 +1,12 @@
+const encodeMediaPath = (key: string) =>
+  String(key)
+    .split('/')
+    .reduce<string[]>((segments, segment) => {
+      if (segment) segments.push(encodeURIComponent(segment));
+      return segments;
+    }, [])
+    .join('/');
+
 export const API_ENDPOINTS = {
   PUBLIC: {
     SITE_BLOCKS: '/api/site-blocks',
@@ -8,8 +17,8 @@ export const API_ENDPOINTS = {
     CREATE_COMMENT: (id: string | number) => `/api/articles/${id}/comments`,
     CATEGORIES: '/api/categories',
     TAGS: '/api/tags',
-    AVATAR_FILE: (filename: string) => `/api/avatars/file/${encodeURIComponent(filename)}`,
-    ARTICLE_PDF: (filename: string) => `/api/articles/pdf/${encodeURIComponent(filename)}`,
+    AVATAR_FILE: (filename: string) => `/api/avatars/file/${encodeMediaPath(filename)}`,
+    ARTICLE_PDF: (filename: string) => `/api/articles/pdf/${encodeMediaPath(filename)}`,
   },
   ADMIN: {
     LOGIN: '/api/admin/login',
@@ -17,7 +26,7 @@ export const API_ENDPOINTS = {
     VERIFY: () => '/api/admin/verify',
     SITE_BLOCKS: '/api/admin/site-blocks',
     AVATARS: '/api/admin/avatars',
-    AVATAR_FILE: (filename: string) => `/api/admin/avatars/file/${encodeURIComponent(filename)}`,
+    AVATAR_FILE: (filename: string) => `/api/admin/avatars/file/${encodeMediaPath(filename)}`,
     AVATAR_SET_CURRENT: (id: string | number) => `/api/admin/avatars/${id}/set_current`,
     AVATAR_DELETE: (id: string | number) => `/api/admin/avatars/${id}`,
     ARTICLES: '/api/admin/articles',

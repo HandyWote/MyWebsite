@@ -110,6 +110,20 @@ describe("public server data cache policies", () => {
 			],
 		]);
 	});
+
+	it("keeps storage key path separators in current avatar URLs", async () => {
+		serverRequestMock.mockResolvedValueOnce([]).mockResolvedValueOnce([
+			{
+				id: 1,
+				filename: "avatars/avatar 1.webp",
+				is_current: true,
+			},
+		]);
+
+		const profile = await getPublicProfile();
+
+		expect(profile.avatarUrl).toBe("/api/avatars/file/avatars/avatar%201.webp");
+	});
 });
 
 describe("getProjects", () => {
