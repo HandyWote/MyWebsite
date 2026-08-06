@@ -173,7 +173,9 @@ export async function PublicShell({
 						<span>{shell.cwd}/</span>
 						<span>NORMAL</span>
 					</Box>
-					<Box sx={{ p: { xs: 1, sm: 2.5 }, pl: { xs: 1, sm: 3 } }}>{children}</Box>
+					<Box sx={{ p: { xs: 1, sm: 2.5 }, pl: { xs: 1, sm: 3 } }}>
+						{children}
+					</Box>
 				</Box>
 			</Box>
 			<TerminalCommandBar
