@@ -3,14 +3,12 @@ FROM golang:1.25-alpine AS builder
 WORKDIR /app
 
 COPY go.mod go.sum ./
-RUN go env -w GOPROXY=https://goproxy.cn,direct && go mod download
+RUN go mod download
 
 COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -o server .
 
 FROM alpine:latest
-
-RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g' /etc/apk/repositories
 
 WORKDIR /app
 

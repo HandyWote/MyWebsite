@@ -4,7 +4,7 @@ WORKDIR /app/frontend
 ENV NEXT_TELEMETRY_DISABLED=1
 
 COPY frontend/package*.json ./
-RUN npm config set registry https://registry.npmmirror.com && npm ci
+RUN npm ci
 
 FROM node:22-alpine AS builder
 
