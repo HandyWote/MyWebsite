@@ -1,0 +1,70 @@
+name: Build and Push Images
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Version tag to apply to images (e.g. v0.6.1)
+        required: true
+        type: string
+  push:
+    tags:
+      - "v*"
+
+env:
+  BACKEND_IMAGE: git.unself.cn/handy_wote/mywebsite-backend
+  NEXT_IMAGE: git.unself.cn/handy_wote/mywebsite-next
+
+jobs:
+  build-and-push:
+    # Gitea Actions also reads .github/workflows/, so only run on GitHub.
+    if: github.server_url == 'https://github.com'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve image tag
+        id: resolve
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          MANUAL_REF: ${{ inputs.ref }}
+          PUSH_REF: ${{ github.ref_name }}
+        run: |
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            printf 'tag=%s\n' "$MANUAL_REF" >> "$GITHUB_OUTPUT"
+          else
+            printf 'tag=%s\n' "$PUSH_REF" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Login to Gitea registry
+        uses: docker/login-action@v3
+        with:
+          registry: git.unself.cn
+          username: ${{ secrets.GITEA_REGISTRY_USER }}
+          password: ${{ secrets.GITEA_REGISTRY_TOKEN }}
+
+      - name: Build and push backend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: |
+            ${{ env.BACKEND_IMAGE }}:latest
+            ${{ env.BACKEND_IMAGE }}:${{ steps.resolve.outputs.tag }}
+
+      - name: Build and push next-web
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./frontend/Dockerfile
+          push: true
+          # Same defaults as the Dockerfile/compose; runtime env overrides
+          # these.
+          build-args: |
+            BACKEND_INTERNAL_URL=http://backend:5000
+            PUBLIC_SITE_URL=http://localhost:4419
+          tags: |
+            ${{ env.NEXT_IMAGE }}:latest
+            ${{ env.NEXT_IMAGE }}:${{ steps.resolve.outputs.tag }}

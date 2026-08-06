@@ -24,6 +24,9 @@ services:
   #     start_period: 5s
 
   backend:
+    # Registry image used by deploy-time `docker compose pull`;
+    # `build:` is kept for local development.
+    image: git.unself.cn/handy_wote/mywebsite-backend
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -78,6 +81,9 @@ services:
       - "host.docker.internal:host-gateway"
 
   next-web:
+    # Registry image used by deploy-time `docker compose pull`;
+    # `build:` is kept for local development.
+    image: git.unself.cn/handy_wote/mywebsite-next
     build:
       context: .
       dockerfile: ./frontend/Dockerfile

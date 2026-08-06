@@ -43,7 +43,10 @@ jobs:
             cd "$DEPLOY_PATH"
             git fetch --tags origin
             git checkout --detach "$DEPLOY_REF"
-            docker compose build --pull
+            # Images are built on GitHub Actions and pushed to the Gitea
+            # registry; the server only pulls. Requires a one-time
+            # `docker login git.unself.cn` on the deploy host.
+            docker compose pull
             docker compose down
             docker compose up -d
             docker compose ps
