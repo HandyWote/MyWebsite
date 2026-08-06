@@ -1,12 +1,13 @@
 name: Verify
 
-on:
+on: 
+  workflow_dispatch:
   push:
-  pull_request:
 
 jobs:
   backend:
-    runs-on: ubuntu-local
+    if: github.server_url == 'https://github.com'
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -26,7 +27,8 @@ jobs:
         run: go vet ./...
 
   frontend:
-    runs-on: ubuntu-local
+    if: github.server_url == 'https://github.com'
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -59,7 +61,8 @@ jobs:
         run: npm run build
 
   playwright:
-    runs-on: ubuntu-local
+    if: github.server_url == 'https://github.com'
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -84,7 +87,8 @@ jobs:
         run: npm run test:e2e
 
   docker-topology:
-    runs-on: ubuntu-local
+    if: github.server_url == 'https://github.com'
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
