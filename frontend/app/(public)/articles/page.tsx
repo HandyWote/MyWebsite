@@ -84,7 +84,12 @@ export default async function ArticlesPage() {
 				<ArticleCards articles={articles} />
 			) : (
 				!result.error && (
-					<Typography color="text.secondary">
+					<Typography
+						sx={{
+							color: "text.secondary",
+							fontFamily: "JetBrains Mono, monospace",
+						}}
+					>
 						{String(config.empty_text)}
 					</Typography>
 				)

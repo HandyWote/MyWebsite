@@ -95,6 +95,18 @@ export function formatServerDate(value?: string): string {
   }).format(parsed);
 }
 
+/** 列表用短日期（无年份），如 "Aug 1"；实现参考 formatServerDate。 */
+export function formatListDate(value?: string): string {
+  if (!value) return '';
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return '';
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  }).format(parsed);
+}
+
 function mapRepo(repo: GitHubRepo): Project {
   return {
     id: repo.id,

@@ -6,6 +6,7 @@ import {
   getProjects,
   getPublicProfile,
   getSitemapArticlePage,
+  formatListDate,
 } from './publicApi.server';
 
 const { serverRequestMock } = vi.hoisted(() => ({ serverRequestMock: vi.fn() }));
@@ -34,6 +35,16 @@ const projectsBlock = (perPage = 100) => [{
   name: 'projects_page',
   content: { github_username: 'octocat', sort: 'updated', per_page: perPage },
 }];
+
+describe('formatListDate', () => {
+  it('formats a UTC timestamp as a short month/day without year', () => {
+    expect(formatListDate('2026-08-01T00:00:00Z')).toBe('Aug 1');
+  });
+  it('returns an empty string for missing or invalid values', () => {
+    expect(formatListDate()).toBe('');
+    expect(formatListDate('not-a-date')).toBe('');
+  });
+});
 
 describe('public server data cache policies', () => {
   beforeEach(() => {

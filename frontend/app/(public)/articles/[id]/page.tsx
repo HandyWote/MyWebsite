@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { Box, Button, Card, Chip, Typography } from "@mui/material";
+import { Box, Button, Card, Typography } from "@mui/material";
 import { ArrowLeft, CalendarDays, Eye } from "lucide-react";
 import { formatServerDate } from "@/api/publicApi.server";
 import { ServerApiError } from "@/api/server";
@@ -9,6 +9,7 @@ import { ArticleActions } from "@/components/public/ArticleActions";
 import { CommentSectionClient } from "@/components/public/CommentSectionClient";
 import { MarkdownContent } from "@/components/public/MarkdownContent";
 import { PdfViewerClient } from "@/components/public/PdfViewerClient";
+import PixelChip from "@/components/pixel/ui/PixelChip";
 import { PublicShell } from "@/components/public/PublicShell";
 import { getArticleForPage } from "@/seo/data.server";
 import {
@@ -90,12 +91,21 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
 						>
 							{article.title}
 						</Typography>
+						<Box
+							component="span"
+							className="cursor-blink"
+							sx={{
+								display: "inline-block",
+								width: 8,
+								height: 16,
+								bgcolor: "primary.main",
+								ml: 0.5,
+							}}
+						/>
 						<Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", mb: 2 }}>
-							{article.category && (
-								<Chip label={article.category} color="primary" />
-							)}
+							{article.category && <PixelChip label={article.category} />}
 							{tags.map((tag) => (
-								<Chip key={tag} label={tag} variant="outlined" />
+								<PixelChip key={tag} label={tag} />
 							))}
 						</Box>
 						<Box

@@ -79,7 +79,7 @@ export class Camera {
   }
 
   enterMonitor(): void {
-    this.transition('monitor', 1600, BezierEasing(0.13, 0.99, 0, 1));
+    this.transition('monitor', 2000, BezierEasing(0.13, 0.99, 0, 1));
   }
 
   toggleDeskView(): void {

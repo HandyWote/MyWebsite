@@ -64,6 +64,7 @@ describe('article page SEO rendering', () => {
 
     const html = renderToStaticMarkup(await ArticlePage({ params: Promise.resolve({ id: '7' }) }));
     expect(html).toContain('<h1>Complete body</h1>');
+    expect(html).toContain('cursor-blink');
     expect(html).toContain('<p>Visible before hydration.</p>');
     expect(html).toContain('type="application/ld+json"');
     expect(html).toContain('\\u003c/script>\\u003cscript>alert(1)\\u003c/script>');
