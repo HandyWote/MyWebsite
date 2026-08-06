@@ -1,27 +1,27 @@
 services:
   # Local development database.
   # Production should remove this service and use an external database.
-  postgres:
-    image: docker.1ms.run/postgres:16-alpine
-    container_name: mywebsite-postgres
-    environment:
-      POSTGRES_DB: ${DB_NAME:-mywebsite}
-      POSTGRES_USER: ${DB_USER:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
-      TZ: ${TZ:-Asia/Shanghai}
-    ports:
-      - 5432:5432
-    volumes:
-      - ./data/postgres_data:/var/lib/postgresql/data
-    networks:
-      - Web_network
-    restart: always
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d mywebsite"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 5s
+  # postgres:
+  #   image: docker.1ms.run/postgres:16-alpine
+  #   container_name: mywebsite-postgres
+  #   environment:
+  #     POSTGRES_DB: ${DB_NAME:-mywebsite}
+  #     POSTGRES_USER: ${DB_USER:-postgres}
+  #     POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
+  #     TZ: ${TZ:-Asia/Shanghai}
+  #   ports:
+  #     - 5432:5432
+  #   volumes:
+  #     - ./data/postgres_data:/var/lib/postgresql/data
+  #   networks:
+  #     - Web_network
+  #   restart: always
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U postgres -d mywebsite"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+  #     start_period: 5s
 
   backend:
     build:
