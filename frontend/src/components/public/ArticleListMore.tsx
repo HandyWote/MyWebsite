@@ -1,148 +1,90 @@
 "use client";
 
-import Link from "next/link";
-import { Box, Button, Typography, type CardProps } from "@mui/material";
-import { useState, type ComponentType } from "react";
+import { Box, Typography } from "@mui/material";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { browserApi } from "@/api/browser";
 import { API_ENDPOINTS } from "@/api/endpoints";
 import type { ArticlePage, ArticleSummary } from "@/api/types";
-import PixelCardBase from "@/components/pixel/ui/PixelCard";
-
-// PixelCard.jsx 无显式 props 类型，未解构的 title/subtitle/footer 被推断为必填；
-// 这里按 MUI Card 的 props 重新声明，避免在 TS 调用处误报。
-const PixelCard = PixelCardBase as unknown as ComponentType<CardProps>;
-
-// 与服务端 @/api/publicApi.server 的 formatListDate 输出一致
-// （该模块带 server-only 标记，不能在 client 组件中导入，故本地内联同构实现）。
-function formatListDate(value?: string): string {
-	if (!value) return "";
-	const parsed = new Date(value);
-	if (Number.isNaN(parsed.getTime())) return "";
-	return new Intl.DateTimeFormat("en-US", {
-		month: "short",
-		day: "numeric",
-		timeZone: "UTC",
-	}).format(parsed);
-}
-
-const CARD_HOVER_SX = {
-	cursor: "pointer",
-	transition: "all 0.15s ease",
-	"&:hover": { borderColor: "primary.main", transform: "translateX(4px)" },
-} as const;
+import { ArticleCards } from "./ArticleCards";
 
 export function ArticleListMore({
-	initialCount,
+	initialArticles,
 	total,
 	pageSize = 10,
 }: {
-	initialCount: number;
+	initialArticles: ArticleSummary[];
 	total: number;
 	pageSize?: number;
 }) {
-	const [articles, setArticles] = useState<ArticleSummary[]>([]);
-	const [page, setPage] = useState(1);
+	const [articles, setArticles] = useState<ArticleSummary[]>(initialArticles);
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState("");
-	const hasMore = initialCount + articles.length < total;
-	const loadMore = async () => {
+	const sentinelRef = useRef<HTMLDivElement | null>(null);
+	const loadingRef = useRef(false);
+	const pageRef = useRef(1);
+	const hasMore = articles.length < total;
+
+	useEffect(() => {
+		setArticles(initialArticles);
+		pageRef.current = 1;
+	}, [initialArticles]);
+
+	const loadMore = useCallback(async () => {
+		if (loadingRef.current || !hasMore) return;
+		loadingRef.current = true;
 		setLoading(true);
 		setError("");
 		try {
-			const nextPage = page + 1;
+			const nextPage = pageRef.current + 1;
 			const payload = await browserApi.get<ArticlePage>(
 				`${API_ENDPOINTS.PUBLIC.ARTICLES}?page=${nextPage}&per_page=${pageSize}`,
 			);
 			const next = payload.items ?? payload.articles ?? [];
 			setArticles((current) => [...current, ...next]);
-			setPage(nextPage);
+			pageRef.current = nextPage;
 		} catch (reason) {
 			setError(
 				reason instanceof Error ? reason.message : "Unable to load articles",
 			);
 		} finally {
+			loadingRef.current = false;
 			setLoading(false);
 		}
-	};
+	}, [hasMore, pageSize]);
+
+	useEffect(() => {
+		const sentinel = sentinelRef.current;
+		if (!sentinel || !hasMore || typeof IntersectionObserver === "undefined") {
+			return;
+		}
+		const observer = new IntersectionObserver(
+			(entries) => {
+				if (entries.some((entry) => entry.isIntersecting)) {
+					void loadMore();
+				}
+			},
+			{ rootMargin: "200px 0px" },
+		);
+		observer.observe(sentinel);
+		return () => observer.disconnect();
+	}, [hasMore, loadMore]);
+
 	return (
-		<Box sx={{ mt: 1.5 }}>
-			{articles.map((article) => {
-				const category =
-					article.category ||
-					(typeof article.tags === "string"
-						? article.tags
-						: article.tags?.[0]) ||
-					"";
-				const readTime = article.read_time || "5 min read";
-				return (
-					<Box
-						key={article.id}
-						component={Link}
-						href={`/articles/${article.id}`}
-						className="article-card-link"
-						sx={{
-							display: "block",
-							mb: 1.5,
-							color: "inherit",
-							textDecoration: "none",
-						}}
-					>
-						<PixelCard sx={CARD_HOVER_SX}>
-							<Box sx={{ display: "flex", alignItems: "flex-start", gap: 2 }}>
-								<Typography
-									component="time"
-									dateTime={article.created_at}
-									sx={{
-										color: "text.disabled",
-										fontFamily: "JetBrains Mono, monospace",
-										fontSize: "0.875rem",
-										minWidth: 60,
-									}}
-								>
-									{formatListDate(article.created_at)}
-								</Typography>
-								<Box sx={{ minWidth: 0, flex: 1 }}>
-									<Typography
-										component="h2"
-										sx={{
-											color: "text.primary",
-											fontFamily: "JetBrains Mono, monospace",
-											fontSize: "1rem",
-											fontWeight: 500,
-											overflowWrap: "anywhere",
-										}}
-									>
-										▸ {article.title}
-									</Typography>
-									<Typography
-										component="div"
-										sx={{
-											mt: 0.5,
-											pl: 3,
-											color: "text.disabled",
-											fontFamily: "JetBrains Mono, monospace",
-											fontSize: "0.75rem",
-										}}
-									>
-										{category}
-										{readTime ? ` · ${readTime}` : ""}
-									</Typography>
-								</Box>
-							</Box>
-						</PixelCard>
-					</Box>
-				);
-			})}
+		<>
+			<ArticleCards articles={articles} />
 			{error && (
-				<Typography color="error" sx={{ mb: 1 }}>
+				<Typography color="error" sx={{ mt: 1.5 }}>
 					{error}
 				</Typography>
 			)}
 			{hasMore && (
-				<Button variant="outlined" onClick={loadMore} disabled={loading}>
-					{loading ? "Loading..." : "Load more"}
-				</Button>
+				<Box ref={sentinelRef} aria-hidden="true" sx={{ height: 1 }} />
 			)}
-		</Box>
+			{loading && (
+				<Typography sx={{ mt: 1.5, color: "text.secondary" }}>
+					Loading...
+				</Typography>
+			)}
+		</>
 	);
 }

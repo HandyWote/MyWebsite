@@ -3,7 +3,6 @@ import { connection } from "next/server";
 import { Box, Typography } from "@mui/material";
 import { getArticlePage, getArticlesPageConfig } from "@/api/publicApi.server";
 import { pageMetadata } from "@/seo/site";
-import { ArticleCards } from "@/components/public/ArticleCards";
 import { ArticleListMore } from "@/components/public/ArticleListMore";
 import { PublicShell } from "@/components/public/PublicShell";
 
@@ -81,7 +80,11 @@ export default async function ArticlesPage() {
 				<Box sx={{ borderBottom: 1, borderColor: "divider" }} />
 			</Box>
 			{articles.length > 0 ? (
-				<ArticleCards articles={articles} />
+				<ArticleListMore
+					initialArticles={articles}
+					total={total}
+					pageSize={PAGE_SIZE}
+				/>
 			) : (
 				!result.error && (
 					<Typography
@@ -94,11 +97,6 @@ export default async function ArticlesPage() {
 					</Typography>
 				)
 			)}
-			<ArticleListMore
-				initialCount={articles.length}
-				total={total}
-				pageSize={PAGE_SIZE}
-			/>
 		</PublicShell>
 	);
 }

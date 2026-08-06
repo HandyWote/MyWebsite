@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { Box, Button, Card, Typography } from "@mui/material";
+import { Box, Button, Typography, type CardProps } from "@mui/material";
+import type { ComponentType } from "react";
 import { ArrowLeft, CalendarDays, Eye } from "lucide-react";
 import { formatServerDate } from "@/api/publicApi.server";
 import { ServerApiError } from "@/api/server";
@@ -10,6 +11,7 @@ import { CommentSectionClient } from "@/components/public/CommentSectionClient";
 import { MarkdownContent } from "@/components/public/MarkdownContent";
 import { PdfViewerClient } from "@/components/public/PdfViewerClient";
 import PixelChip from "@/components/pixel/ui/PixelChip";
+import PixelCardBase from "@/components/pixel/ui/PixelCard";
 import { PublicShell } from "@/components/public/PublicShell";
 import { getArticleForPage } from "@/seo/data.server";
 import {
@@ -18,6 +20,10 @@ import {
 	getArticlePdfUrl,
 	serializeJsonLd,
 } from "@/seo/site";
+
+type PixelCardProps = CardProps & { accentLine?: boolean };
+
+const PixelCard = PixelCardBase as unknown as ComponentType<PixelCardProps>;
 
 export const dynamicParams = true;
 export const revalidate = 86_400;
@@ -83,7 +89,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
 					>
 						exit buffer
 					</Button>
-					<Card component="article" sx={{ mt: 2, p: { xs: 1.5, sm: 3 } }}>
+					<PixelCard component="article" accentLine sx={{ mt: 2 }}>
 						<Typography
 							component="h1"
 							variant="h2"
@@ -167,7 +173,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
 						) : (
 							<MarkdownContent content={article.content ?? ""} />
 						)}
-					</Card>
+					</PixelCard>
 					<Box sx={{ mt: 3 }}>
 						<CommentSectionClient articleId={article.id} />
 					</Box>
