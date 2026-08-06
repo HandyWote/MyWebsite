@@ -272,6 +272,17 @@ export function TerminalCommandBar({
 					Guess@{cwd} $
 				</Box>
 				<Box
+					component="span"
+					className="cursor-blink"
+					sx={{
+						display: command === "" ? "inline-block" : "none",
+						width: 8,
+						height: 16,
+						bgcolor: "primary.main",
+						flexShrink: 0,
+					}}
+				/>
+				<Box
 					id={`command-${cwd}`}
 					component="input"
 					value={command}

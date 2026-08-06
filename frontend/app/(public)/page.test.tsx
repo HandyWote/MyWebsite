@@ -67,14 +67,6 @@ describe("HomePage", () => {
 			screen.getByRole("heading", { name: "Configured title" }),
 		).toBeInTheDocument();
 		expect(screen.getByText("$ Configured subtitle")).toBeInTheDocument();
-		expect(screen.getByRole("link", { name: "articles/" })).toHaveAttribute(
-			"href",
-			"/articles",
-		);
-		expect(screen.getByRole("link", { name: "projects/" })).toHaveAttribute(
-			"href",
-			"/projects",
-		);
 		expect(screen.getByRole("link", { name: "GitHub" })).toHaveAttribute(
 			"href",
 			"https://github.com/octocat",

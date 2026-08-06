@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import Link from "next/link";
 import { connection } from "next/server";
 import { Box, Typography } from "@mui/material";
 import { getProfileForPage } from "@/seo/data.server";
@@ -104,33 +103,7 @@ export default async function HomePage() {
 							}}
 						>
 							$ {String(home.subtitle)}
-							<Box
-								component="span"
-								className="cursor-blink"
-								sx={{
-									display: "inline-block",
-									width: 8,
-									height: 16,
-									bgcolor: "primary.main",
-									ml: 0.5,
-								}}
-							/>
 						</Typography>
-						<Box
-							component="nav"
-							aria-label="Public pages"
-							sx={{
-								display: "flex",
-								justifyContent: "center",
-								gap: 2,
-								mb: 3,
-								fontFamily: "JetBrains Mono, monospace",
-								fontSize: "0.875rem",
-							}}
-						>
-							<Link href="/articles">articles/</Link>
-							<Link href="/projects">projects/</Link>
-						</Box>
 						<Box
 							sx={{
 								display: "grid",
