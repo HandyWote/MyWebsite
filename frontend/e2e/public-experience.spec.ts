@@ -127,7 +127,8 @@ test("desktop renders nonblank 3D around the one real host and preserves it acro
 	const canvas = page.locator('canvas[data-three-canvas="public"]');
 	await expect(host).toHaveCount(1);
 	await expect(host).toBeVisible();
-	await expect(host).toContainText("articles/");
+	await expect(host).toContainText("double click to enter articles");
+	await expect(host.getByLabel("Terminal command")).toBeVisible();
 	await expect
 		.poll(() =>
 			page.evaluate(() =>
@@ -140,9 +141,19 @@ test("desktop renders nonblank 3D around the one real host and preserves it acro
 		)
 		.toBe(true);
 	await expect(canvas).toHaveCount(1);
+	await host.evaluate((element) => {
+		const bounds = element.getBoundingClientRect();
+		element.dispatchEvent(
+			new PointerEvent("pointermove", {
+				bubbles: true,
+				clientX: bounds.left + bounds.width / 2,
+				clientY: bounds.top + bounds.height / 2,
+			}),
+		);
+	});
 
-	// The camera eases into the monitor over ~1.6s; poll until the host's projected
-	// screen size stabilizes instead of sampling mid-transition.
+	// Moving the pointer into the host eases the camera into the monitor; poll until
+	// the projected screen size stabilizes instead of sampling mid-transition.
 	await expect
 		.poll(
 			async () => {
@@ -202,19 +213,6 @@ test("desktop renders nonblank 3D around the one real host and preserves it acro
 	expect(modelStats.bucketCount).toBeGreaterThan(16);
 	expect(modelStats.nonDarkRatio).toBeGreaterThan(0.01);
 
-	const articlesLink = host.locator('a[href="/articles"]').first();
-	await expect(articlesLink).toBeVisible();
-	expect(
-		await articlesLink.evaluate((link) => {
-			const bounds = link.getBoundingClientRect();
-			const hit = document.elementFromPoint(
-				bounds.left + bounds.width / 2,
-				bounds.top + bounds.height / 2,
-			);
-			return hit === link || link.contains(hit);
-		}),
-	).toBe(true);
-
 	await page.evaluate(() => {
 		const state = window as Window & {
 			__e5Canvas?: Element;
@@ -224,7 +222,9 @@ test("desktop renders nonblank 3D around the one real host and preserves it acro
 			document.querySelector('canvas[data-three-canvas="public"]') ?? undefined;
 		state.__e5Host = document.querySelector("#screen-host") ?? undefined;
 	});
-	await articlesLink.click();
+	const commandInput = host.getByLabel("Terminal command");
+	await commandInput.fill("cd articles/");
+	await commandInput.press("Enter");
 	await expect(page).toHaveURL(/\/articles$/);
 	await expect(host).toContainText("found 2 articles");
 	await expect(host).toContainText("3D DOM Fusion Notes");
@@ -269,15 +269,23 @@ test("mobile and touch layouts keep complete ordinary DOM and request no 3D asse
 		page.locator('[data-public-experience="ordinary"]'),
 	).toBeVisible();
 	await expect(page.locator("#screen-host")).toHaveCount(1);
-	await expect(page.locator("#screen-host")).toContainText("articles/");
-	await expect(page.locator("#screen-host")).toContainText("projects/");
+	await expect(page.locator("#screen-host")).toContainText(
+		"double click to enter articles",
+	);
+	await expect(
+		page.locator("#screen-host").getByLabel("Terminal command"),
+	).toBeVisible();
 	await expect(page.locator('canvas[data-three-canvas="public"]')).toHaveCount(
 		0,
 	);
 	await page.waitForTimeout(1_000);
 	expect(threeRequests).toEqual([]);
 
-	await page.locator('#screen-host a[href="/articles"]').first().click();
+	const commandInput = page
+		.locator("#screen-host")
+		.getByLabel("Terminal command");
+	await commandInput.fill("cd articles/");
+	await commandInput.press("Enter");
 	await expect(page).toHaveURL(/\/articles$/);
 	await expect(page.locator("#screen-host")).toContainText("found 2 articles");
 	await expect(page.locator("#screen-host")).toContainText(

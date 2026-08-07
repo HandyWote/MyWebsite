@@ -1,6 +1,7 @@
+---
 name: Build and Push Images
 
-on:
+"on":
   workflow_dispatch:
     inputs:
       ref:
@@ -15,8 +16,21 @@ env:
   BACKEND_IMAGE: git.unself.cn/handy_wote/mywebsite-backend
   NEXT_IMAGE: git.unself.cn/handy_wote/mywebsite-next
 
+permissions:
+  contents: read
+
 jobs:
+  verify:
+    # Gitea Actions also reads .github/workflows/, so only run on GitHub.
+    if: github.server_url == 'https://github.com'
+    uses: ./.github/workflows/verify.yml
+    with:
+      ref: ${{ inputs.ref || github.ref }}
+    permissions:
+      contents: read
+
   build-and-push:
+    needs: verify
     # Gitea Actions also reads .github/workflows/, so only run on GitHub.
     if: github.server_url == 'https://github.com'
     runs-on: ubuntu-latest
@@ -36,6 +50,9 @@ jobs:
 
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          ref: ${{ steps.resolve.outputs.tag }}
 
       - name: Login to Gitea registry
         uses: docker/login-action@v3
