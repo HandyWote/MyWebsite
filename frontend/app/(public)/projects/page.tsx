@@ -131,7 +131,7 @@ export default async function ProjectsPage() {
 									ml: { sm: "auto" },
 									width: { xs: "100%", sm: "auto" },
 									whiteSpace: { xs: "normal", sm: "nowrap" },
-									color: "text.disabled",
+									color: "text.secondary",
 									fontFamily: "JetBrains Mono, monospace",
 									fontSize: "0.75rem",
 								}}

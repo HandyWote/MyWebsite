@@ -51,6 +51,7 @@ function setup(sourceList: readonly ResourceSource[]) {
   const camera = {
     instance: new THREE.PerspectiveCamera(),
     enterMonitor: vi.fn(),
+    transition: vi.fn(),
   } as unknown as Camera;
   const ready = vi.fn();
   const computerError = vi.fn();
@@ -66,7 +67,7 @@ function setup(sourceList: readonly ResourceSource[]) {
     ready,
   );
   resources.start();
-  return { resources, scene, cssScene, modelLoads, textureLoads, ready, computerError, world, host };
+  return { resources, scene, cssScene, modelLoads, textureLoads, ready, computerError, world, host, camera };
 }
 
 const computerSources: readonly ResourceSource[] = [
@@ -91,6 +92,8 @@ describe('World progressive creation', () => {
     expect(material.map).toBe(texture);
     expect(material.opacity).toBe(0);
     expect(setupResult.cssScene.children[0]).toMatchObject({ element: setupResult.host });
+    expect(setupResult.camera.transition).toHaveBeenCalledWith('idle');
+    expect(setupResult.camera.enterMonitor).not.toHaveBeenCalled();
     expect(setupResult.ready).toHaveBeenCalledTimes(1);
   });
 

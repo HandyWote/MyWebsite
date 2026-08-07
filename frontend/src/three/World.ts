@@ -107,7 +107,7 @@ export class World {
       const shadow = this.textures.get('monitorShadowTexture');
       if (smudge) this.monitor.addSmudge(smudge, true);
       if (shadow) this.monitor.addShadow(shadow, true);
-      this.camera.enterMonitor();
+      this.camera.transition('idle');
       this.onComputerReady();
     }
   }
