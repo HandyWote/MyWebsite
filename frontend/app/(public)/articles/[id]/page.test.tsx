@@ -1,4 +1,4 @@
-import type { AnchorHTMLAttributes, ReactNode } from "react";
+import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ServerApiError } from "@/api/server";
@@ -14,11 +14,8 @@ vi.mock("@/seo/data.server", () => ({
 	getArticleForPage: getArticleForPageMock,
 }));
 vi.mock("next/navigation", () => ({ notFound: notFoundMock }));
-vi.mock("next/link", () => ({
-	default: ({
-		children,
-		...props
-	}: AnchorHTMLAttributes<HTMLAnchorElement>) => <a {...props}>{children}</a>,
+vi.mock("@/components/public/ArticleExitButton", () => ({
+	ArticleExitButton: () => <button type="button">exit buffer</button>,
 }));
 vi.mock("@/components/public/PublicShell", () => ({
 	PublicShell: ({ children }: { children: ReactNode }) => (

@@ -2,11 +2,12 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Box, Button, Typography, type CardProps } from "@mui/material";
 import type { ComponentType } from "react";
-import { ArrowLeft, CalendarDays, Eye } from "lucide-react";
+import { CalendarDays, Eye } from "lucide-react";
 import { formatServerDate } from "@/api/publicApi.server";
 import { ServerApiError } from "@/api/server";
 import { normalizeTags } from "@/utils/normalizeTags";
 import { ArticleActions } from "@/components/public/ArticleActions";
+import { ArticleExitButton } from "@/components/public/ArticleExitButton";
 import { CommentSectionClient } from "@/components/public/CommentSectionClient";
 import { MarkdownContent } from "@/components/public/MarkdownContent";
 import { PdfViewerClient } from "@/components/public/PdfViewerClient";
@@ -81,14 +82,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
 						p: { xs: 1.25, sm: 3 },
 					}}
 				>
-					<Button
-						component="a"
-						href="/articles"
-						variant="text"
-						startIcon={<ArrowLeft size={16} />}
-					>
-						exit buffer
-					</Button>
+					<ArticleExitButton />
 					<PixelCard component="article" accentLine sx={{ mt: 2 }}>
 						<Typography
 							component="h1"
