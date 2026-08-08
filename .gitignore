@@ -16,7 +16,6 @@ __pycache__/
 IFLOW.md
 # Python virtualenv
 .env
-!frontend/.env
 !.env.example
 venv/
 env/
