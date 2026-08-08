@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import { connection } from "next/server";
 import { Box, Typography } from "@mui/material";
 import { getProfileForPage } from "@/seo/data.server";
-import { pageMetadata, SITE_DESCRIPTION } from "@/seo/site";
+import { pageMetadata, SITE_DESCRIPTION, SITE_TITLE } from "@/seo/site";
 import { HomeEnterBoundary } from "@/components/public/HomeEnterBoundary";
 import { TerminalCommandBar } from "@/components/public/TerminalCommandBar";
 import Education from "@/components/sidebar/Education";
@@ -19,7 +18,8 @@ type Tech = { name?: string; label?: string };
 export async function generateMetadata(): Promise<Metadata> {
 	const { home, avatarUrl } = await getProfileForPage();
 	return pageMetadata({
-		title: String(home.title || "HandyWote"),
+		title: SITE_TITLE,
+		absoluteTitle: true,
 		description: String(home.subtitle || SITE_DESCRIPTION),
 		path: "/",
 		image: avatarUrl,
@@ -69,12 +69,11 @@ export default async function HomePage() {
 						>
 							~/intro.md - double click to enter articles
 						</Typography>
-						<Image
+						<img
 							src={avatarUrl}
 							alt="avatar"
 							width={84}
 							height={84}
-							priority
 							className="home-avatar"
 							style={{
 								width: "clamp(64px, 20vw, 84px)",

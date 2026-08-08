@@ -3,6 +3,9 @@
 # Top Rules
 
 1. think about reuse
+2. when you get an order, you just explore and plan, only edit when get approve
+3. when an order has ambiguilty you must ask to make it clear
+4. think about the future, your code should be use for a long time
 
 ## Project Structure & Module Organization
 

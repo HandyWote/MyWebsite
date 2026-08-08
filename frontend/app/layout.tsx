@@ -18,12 +18,18 @@ import {
 	getSiteUrl,
 	SITE_DESCRIPTION,
 	SITE_NAME,
+	SITE_TITLE,
 } from "@/seo/site";
 
 export const metadata: Metadata = {
 	metadataBase: getSiteUrl(),
-	title: { default: SITE_NAME, template: `%s | ${SITE_NAME}` },
+	title: { default: SITE_TITLE, template: `%s | ${SITE_NAME}` },
 	description: SITE_DESCRIPTION,
+	icons: {
+		icon: [{ url: "/favicon.ico", sizes: "32x32", type: "image/x-icon" }],
+		shortcut: ["/favicon.ico"],
+		apple: [{ url: "/avatar.webp", type: "image/webp" }],
+	},
 	openGraph: {
 		type: "website",
 		siteName: SITE_NAME,
