@@ -2,17 +2,9 @@ import { useEffect, useState, useCallback } from 'react';
 import {
   Box,
   Button,
-  Typography,
-  Container,
-  Paper,
   Stack,
-  TextField,
+  Typography,
   InputAdornment,
-  FormControl,
-  InputLabel,
-  Select,
-  Grid,
-  MenuItem,
   Pagination,
   CircularProgress,
 } from '@mui/material';
@@ -25,8 +17,28 @@ import useCommentStore from '@/stores/commentStore';
 import useNotification from '../../hooks/useNotification';
 import { CommentCard, CommentDetailDialog, COMMENT_STATUS } from './comments';
 import { ConfirmDialog } from './shared';
+import {
+  AdminEmptyState,
+  AdminFieldGrid,
+  AdminFieldGridItem,
+  AdminFormStack,
+  AdminPage,
+  AdminSection,
+  AdminSelect,
+  AdminStatsGrid,
+  AdminTextField,
+} from './ui';
 
 const PER_PAGE = 10;
+
+const StatItem = ({ value, label, color }) => (
+  <AdminFieldGridItem size={{ xs: 12, sm: 3 }}>
+    <Box textAlign="center">
+      <Typography variant="h4" color={color}>{value}</Typography>
+      <Typography variant="body2" color="text.secondary">{label}</Typography>
+    </Box>
+  </AdminFieldGridItem>
+);
 
 /**
  * CommentsManager - 评论管理页面编排器
@@ -79,6 +91,8 @@ export default function CommentsManager() {
 
     try {
       await deleteComment(commentToDelete.id);
+      setDeleteDialogOpen(false);
+      setCommentToDelete(null);
       notify().success('评论删除成功');
     } catch (error) {
       notify().error('删除评论失败: ' + error.message);
@@ -106,146 +120,124 @@ export default function CommentsManager() {
   };
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Typography variant="h4" align="center" gutterBottom>
-        评论管理
-      </Typography>
-
-      {/* 统计信息 */}
-      <Paper sx={{ p: 3, mb: 3 }}>
-        <Grid container spacing={2}>
-          <Grid size={{ xs: 12, sm: 3 }}>
-            <Box textAlign="center">
-              <Typography variant="h4" color="primary">{total}</Typography>
-              <Typography variant="body2" color="text.secondary">总评论数</Typography>
-            </Box>
-          </Grid>
-          <Grid size={{ xs: 12, sm: 3 }}>
-            <Box textAlign="center">
-              <Typography variant="h4" color="success.main">
-                {comments.filter(c => c && c.status === COMMENT_STATUS.NORMAL).length}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">正常评论</Typography>
-            </Box>
-          </Grid>
-          <Grid size={{ xs: 12, sm: 3 }}>
-            <Box textAlign="center">
-              <Typography variant="h4" color="warning.main">
-                {comments.filter(c => c && c.status === COMMENT_STATUS.PENDING).length}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">待审核</Typography>
-            </Box>
-          </Grid>
-          <Grid size={{ xs: 12, sm: 3 }}>
-            <Box textAlign="center">
-              <Typography variant="h4" color="error.main">
-                {comments.filter(c => c && c.status === COMMENT_STATUS.SPAM).length}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">垃圾评论</Typography>
-            </Box>
-          </Grid>
-        </Grid>
-      </Paper>
-
-      {/* 搜索和过滤 */}
-      <Paper sx={{ p: 2, mb: 3 }}>
-        <Grid container spacing={2} alignItems="center">
-          <Grid size={{ xs: 12, sm: 6 }}>
-            <TextField
-              fullWidth
-              placeholder="搜索评论内容、作者、IP地址..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon />
-                  </InputAdornment>
-                ),
-              }}
+    <AdminPage title="评论管理">
+      <AdminFormStack spacing={3}>
+        {/* 统计信息 */}
+        <AdminSection>
+          <AdminStatsGrid>
+            <StatItem value={total} label="总评论数" color="primary" />
+            <StatItem
+              value={comments.filter(c => c && c.status === COMMENT_STATUS.NORMAL).length}
+              label="正常评论"
+              color="success.main"
             />
-          </Grid>
-          <Grid size={{ xs: 12, sm: 3 }}>
-            <FormControl fullWidth>
-              <InputLabel>状态筛选</InputLabel>
-              <Select
+            <StatItem
+              value={comments.filter(c => c && c.status === COMMENT_STATUS.PENDING).length}
+              label="待审核"
+              color="warning.main"
+            />
+            <StatItem
+              value={comments.filter(c => c && c.status === COMMENT_STATUS.SPAM).length}
+              label="垃圾评论"
+              color="error.main"
+            />
+          </AdminStatsGrid>
+        </AdminSection>
+
+        {/* 搜索和过滤 */}
+        <AdminSection>
+          <AdminFieldGrid sx={{ alignItems: 'center' }}>
+            <AdminFieldGridItem size={{ xs: 12, sm: 6 }}>
+              <AdminTextField
+                placeholder="搜索评论内容、作者、IP地址..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            </AdminFieldGridItem>
+            <AdminFieldGridItem size={{ xs: 12, sm: 3 }}>
+              <AdminSelect
                 value={statusFilter}
                 label="状态筛选"
                 onChange={(e) => setStatusFilter(e.target.value)}
               >
-                <MenuItem value="">全部状态</MenuItem>
-                <MenuItem value={COMMENT_STATUS.NORMAL}>正常</MenuItem>
-                <MenuItem value={COMMENT_STATUS.PENDING}>待审核</MenuItem>
-                <MenuItem value={COMMENT_STATUS.SPAM}>垃圾评论</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid size={{ xs: 12, sm: 3 }}>
-            <Stack direction="row" spacing={1}>
-              <Button
-                variant="outlined"
-                startIcon={<RefreshIcon />}
-                onClick={handleFetchComments}
-                disabled={loading}
-              >
-                刷新
-              </Button>
-              <Button
-                variant="outlined"
-                startIcon={<DownloadIcon />}
-                onClick={handleExport}
-              >
-                导出
-              </Button>
-            </Stack>
-          </Grid>
-        </Grid>
-      </Paper>
+                <AdminSelect.Item value="">全部状态</AdminSelect.Item>
+                <AdminSelect.Item value={COMMENT_STATUS.NORMAL}>正常</AdminSelect.Item>
+                <AdminSelect.Item value={COMMENT_STATUS.PENDING}>待审核</AdminSelect.Item>
+                <AdminSelect.Item value={COMMENT_STATUS.SPAM}>垃圾评论</AdminSelect.Item>
+              </AdminSelect>
+            </AdminFieldGridItem>
+            <AdminFieldGridItem size={{ xs: 12, sm: 3 }}>
+              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                <Button
+                  variant="outlined"
+                  startIcon={<RefreshIcon />}
+                  onClick={handleFetchComments}
+                  disabled={loading}
+                >
+                  刷新
+                </Button>
+                <Button
+                  variant="outlined"
+                  startIcon={<DownloadIcon />}
+                  onClick={handleExport}
+                >
+                  导出
+                </Button>
+              </Stack>
+            </AdminFieldGridItem>
+          </AdminFieldGrid>
+        </AdminSection>
 
-      {/* 评论列表 */}
-      {loading ? (
-        <Box textAlign="center" sx={{ py: 4 }}>
-          <CircularProgress />
-        </Box>
-      ) : comments.length > 0 ? (
-        <Box>
-          {comments.map((comment) =>
-            comment && (
-              <CommentCard
-                key={comment.id}
-                comment={comment}
-                onView={(comment) => {
-                  setSelectedComment(comment);
-                  setDetailDialogOpen(true);
-                }}
-                onDelete={(comment) => {
-                  setCommentToDelete(comment);
-                  setDeleteDialogOpen(true);
-                }}
-                onStatusChange={handleStatusChange}
-              />
-            )
-          )}
-
-          {/* 分页 */}
-          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
-            <Pagination
-              count={Math.ceil(total / PER_PAGE)}
-              page={page}
-              onChange={(_, newPage) => setPage(newPage)}
-              color="primary"
-              showFirstButton
-              showLastButton
-            />
+        {/* 评论列表 */}
+        {loading ? (
+          <Box textAlign="center" sx={{ py: 4 }}>
+            <CircularProgress />
           </Box>
-        </Box>
-      ) : (
-        <Paper sx={{ p: 4, textAlign: 'center' }}>
-          <Typography variant="body1" color="text.secondary">
-            暂无评论数据
-          </Typography>
-        </Paper>
-      )}
+        ) : comments.length > 0 ? (
+          <Box>
+            <AdminFormStack spacing={2}>
+              {comments.map((comment) =>
+                comment && (
+                  <CommentCard
+                    key={comment.id}
+                    comment={comment}
+                    onView={(comment) => {
+                      setSelectedComment(comment);
+                      setDetailDialogOpen(true);
+                    }}
+                    onDelete={(comment) => {
+                      setCommentToDelete(comment);
+                      setDeleteDialogOpen(true);
+                    }}
+                    onStatusChange={handleStatusChange}
+                  />
+                )
+              )}
+            </AdminFormStack>
+
+            {/* 分页 */}
+            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
+              <Pagination
+                count={Math.ceil(total / PER_PAGE)}
+                page={page}
+                onChange={(_, newPage) => setPage(newPage)}
+                color="primary"
+                showFirstButton
+                showLastButton
+              />
+            </Box>
+          </Box>
+        ) : (
+          <AdminEmptyState title="暂无评论数据" />
+        )}
+      </AdminFormStack>
 
       {/* 删除确认对话框 */}
       <ConfirmDialog
@@ -274,6 +266,6 @@ export default function CommentsManager() {
           setSelectedComment(null);
         }}
       />
-    </Container>
+    </AdminPage>
   );
 }

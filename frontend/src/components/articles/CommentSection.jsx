@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from "react";
 import {
 	Typography,
 	Box,
-	TextField,
 	Avatar,
 	Divider,
 	Grid,
@@ -12,7 +11,7 @@ import {
 import { Send as SendIcon } from "@mui/icons-material";
 import { api, API_ENDPOINTS, ApiError } from "../../config/api";
 import { formatDateTime } from "../../utils/formatDate";
-import { PixelCard, PixelButton, PixelTypography } from "../pixel";
+import { PixelCard, PixelButton, PixelInput } from "../pixel";
 import useNotification from "../../hooks/useNotification";
 
 /**
@@ -94,7 +93,7 @@ export default function CommentSection({ articleId, demoMode = false }) {
 
 					<Grid container spacing={2} sx={{ mb: 2 }}>
 						<Grid size={{ xs: 12, sm: 6 }}>
-							<TextField
+							<PixelInput
 								fullWidth
 								size="small"
 								label="$ name"
@@ -105,7 +104,7 @@ export default function CommentSection({ articleId, demoMode = false }) {
 						</Grid>
 					</Grid>
 
-					<TextField
+					<PixelInput
 						fullWidth
 						multiline
 						rows={3}

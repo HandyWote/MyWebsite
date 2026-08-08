@@ -4,8 +4,6 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  TextField,
-  Grid,
   Stack,
   Button,
   Typography,
@@ -14,6 +12,11 @@ import SettingsSuggestIcon from '@mui/icons-material/SettingsSuggest';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import useAiStore from '@/stores/aiStore';
 import useNotification from '../../../hooks/useNotification';
+import {
+  AdminFieldGrid,
+  AdminFieldGridItem,
+  AdminTextField,
+} from '../ui';
 
 /**
  * AiSettingsDialog - AI 服务设置对话框
@@ -91,51 +94,47 @@ export default function AiSettingsDialog({ open, onClose }) {
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           前端仅负责提交请求，实际调用模型的代理由后端完成。请在此配置提示词、模型、Base URL 与 API Key。
         </Typography>
-        <Grid container spacing={2}>
-          <Grid size={{ xs: 12 }}>
-            <TextField
+        <AdminFieldGrid>
+          <AdminFieldGridItem>
+            <AdminTextField
               label="提示词"
               placeholder="用于引导模型生成建议"
               value={form.prompt || ''}
               onChange={handleFieldChange('prompt')}
-              fullWidth
               multiline
               minRows={3}
               disabled={settingsLoading}
             />
-          </Grid>
-          <Grid size={{ xs: 12, sm: 6 }}>
-            <TextField
+          </AdminFieldGridItem>
+          <AdminFieldGridItem size={{ xs: 12, sm: 6 }}>
+            <AdminTextField
               label="模型"
               placeholder="如 gpt-4o-mini"
               value={form.model || ''}
               onChange={handleFieldChange('model')}
-              fullWidth
               disabled={settingsLoading}
             />
-          </Grid>
-          <Grid size={{ xs: 12, sm: 6 }}>
-            <TextField
+          </AdminFieldGridItem>
+          <AdminFieldGridItem size={{ xs: 12, sm: 6 }}>
+            <AdminTextField
               label="Base URL"
               placeholder="https://api.openai.com/v1"
               value={form.base_url || ''}
               onChange={handleFieldChange('base_url')}
-              fullWidth
               disabled={settingsLoading}
             />
-          </Grid>
-          <Grid size={{ xs: 12 }}>
-            <TextField
+          </AdminFieldGridItem>
+          <AdminFieldGridItem>
+            <AdminTextField
               label="API Key"
               type="password"
               placeholder={form.api_key_masked || 'sk-xxxx'}
               value={form.api_key || ''}
               onChange={handleFieldChange('api_key')}
-              fullWidth
               disabled={settingsLoading}
             />
-          </Grid>
-        </Grid>
+          </AdminFieldGridItem>
+        </AdminFieldGrid>
       </DialogContent>
       <DialogActions sx={{ p: 2 }}>
         <Stack direction="row" spacing={1} sx={{ flexGrow: 1 }}>

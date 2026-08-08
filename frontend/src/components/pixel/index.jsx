@@ -1,9 +1,19 @@
-export { pixelTheme, colors, spacing, typography, borders, shadows, animations } from './tokens';
-export { PixelButton } from './ui/PixelButton';
-export { PixelCard } from './ui/PixelCard';
-export { PixelChip } from './ui/PixelChip';
-export { PixelAvatar } from './ui/PixelAvatar';
-export { PixelInput } from './ui/PixelInput';
-export { PixelTypography, CodeBlock, TerminalLine } from './ui/PixelTypography';
-export { PixelContainer } from './layout/PixelContainer';
-export { PixelSidebar } from './layout/PixelSidebar';
+export { PixelProvider, default } from "./PixelProvider";
+export { createPixelThemeOptions } from "@/theme/themeOptions";
+export {
+	pixelTheme,
+	colors,
+	spacing,
+	typography,
+	borders,
+	shadows,
+	animations,
+} from "./tokens";
+export { PixelButton } from "./ui/PixelButton";
+export { PixelCard } from "./ui/PixelCard";
+export { PixelChip } from "./ui/PixelChip";
+export { PixelAvatar } from "./ui/PixelAvatar";
+export { PixelInput } from "./ui/PixelInput";
+export { PixelTypography, CodeBlock, TerminalLine } from "./ui/PixelTypography";
+export { PixelContainer } from "./layout/PixelContainer";
+export { PixelSidebar } from "./layout/PixelSidebar";

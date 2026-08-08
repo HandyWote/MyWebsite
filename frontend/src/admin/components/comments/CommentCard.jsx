@@ -77,7 +77,7 @@ export default function CommentCard({ comment, onView, onDelete, onStatusChange,
   const formatDate = (dateString) => formatDateTime(dateString);
 
   return (
-    <Card sx={{ mb: 2, overflow: 'hidden' }} {...props}>
+    <Card sx={{ overflow: 'hidden' }} {...props}>
       <CardContent sx={{ pb: 1 }}>
         <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
           <Avatar sx={{ bgcolor: 'primary.main' }}>
@@ -85,7 +85,7 @@ export default function CommentCard({ comment, onView, onDelete, onStatusChange,
           </Avatar>
 
           <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, flexWrap: 'wrap' }}>
               <Typography variant="subtitle1" fontWeight="bold" noWrap>
                 {comment.author}
               </Typography>
@@ -98,7 +98,7 @@ export default function CommentCard({ comment, onView, onDelete, onStatusChange,
               />
             </Box>
 
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1, color: 'text.secondary' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1, color: 'text.secondary', flexWrap: 'wrap' }}>
               <Tooltip title="评论时间">
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                   <CalendarIcon fontSize="small" />
