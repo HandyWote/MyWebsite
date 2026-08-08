@@ -41,6 +41,14 @@ func TestLoadConfig_OpenAIURLDefault(t *testing.T) {
 	assert.Equal(t, "https://api.openai.com/v1", config.OpenAIAPIURL)
 }
 
+func TestLoadConfig_DBSchema(t *testing.T) {
+	os.Unsetenv("DB_SCHEMA")
+	assert.Equal(t, "public", LoadConfig().DBSchema)
+
+	t.Setenv("DB_SCHEMA", "web-test")
+	assert.Equal(t, "web-test", LoadConfig().DBSchema)
+}
+
 func TestLoadConfig_MaxContentLengthDefault(t *testing.T) {
 	os.Unsetenv("MAX_CONTENT_LENGTH")
 

@@ -31,13 +31,14 @@ docker build -t mywebsite-backend .
 所有变量均在 `backend/.env` 中配置，参见 `.env.example`：
 
 | 变量名 | 默认值 | 说明 |
-|---|---|---|
+| --- | --- | --- |
 | `PORT` | `5000` | 服务监听端口 |
 | `DB_HOST` | `localhost` | 数据库主机 |
 | `DB_PORT` | `5432` | 数据库端口 |
 | `DB_USER` | `postgres` | 数据库用户名 |
 | `DB_PASSWORD` | `password` | 数据库密码 |
 | `DB_NAME` | `mywebsite` | 数据库名 |
+| `DB_SCHEMA` | `public` | PostgreSQL schema/search_path |
 | `SECRET_KEY` | `dev-secret-key-change-in-production` | 应用密钥（⚠️ 生产环境务必修改） |
 | `JWT_SECRET_KEY` | `dev-jwt-secret-change-in-production` | JWT 签名密钥（⚠️ 生产环境务必修改） |
 | `ADMIN_USERNAME` | `admin` | 管理员用户名 |

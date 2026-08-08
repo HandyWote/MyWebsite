@@ -32,7 +32,7 @@ func main() {
 	}
 
 	// Run smart column migrations (only add missing columns)
-	if err := migrations.RunMigrations(database.GetDB()); err != nil {
+	if err := migrations.RunMigrations(database.GetDB(), cfg.DBSchema); err != nil {
 		log.Fatalf("Migration failed: %v", err)
 	}
 

@@ -3,6 +3,7 @@ package database
 import (
 	"fmt"
 	"log"
+	"strings"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -15,7 +16,7 @@ import (
 var DB *gorm.DB
 
 func Connect(cfg *config.Config) error {
-	dsn := DSN(cfg.DBHost, cfg.DBPort, cfg.DBUser, cfg.DBPassword, cfg.DBName)
+	dsn := DSN(cfg.DBHost, cfg.DBPort, cfg.DBUser, cfg.DBPassword, cfg.DBName, cfg.DBSchema)
 
 	var err error
 	DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{
@@ -47,9 +48,23 @@ func AutoMigrate() error {
 	return nil
 }
 
-func DSN(host string, port int, user, password, dbname string) string {
-	return fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
+func DSN(host string, port int, user, password, dbname, schema string) string {
+	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
 		host, port, user, password, dbname)
+	if strings.TrimSpace(schema) != "" {
+		dsn += fmt.Sprintf(" search_path=%s", dsnValue(quoteIdentifier(schema)))
+	}
+	return dsn
+}
+
+func quoteIdentifier(identifier string) string {
+	return `"` + strings.ReplaceAll(identifier, `"`, `""`) + `"`
+}
+
+func dsnValue(value string) string {
+	value = strings.ReplaceAll(value, `\`, `\\`)
+	value = strings.ReplaceAll(value, `'`, `\'`)
+	return `'` + value + `'`
 }
 
 func GetDB() *gorm.DB {

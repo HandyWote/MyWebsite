@@ -35,11 +35,12 @@ func GetRequiredMigrations() []ColumnMigration {
 }
 
 // RunMigrations 检查并执行缺失的列迁移
-func RunMigrations(db *gorm.DB) error {
+func RunMigrations(db *gorm.DB, schema string) error {
+	schema = strings.TrimSpace(schema)
 	migrations := GetRequiredMigrations()
 
 	for _, m := range migrations {
-		exists, err := columnExists(db, m.TableName, m.ColumnName)
+		exists, err := columnExists(db, schema, m.TableName, m.ColumnName)
 		if err != nil {
 			log.Printf("[MIGRATION] Error checking column %s.%s: %v", m.TableName, m.ColumnName, err)
 			continue
@@ -47,7 +48,7 @@ func RunMigrations(db *gorm.DB) error {
 
 		if !exists {
 			log.Printf("[MIGRATION] Adding column %s.%s", m.TableName, m.ColumnName)
-			if err := addColumn(db, m); err != nil {
+			if err := addColumn(db, schema, m); err != nil {
 				log.Printf("[MIGRATION] Failed to add column %s.%s: %v", m.TableName, m.ColumnName, err)
 				return err
 			}
@@ -58,7 +59,7 @@ func RunMigrations(db *gorm.DB) error {
 	}
 
 	// 新增：avatar.cropped_info 类型转换
-	if err := migrateAvatarCroppedInfo(db); err != nil {
+	if err := migrateAvatarCroppedInfo(db, schema); err != nil {
 		log.Printf("[MIGRATION] Failed to migrate avatar.cropped_info: %v", err)
 		// 不返回错误，允许服务继续启动
 	}
@@ -67,22 +68,34 @@ func RunMigrations(db *gorm.DB) error {
 }
 
 // columnExists 检查列是否存在
-func columnExists(db *gorm.DB, tableName, columnName string) (bool, error) {
+func columnExists(db *gorm.DB, schema, tableName, columnName string) (bool, error) {
 	var count int64
 	err := db.Raw(`
 		SELECT COUNT(*) FROM information_schema.columns
-		WHERE table_schema = 'public' AND table_name = ? AND column_name = ?
-	`, tableName, columnName).Count(&count).Error
+		WHERE table_schema = current_schema() AND table_name = ? AND column_name = ?
+	`, tableName, columnName).Scan(&count).Error
+	if schema != "" {
+		err = db.Raw(`
+			SELECT COUNT(*) FROM information_schema.columns
+			WHERE table_schema = ? AND table_name = ? AND column_name = ?
+		`, schema, tableName, columnName).Scan(&count).Error
+	}
 	return count > 0, err
 }
 
 // getColumnType 获取列的 PostgreSQL 数据类型
-func getColumnType(db *gorm.DB, tableName, columnName string) (string, error) {
+func getColumnType(db *gorm.DB, schema, tableName, columnName string) (string, error) {
 	var colType string
 	err := db.Raw(`
 		SELECT data_type FROM information_schema.columns
-		WHERE table_schema = 'public' AND table_name = ? AND column_name = ?
+		WHERE table_schema = current_schema() AND table_name = ? AND column_name = ?
 	`, tableName, columnName).Scan(&colType).Error
+	if schema != "" {
+		err = db.Raw(`
+			SELECT data_type FROM information_schema.columns
+			WHERE table_schema = ? AND table_name = ? AND column_name = ?
+		`, schema, tableName, columnName).Scan(&colType).Error
+	}
 	return colType, err
 }
 
@@ -96,9 +109,9 @@ func shouldConvertAvatarCroppedInfoToJSONB(colType string) bool {
 }
 
 // migrateAvatarCroppedInfo 将 avatar.cropped_info 对齐为 jsonb（与 GORM 模型一致）
-func migrateAvatarCroppedInfo(db *gorm.DB) error {
+func migrateAvatarCroppedInfo(db *gorm.DB, schema string) error {
 	// 检查列是否存在
-	exists, err := columnExists(db, "avatar", "cropped_info")
+	exists, err := columnExists(db, schema, "avatar", "cropped_info")
 	if err != nil {
 		return err
 	}
@@ -108,7 +121,7 @@ func migrateAvatarCroppedInfo(db *gorm.DB) error {
 	}
 
 	// 检查当前类型
-	colType, err := getColumnType(db, "avatar", "cropped_info")
+	colType, err := getColumnType(db, schema, "avatar", "cropped_info")
 	if err != nil {
 		return err
 	}
@@ -130,9 +143,9 @@ func migrateAvatarCroppedInfo(db *gorm.DB) error {
 }
 
 // addColumn 添加缺失的列（幂等版本）
-func addColumn(db *gorm.DB, m ColumnMigration) error {
+func addColumn(db *gorm.DB, schema string, m ColumnMigration) error {
 	// 先检查列是否存在
-	exists, err := columnExists(db, m.TableName, m.ColumnName)
+	exists, err := columnExists(db, schema, m.TableName, m.ColumnName)
 	if err != nil {
 		return err
 	}
@@ -142,9 +155,13 @@ func addColumn(db *gorm.DB, m ColumnMigration) error {
 	}
 
 	// 构建并执行 ADD COLUMN 语句
-	sql := fmt.Sprintf(`ALTER TABLE "%s" ADD COLUMN "%s" %s`, m.TableName, m.ColumnName, m.ColumnType)
+	sql := fmt.Sprintf(`ALTER TABLE %s ADD COLUMN %s %s`, quoteIdentifier(m.TableName), quoteIdentifier(m.ColumnName), m.ColumnType)
 	if m.DefaultVal != "" {
 		sql += fmt.Sprintf(` DEFAULT %s`, m.DefaultVal)
 	}
 	return db.Exec(sql).Error
+}
+
+func quoteIdentifier(identifier string) string {
+	return `"` + strings.ReplaceAll(identifier, `"`, `""`) + `"`
 }

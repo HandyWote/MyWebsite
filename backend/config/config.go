@@ -14,6 +14,7 @@ type Config struct {
 	DBUser     string
 	DBPassword string
 	DBName     string
+	DBSchema   string
 	Port       string
 
 	SecretKey    string
@@ -61,6 +62,7 @@ func LoadConfig() *Config {
 		DBUser:     getEnv("DB_USER", "postgres"),
 		DBPassword: getEnv("DB_PASSWORD", "password"),
 		DBName:     getEnv("DB_NAME", "mywebsite"),
+		DBSchema:   getEnv("DB_SCHEMA", "public"),
 		Port:       getEnv("PORT", "5000"),
 
 		SecretKey:    getEnv("SECRET_KEY", "dev-secret-key-change-in-production"),

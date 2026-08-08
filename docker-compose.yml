@@ -37,6 +37,7 @@ services:
       DB_USER: ${DB_USER:-postgres}
       DB_PASSWORD: ${DB_PASSWORD:-password}
       DB_NAME: ${DB_NAME:-mywebsite}
+      DB_SCHEMA: ${DB_SCHEMA:-public}
       SECRET_KEY: ${SECRET_KEY:-dev-secret-key-change-in-production}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-dev-jwt-secret-change-in-production}
       ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
