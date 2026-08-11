@@ -129,6 +129,17 @@ body:has(.public-experience[data-public-experience^="desktop-"])::before {
 	pointer-events: none;
 }
 
+/* 纸片游戏遮罩的独立 CSS3D 层：z3 在 canvas 之上，与 monitor 的 css-mount 解耦。
+   容器本身不接事件，遮罩元素自身设置 pointer-events: auto。 */
+.public-paper-mount {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	z-index: 3;
+	pointer-events: none;
+}
+
 .public-scene-canvas {
 	display: block;
 	pointer-events: none;

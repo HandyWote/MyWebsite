@@ -82,6 +82,13 @@ describe('PublicExperience', () => {
     expect(document.querySelector('[data-screen-parking]')).not.toBeNull();
     expect(document.querySelectorAll('#screen-host')).toHaveLength(1);
     expect(document.querySelector('#screen-host article')?.textContent).toBe('SSR body');
+    // The empty transparent game-mount host ships alongside the screen host.
+    expect(document.querySelectorAll('#paper-screen-host')).toHaveLength(1);
+    expect(document.querySelector('#paper-screen-host')?.childElementCount).toBe(0);
+    // The paper overlay has its own CSS3D mount (z3, above the canvas),
+    // decoupled from the monitor's css-mount.
+    expect(document.querySelectorAll('#paper-mount')).toHaveLength(1);
+    expect(document.querySelector('#paper-mount')?.getAttribute('data-public-paper-mount')).not.toBeNull();
   });
 
   it('does not import the Three runtime when desktop capabilities do not match', async () => {

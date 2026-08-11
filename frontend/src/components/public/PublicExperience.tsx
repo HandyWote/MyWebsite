@@ -13,8 +13,10 @@ type ExperienceMode = 'ordinary' | 'desktop-loading' | 'desktop-ready' | 'deskto
 export function PublicExperience({ children }: { children: ReactNode }) {
   const webglMountRef = useRef<HTMLDivElement>(null);
   const cssMountRef = useRef<HTMLDivElement>(null);
+  const paperMountRef = useRef<HTMLDivElement>(null);
   const parkingRef = useRef<HTMLDivElement>(null);
   const screenHostRef = useRef<HTMLDivElement>(null);
+  const paperHostRef = useRef<HTMLDivElement>(null);
   const runtimeRef = useRef<ThreeExperience | null>(null);
   const retryRef = useRef<() => void>(() => {});
   const [mode, setMode] = useState<ExperienceMode>('ordinary');
@@ -23,9 +25,11 @@ export function PublicExperience({ children }: { children: ReactNode }) {
   useLayoutEffect(() => {
     const webglMount = webglMountRef.current;
     const cssMount = cssMountRef.current;
+    const paperMount = paperMountRef.current;
     const parkingNode = parkingRef.current;
     const screenHost = screenHostRef.current;
-    if (!webglMount || !cssMount || !parkingNode || !screenHost) return;
+    const paperHost = paperHostRef.current;
+    if (!webglMount || !cssMount || !paperMount || !parkingNode || !screenHost || !paperHost) return;
 
     const media = window.matchMedia(DESKTOP_3D_MEDIA);
     let disposed = false;
@@ -60,7 +64,9 @@ export function PublicExperience({ children }: { children: ReactNode }) {
           const runtime = createThreeExperience({
             webglMount,
             cssMount,
+            paperMount,
             screenHost,
+            paperHost,
             parkingNode,
             onComputerError(error) {
               if (disposed || token !== generation) return;
@@ -121,6 +127,9 @@ export function PublicExperience({ children }: { children: ReactNode }) {
       <div className="public-scene" data-public-scene aria-hidden={!desktop}>
         <div ref={cssMountRef} className="public-css-mount" data-public-css-mount />
         <div ref={webglMountRef} className="public-webgl-mount" data-public-webgl-mount />
+        {/* Paper mini-game overlay's own CSS3D layer (z3, above the canvas),
+            decoupled from the monitor's css-mount (z1). */}
+        <div ref={paperMountRef} className="public-paper-mount" id="paper-mount" data-public-paper-mount />
       </div>
       {mode === 'desktop-error' && (
         <div className="public-scene-error" role="alert">
@@ -140,6 +149,14 @@ export function PublicExperience({ children }: { children: ReactNode }) {
             {children}
           </div>
         </PublicPortalBoundary>
+        {/* Future mini-game mount: transparent overlay aligned to the desk
+            paper (the PaperScreen CSS3DObject takes over this host). */}
+        <div
+          ref={paperHostRef}
+          id="paper-screen-host"
+          data-paper-screen-host
+          aria-hidden={desktop && mode !== 'desktop-ready' ? true : undefined}
+        />
       </div>
     </div>
   );

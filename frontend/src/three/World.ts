@@ -6,6 +6,7 @@ import { Decor } from "./Decor";
 import { disposeObject, disposeTexture } from "./dispose";
 import { Environment } from "./Environment";
 import { MonitorScreen } from "./MonitorScreen";
+import { PaperScreen } from "./PaperScreen";
 import type { Resources } from "./Resources";
 import { COMPUTER_MODEL_NAME, DECOR_MODEL_NAME } from "./sources";
 import type {
@@ -31,21 +32,25 @@ export class World {
 		Computer | Environment | Decor
 	>();
 	private monitor: MonitorScreen | null = null;
+	private paperScreen: PaperScreen | null = null;
 	private paperMesh: THREE.Mesh | null = null;
 	private destroyed = false;
 
 	constructor(
 		private readonly scene: THREE.Scene,
 		cssScene: THREE.Scene,
+		paperCssScene: THREE.Scene,
 		resources: Resources,
 		private readonly camera: Camera,
 		private readonly tweens: Group,
 		private readonly screenHost: HTMLElement,
+		private readonly paperHost: HTMLElement,
 		private readonly parkingNode: HTMLElement,
 		private readonly onComputerError: (error: Error) => void,
 		private readonly onComputerReady: () => void,
 	) {
 		this.cssScene = cssScene;
+		this.paperCssScene = paperCssScene;
 		this.subscriptions.push(
 			resources.on("modelLoaded", (event) => this.handleModel(event)),
 			resources.on("textureLoaded", (event) =>
@@ -56,6 +61,7 @@ export class World {
 	}
 
 	private readonly cssScene: THREE.Scene;
+	private readonly paperCssScene: THREE.Scene;
 
 	update(): void {
 		this.monitor?.update();
@@ -70,6 +76,8 @@ export class World {
 		this.subscriptions.length = 0;
 		this.monitor?.destroy();
 		this.monitor = null;
+		this.paperScreen?.destroy();
+		this.paperScreen = null;
 		this.paperMesh = null;
 		for (const model of this.models.values()) {
 			this.scene.remove(model.object);
@@ -135,7 +143,13 @@ export class World {
 	private attachPaper(model: THREE.Group): void {
 		this.paperMesh = null;
 		const mesh = model.getObjectByName("paper");
-		if (!(mesh instanceof THREE.Mesh)) return;
+		if (!(mesh instanceof THREE.Mesh)) {
+			// No paper node: tear down any overlay left by a previous model
+			// and keep the existing graceful degradation (no screen built).
+			this.paperScreen?.destroy();
+			this.paperScreen = null;
+			return;
+		}
 		this.paperMesh = mesh;
 
 		mesh.geometry.computeBoundingBox();
@@ -146,6 +160,16 @@ export class World {
 		this.camera.setPaperTarget(
 			bounds.getCenter(new THREE.Vector3()),
 			this.paperContentUp(mesh),
+		);
+
+		// Transparent CSS3D overlay aligned to the paper mesh — the mount
+		// point for future mini-games (same host pattern as MonitorScreen).
+		this.paperScreen?.destroy();
+		this.paperScreen = new PaperScreen(
+			this.paperCssScene,
+			this.paperHost,
+			mesh.geometry,
+			mesh.matrixWorld,
 		);
 	}
 

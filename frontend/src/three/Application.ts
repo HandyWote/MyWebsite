@@ -22,6 +22,7 @@ THREE.ColorManagement.enabled = false;
 export class Application implements ThreeExperience {
 	private readonly scene = new THREE.Scene();
 	private readonly cssScene = new THREE.Scene();
+	private readonly paperCssScene = new THREE.Scene();
 	private readonly tweens = new Group();
 	private readonly sizes = new Sizes();
 	private readonly mouse = new Mouse();
@@ -51,16 +52,19 @@ export class Application implements ThreeExperience {
 		this.renderer = new Renderer(
 			options.webglMount,
 			options.cssMount,
+			options.paperMount,
 			this.sizes,
 		);
 		this.camera.createControls(this.renderer.webgl.domElement);
 		this.world = new World(
 			this.scene,
 			this.cssScene,
+			this.paperCssScene,
 			this.resources,
 			this.camera,
 			this.tweens,
 			options.screenHost,
+			options.paperHost,
 			options.parkingNode,
 			options.onComputerError,
 			options.onComputerReady,
@@ -115,6 +119,8 @@ export class Application implements ThreeExperience {
 		disposeObject(this.scene);
 		this.scene.clear();
 		this.cssScene.clear();
+		disposeObject(this.paperCssScene);
+		this.paperCssScene.clear();
 		this.renderer.destroy();
 		this.sizes.destroy();
 	}
@@ -130,6 +136,6 @@ export class Application implements ThreeExperience {
 		this.tweens.update();
 		this.camera.update();
 		this.world.update();
-		this.renderer.render(this.scene, this.cssScene, this.camera);
+		this.renderer.render(this.scene, this.cssScene, this.paperCssScene, this.camera);
 	}
 }

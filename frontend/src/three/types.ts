@@ -65,7 +65,9 @@ export type ThreeExperience = {
 export type ThreeExperienceOptions = {
   webglMount: HTMLElement;
   cssMount: HTMLElement;
+  paperMount: HTMLElement;
   screenHost: HTMLElement;
+  paperHost: HTMLElement;
   parkingNode: HTMLElement;
   onComputerError(error: Error): void;
   onComputerReady(): void;

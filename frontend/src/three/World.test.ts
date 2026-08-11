@@ -1,5 +1,6 @@
 import { Group } from "@tweenjs/tween.js";
 import * as THREE from "three";
+import { CSS3DObject } from "three/examples/jsm/renderers/CSS3DRenderer.js";
 import { describe, expect, it, vi } from "vitest";
 import type { Camera } from "./Camera";
 import { Resources } from "./Resources";
@@ -55,10 +56,12 @@ function setup(sourceList: readonly ResourceSource[]) {
 	const resources = new Resources(sourceList, loader);
 	const scene = new THREE.Scene();
 	const cssScene = new THREE.Scene();
+	const paperCssScene = new THREE.Scene();
 	const parking = document.createElement("div");
 	const host = document.createElement("div");
 	host.id = "screen-host";
 	parking.appendChild(host);
+	const paperHost = document.createElement("div");
 	document.body.appendChild(parking);
 	const camera = {
 		instance: new THREE.PerspectiveCamera(),
@@ -71,10 +74,12 @@ function setup(sourceList: readonly ResourceSource[]) {
 	const world = new World(
 		scene,
 		cssScene,
+		paperCssScene,
 		resources,
 		camera,
 		new Group(),
 		host,
+		paperHost,
 		parking,
 		computerError,
 		ready,
@@ -84,12 +89,14 @@ function setup(sourceList: readonly ResourceSource[]) {
 		resources,
 		scene,
 		cssScene,
+		paperCssScene,
 		modelLoads,
 		textureLoads,
 		ready,
 		computerError,
 		world,
 		host,
+		paperHost,
 		camera,
 	};
 }
@@ -189,6 +196,20 @@ describe("World progressive creation", () => {
 			expect.objectContaining({ x: 1, y: 2, z: 3 }),
 			expect.any(THREE.Vector3),
 		);
+		// The transparent CSS3D game-mount overlay follows the paper mesh, in the
+		// paper-dedicated CSS layer (second CSS3DRenderer), not the monitor's
+		// cssScene.
+		const overlay = setupResult.paperCssScene.children.find(
+			(child) => child instanceof CSS3DObject,
+		) as CSS3DObject | undefined;
+		expect(overlay).toBeDefined();
+		expect(overlay!.element).toBe(setupResult.paperHost);
+		expect(overlay!.element).toBeInstanceOf(HTMLElement);
+		expect(
+			setupResult.cssScene.children.some(
+				(child) => child instanceof CSS3DObject,
+			),
+		).toBe(false);
 	});
 
 	it("derives the paper content-up direction from its UVs", async () => {
@@ -259,5 +280,10 @@ describe("World progressive creation", () => {
 
 		expect(setupResult.world.getPaperMesh()).toBeNull();
 		expect(setupResult.camera.setPaperTarget).not.toHaveBeenCalled();
+		expect(
+			setupResult.paperCssScene.children.some(
+				(child) => child instanceof CSS3DObject,
+			),
+		).toBe(false);
 	});
 });
