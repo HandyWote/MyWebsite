@@ -16,8 +16,8 @@ export type CameraKey =
 // baked GLB geometry (×900 scene scale); World.refreshes them from the loaded
 // model via Camera.setPaperTarget.
 export const PAPER_CENTER = new THREE.Vector3(-2063.7, -444.6, 986.4);
-// Camera sits above the paper so it fills ~65% of the view height at fov 35°.
-export const PAPER_VIEW_DISTANCE = 2600;
+// Camera sits above the paper so it fills ~82% of the view height at fov 35°.
+export const PAPER_VIEW_DISTANCE = 1690;
 // A 1.1° horizontal tilt keeps lookAt well away from the degenerate case where
 // the view direction is parallel to the up vector (NaN otherwise); it is
 // visually indistinguishable from a perfectly perpendicular view.

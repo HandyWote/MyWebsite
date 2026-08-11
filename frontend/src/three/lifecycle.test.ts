@@ -95,7 +95,7 @@ describe("runtime lifecycle services", () => {
 
 		// Camera sits above the paper and looks straight down at its center.
 		expect(paper.focalPoint).toEqual(center);
-		expect(paper.position.distanceTo(center)).toBeGreaterThan(2500);
+		expect(paper.position.distanceTo(center)).toBeGreaterThan(1500);
 		// The view direction must stay away from the degenerate up-parallel case.
 		const view = paper.position.clone().sub(paper.focalPoint).normalize();
 		expect(Math.abs(paper.up.dot(view))).toBeLessThan(1e-4);
