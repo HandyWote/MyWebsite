@@ -39,10 +39,9 @@ jobs:
             set -euo pipefail
             cd "$DEPLOY_PATH"
             # The deploy host only pulls and runs; local edits are never
-            # intentional. The NAS ACL layer may rewrite file modes, so
-            # stop git from treating permission bits as changes, then
-            # force the checkout to discard any dirty worktree state.
-            git config core.filemode false
+            # intentional, so force the checkout to discard dirty state.
+            # (core.filemode=false is set locally on the host so NAS ACL
+            # mode rewrites are not seen as changes.)
             git fetch --tags origin
             git checkout --detach --force "$DEPLOY_REF"
             # Images are built on GitHub Actions and pushed to the Gitea
