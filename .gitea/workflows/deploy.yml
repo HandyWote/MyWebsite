@@ -3,8 +3,8 @@ name: Deploy
 on:
   workflow_dispatch:
     inputs:
-      ref:
-        description: Git tag or commit to deploy
+      deploy_ref:
+        description: Git tag, branch, or commit to deploy
         required: true
         type: string
 
@@ -16,7 +16,7 @@ jobs:
         id: deploy-ref
         env:
           EVENT_NAME: ${{ github.event_name }}
-          MANUAL_REF: ${{ inputs.ref }}
+          MANUAL_REF: ${{ inputs.deploy_ref }}
           PUSH_REF: ${{ github.ref_name }}
         run: |
           if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
@@ -42,8 +42,15 @@ jobs:
             # intentional, so force the checkout to discard dirty state.
             # (core.filemode=false is set locally on the host so NAS ACL
             # mode rewrites are not seen as changes.)
+            # Gitea may deliver a branch ref (refs/heads/...) instead of
+            # the typed value; map it to the remote branch so we never
+            # check out a stale local branch. Tags/commits pass through.
             git fetch --tags origin
-            git checkout --detach --force "$DEPLOY_REF"
+            case "$DEPLOY_REF" in
+              refs/heads/*) CHECKOUT_REF="origin/${DEPLOY_REF#refs/heads/}" ;;
+              *)            CHECKOUT_REF="$DEPLOY_REF" ;;
+            esac
+            git checkout --detach --force "$CHECKOUT_REF"
             # Images are built on GitHub Actions and pushed to the Gitea
             # registry; the server only pulls. Requires a one-time
             # `docker login git.unself.cn` on the deploy host.
