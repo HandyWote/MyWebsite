@@ -73,6 +73,47 @@ function envelope(data) {
   return JSON.stringify({ code: 0, data });
 }
 
+// --- P1 auth mock 状态 ---
+
+const ADMIN_USERNAME = 'admin';
+const ADMIN_PASSWORD = 'admin-pass';
+const GITHUB_TOKEN = 'mock-github-token';
+const ADMIN_TOKEN = 'mock-admin-token';
+const GITHUB_USER = {
+  username: 'e2e-github-user',
+  provider: 'github',
+  avatar_url: 'https://avatars.example/e2e-github-user.png',
+  display_name: 'E2E GitHub User',
+};
+
+// 一次性 code → { redirectTo, user }（模拟后端内存单次消费语义）。
+const oneTimeCodes = new Map();
+let githubEnabled = true;
+let codeSequence = 0;
+
+function readBody(request) {
+  return new Promise((resolve) => {
+    let body = '';
+    request.on('data', (chunk) => {
+      body += chunk;
+    });
+    request.on('end', () => resolve(body));
+  });
+}
+
+function bearerToken(request) {
+  const header = request.headers.authorization || '';
+  return header.startsWith('Bearer ') ? header.slice(7) : '';
+}
+
+function userForToken(token) {
+  if (token === GITHUB_TOKEN) return GITHUB_USER;
+  if (token === ADMIN_TOKEN) {
+    return { username: ADMIN_USERNAME, provider: 'password' };
+  }
+  return null;
+}
+
 function sendJson(response, status, body) {
   response.writeHead(status, {
     'content-type': 'application/json; charset=utf-8',
@@ -81,8 +122,110 @@ function sendJson(response, status, body) {
   response.end(typeof body === 'string' ? body : envelope(body));
 }
 
-const server = http.createServer((request, response) => {
+const server = http.createServer(async (request, response) => {
   const url = new URL(request.url || '/', `http://127.0.0.1:${port}`);
+
+  // --- P1 auth mock（模拟 GitHub OAuth 与密码登录） ---
+
+  if (url.pathname === '/api/__mock/config' && request.method === 'POST') {
+    // 测试控制端点：切换 GitHub OAuth 可用性（模拟后端未配置降级）。
+    const payload = JSON.parse((await readBody(request)) || '{}');
+    if (typeof payload.github_enabled === 'boolean') {
+      githubEnabled = payload.github_enabled;
+    }
+    sendJson(response, 200, { github_enabled: githubEnabled });
+    return;
+  }
+
+  if (url.pathname === '/api/auth/github/authorize') {
+    // 真实后端：未配置 → 400 提示；配置后重定向到 GitHub。
+    // mock 直接 302 回站内 /auth/callback（code 单次有效），模拟完整往返。
+    if (!githubEnabled) {
+      sendJson(
+        response,
+        400,
+        JSON.stringify({ code: 400, error: 'github oauth not configured' }),
+      );
+      return;
+    }
+    const redirectTo = url.searchParams.get('redirect_to') || '/';
+    const code = `mock-github-code-${++codeSequence}`;
+    oneTimeCodes.set(code, { redirectTo, user: GITHUB_USER });
+    response.writeHead(302, { location: `/auth/callback?code=${code}` });
+    response.end();
+    return;
+  }
+
+  if (url.pathname === '/api/auth/exchange' && request.method === 'POST') {
+    const payload = JSON.parse((await readBody(request)) || '{}');
+    const entry = oneTimeCodes.get(payload.code);
+    if (!entry) {
+      sendJson(
+        response,
+        401,
+        JSON.stringify({ code: 401, error: 'invalid or expired code' }),
+      );
+      return;
+    }
+    oneTimeCodes.delete(payload.code);
+    sendJson(response, 200, {
+      token: GITHUB_TOKEN,
+      user: entry.user,
+      redirect_to: entry.redirectTo,
+    });
+    return;
+  }
+
+  if (url.pathname === '/api/admin/login' && request.method === 'POST') {
+    const payload = JSON.parse((await readBody(request)) || '{}');
+    if (payload.username === ADMIN_USERNAME && payload.password === ADMIN_PASSWORD) {
+      sendJson(response, 200, {
+        token: ADMIN_TOKEN,
+        user: { username: ADMIN_USERNAME },
+      });
+    } else {
+      sendJson(
+        response,
+        401,
+        JSON.stringify({ code: 401, error: 'Invalid username or password' }),
+      );
+    }
+    return;
+  }
+
+  if (url.pathname === '/api/auth/me') {
+    const user = userForToken(bearerToken(request));
+    if (!user) {
+      sendJson(response, 401, JSON.stringify({ code: 401, error: 'not authenticated' }));
+      return;
+    }
+    sendJson(response, 200, user);
+    return;
+  }
+
+  if (url.pathname === '/api/admin/verify') {
+    // 后端注册为 admin.GET("/verify")：authApi.verify 走 GET + Bearer。
+    const user = userForToken(bearerToken(request));
+    if (!user) {
+      sendJson(response, 401, JSON.stringify({ code: 401, error: 'invalid token' }));
+      return;
+    }
+    sendJson(response, 200, { valid: true });
+    return;
+  }
+
+  if (url.pathname === '/api/admin/logout' && request.method === 'POST') {
+    sendJson(response, 200, { message: 'Logout successful' });
+    return;
+  }
+
+  if (url.pathname === '/api/admin/avatars') {
+    // admin 侧边栏页（头像管理）加载用；避免 mock 404 产生未处理 rejection。
+    sendJson(response, 200, []);
+    return;
+  }
+
+  // --- 原有公开接口 ---
 
   if (url.pathname === '/api/site-blocks') {
     sendJson(response, 200, siteBlocks);

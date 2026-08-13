@@ -39,7 +39,9 @@ test("paper mask renders in a dedicated CSS3D layer above the canvas", async ({
 			rendererInsidePaperMount: renderer.parentElement === mount,
 			monitorRendererInsideCssMount: monitorRenderer.parentElement === cssMount,
 			distinctRenderers: renderer !== monitorRenderer,
-			paperHostInPaperRenderer: paperHost.parentElement === renderer,
+			paperHostInPaperRenderer: paperHost.closest(
+				'[data-three-css-renderer="paper"]',
+			) === renderer,
 			paperAttached: paperHost.getAttribute("data-three-paper-attached"),
 			paperMountZ: getComputedStyle(mount).zIndex,
 			webglMountZ: getComputedStyle(webglMount).zIndex,
