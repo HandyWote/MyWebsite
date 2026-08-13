@@ -62,11 +62,11 @@ JWT claims：`{ username, provider, exp }`。`GenerateToken(username, provider, 
 
 | 输入 | 行为与提示 |
 |---|---|
-| `login` / `login github` | 已登录 → `already logged in as <user>, use logout first`；未配置 → `github oauth not configured, try: login -u <username>`；正常 → 输出 `opening GitHub authorization…` 后 `window.location.href = '/api/auth/github/authorize?redirect_to=<当前路径>'` |
+| `login` / `login github` | 已登录 → `already logged in as <user>, use logout first`；未配置 → `github oauth not configured`（不引导 `login -u`）；正常 → 输出 `opening GitHub authorization…` 后 `window.location.href = '/api/auth/github/authorize?redirect_to=<当前路径>'` |
 | `login -u` / `login -u <用户名>` | 进入掩码模式，提示 `password:`；空回车/Esc 取消回命令模式；提交期间禁用输入；失败输出 `invalid credentials` 可重试；成功存 token → `router.push('/admin')` |
 | `whoami` | 已登录 → `<username> (github\|admin)`；未登录 → `not logged in` |
 | `logout` | 清 token → `logged out`；未登录 → `not logged in` |
-| `help` | 追加 login / login -u / logout / whoami 四行 |
+| `help` | 追加 login / logout / whoami 三行（不展示 `login -u`，访客不暴露管理员入口） |
 
 提示符：`guest@<cwd> $` ↔ `<username>@<cwd> $`。登录态由 `useSession` hook 提供（localStorage token + `/api/auth/me` 缓存，admin 与公共端共用；401 静默清 token 不跳页，跳页由调用方负责）。
 

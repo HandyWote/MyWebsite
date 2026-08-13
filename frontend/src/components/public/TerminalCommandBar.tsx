@@ -20,7 +20,6 @@ const HELP_LINES = [
 	"  clear             clear terminal output",
 	"  help              show this help",
 	"  login              sign in with GitHub",
-	"  login -u <user>    admin password login",
 	"  logout             sign out",
 	"  whoami             show current user",
 ];
@@ -69,7 +68,6 @@ export function TerminalCommandBar({
 		...articles.map((article) => `open ${article.title}`),
 		"login",
 		"login github",
-		"login -u",
 		"logout",
 		"whoami",
 	]);

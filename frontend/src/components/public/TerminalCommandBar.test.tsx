@@ -480,9 +480,6 @@ describe("TerminalCommandBar", () => {
 			expect(
 				screen.getByText("login sign in with GitHub"),
 			).toBeInTheDocument();
-			expect(
-				screen.getByText("login -u <user> admin password login"),
-			).toBeInTheDocument();
 			expect(screen.getByText("logout sign out")).toBeInTheDocument();
 			expect(
 				screen.getByText("whoami show current user"),
@@ -493,11 +490,10 @@ describe("TerminalCommandBar", () => {
 			renderBar({ commands: [] });
 			type("log");
 			const options = screen.getAllByRole("option");
-			expect(options).toHaveLength(4);
+			expect(options).toHaveLength(3);
 			expect(options.map((option) => option.textContent)).toEqual([
 				"▸login",
 				"login github",
-				"login -u",
 				"logout",
 			]);
 			pressKey("Tab");

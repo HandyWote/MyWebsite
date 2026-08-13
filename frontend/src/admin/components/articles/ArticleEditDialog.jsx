@@ -271,7 +271,7 @@ const ArticleEditDialogForm = ({ open, isEdit, article, onClose, onSave }) => {
           </AdminDialogSection>
 
           <AdminDialogSection title="封面与媒体" subtitle="上传封面图片，增强文章的视觉表现">
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ xs: 'stretch', sm: 'center' }}>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ alignItems: { xs: 'stretch', sm: 'center' } }}>
               <Button variant="outlined" component="label" startIcon={<UploadFileIcon />} disabled={coverUploading}>
                 上传封面
                 <input type="file" accept="image/*" hidden onChange={handleUploadCover} />
@@ -297,7 +297,7 @@ const ArticleEditDialogForm = ({ open, isEdit, article, onClose, onSave }) => {
             subtitle="根据标题与正文自动生成分类、标签和摘要"
             icon={<SmartToyIcon color="primary" sx={{ fontSize: 28 }} />}
           >
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ xs: 'stretch', sm: 'center' }}>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ alignItems: { xs: 'stretch', sm: 'center' } }}>
               <Tooltip title="需要填写标题和内容才能进行AI分析">
                 <span>
                   <Button
