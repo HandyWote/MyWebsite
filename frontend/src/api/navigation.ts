@@ -1,4 +1,4 @@
 export function redirectToLogin(): void {
-	window.history.replaceState(null, "", "/admin/login");
+	window.history.replaceState(null, "", "/");
 	window.location.reload();
 }

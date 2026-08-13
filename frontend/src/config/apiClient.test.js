@@ -113,7 +113,7 @@ describe('apiClient (unified)', () => {
   });
 
   describe('401 interception', () => {
-    it('should clear auth and redirect to /admin/login on 401', async () => {
+    it('should clear auth and redirect home on 401', async () => {
       localStorageMock.setItem('token', 'expired-token');
       globalThis.fetch.mockResolvedValueOnce({
         ok: false,

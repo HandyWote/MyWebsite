@@ -3,7 +3,7 @@
 import { Alert, Box, CircularProgress } from '@mui/material';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState, type ReactNode } from 'react';
-import { clearAuth, saveRedirectPath, verifyToken } from '@/admin/utils/auth';
+import { clearAuth, verifyToken } from '@/admin/utils/auth';
 
 export default function RequireAuth({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -19,9 +19,9 @@ export default function RequireAuth({ children }: { children: ReactNode }) {
         return;
       }
       clearAuth();
-      saveRedirectPath(pathname);
-      setState({ loading: false, valid: false, error: result.error || '登录已过期，请重新登录' });
-      router.replace(`/admin/login?message=${encodeURIComponent(result.error || '登录已过期，请重新登录')}`);
+      const message = result.error || '登录已过期，请重新登录';
+      setState({ loading: false, valid: false, error: message });
+      router.replace(`/?message=${encodeURIComponent(message)}`);
     });
     return () => { active = false; };
   }, [pathname, router]);
