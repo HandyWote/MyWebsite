@@ -20,6 +20,11 @@ export const API_ENDPOINTS = {
     AVATAR_FILE: (filename: string) => `/api/avatars/file/${encodeMediaPath(filename)}`,
     ARTICLE_PDF: (filename: string) => `/api/articles/pdf/${encodeMediaPath(filename)}`,
   },
+  AUTH: {
+    GITHUB_AUTHORIZE: '/api/auth/github/authorize',
+    EXCHANGE: '/api/auth/exchange',
+    ME: '/api/auth/me',
+  },
   ADMIN: {
     LOGIN: '/api/admin/login',
     LOGOUT: '/api/admin/logout',
