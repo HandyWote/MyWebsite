@@ -47,6 +47,13 @@ type Config struct {
 	JWTAccessTokenExpires   int
 	JWTRememberTokenExpires int
 
+	GithubOAuthClientID     string
+	GithubOAuthClientSecret string
+	GithubOAuthRedirectURI  string
+
+	LoginRateLimitMax           int
+	LoginRateLimitWindowMinutes int
+
 	CommentLimitEnabled     bool
 	CommentLimitTimeWindow  int
 	CommentLimitMaxCount    int
@@ -94,6 +101,13 @@ func LoadConfig() *Config {
 
 		JWTAccessTokenExpires:   getEnvInt("JWT_ACCESS_TOKEN_EXPIRES", 86400),
 		JWTRememberTokenExpires: getEnvInt("JWT_REMEMBER_TOKEN_EXPIRES", 604800),
+
+		GithubOAuthClientID:     getEnv("GITHUB_OAUTH_CLIENT_ID", ""),
+		GithubOAuthClientSecret: getEnv("GITHUB_OAUTH_CLIENT_SECRET", ""),
+		GithubOAuthRedirectURI:  getEnv("GITHUB_OAUTH_REDIRECT_URI", ""),
+
+		LoginRateLimitMax:           getEnvInt("LOGIN_RATE_LIMIT_MAX", 5),
+		LoginRateLimitWindowMinutes: getEnvInt("LOGIN_RATE_LIMIT_WINDOW_MINUTES", 15),
 
 		CommentLimitEnabled:     getEnv("COMMENT_LIMIT_ENABLED", "true") == "true",
 		CommentLimitTimeWindow:  getEnvInt("COMMENT_LIMIT_TIME_WINDOW", 24),

@@ -72,3 +72,47 @@ func TestLoadConfigAllowsEmptyCORSForProductionSameOrigin(t *testing.T) {
 	t.Setenv("CORS_ALLOWED_ORIGINS", "")
 	assert.Empty(t, LoadConfig().CORSAllowedOrigins)
 }
+
+func TestLoadConfig_GithubOAuthDefaults(t *testing.T) {
+	os.Unsetenv("GITHUB_OAUTH_CLIENT_ID")
+	os.Unsetenv("GITHUB_OAUTH_CLIENT_SECRET")
+	os.Unsetenv("GITHUB_OAUTH_REDIRECT_URI")
+
+	config := LoadConfig()
+
+	assert.Equal(t, "", config.GithubOAuthClientID, "默认 GitHub OAuth Client ID 应为空")
+	assert.Equal(t, "", config.GithubOAuthClientSecret, "默认 GitHub OAuth Client Secret 应为空")
+	assert.Equal(t, "", config.GithubOAuthRedirectURI, "默认 GitHub OAuth 回调地址应为空")
+}
+
+func TestLoadConfig_GithubOAuthFromEnv(t *testing.T) {
+	t.Setenv("GITHUB_OAUTH_CLIENT_ID", "test-client-id")
+	t.Setenv("GITHUB_OAUTH_CLIENT_SECRET", "test-client-secret")
+	t.Setenv("GITHUB_OAUTH_REDIRECT_URI", "https://example.com/api/auth/github/callback")
+
+	config := LoadConfig()
+
+	assert.Equal(t, "test-client-id", config.GithubOAuthClientID)
+	assert.Equal(t, "test-client-secret", config.GithubOAuthClientSecret)
+	assert.Equal(t, "https://example.com/api/auth/github/callback", config.GithubOAuthRedirectURI)
+}
+
+func TestLoadConfig_LoginRateLimitDefaults(t *testing.T) {
+	os.Unsetenv("LOGIN_RATE_LIMIT_MAX")
+	os.Unsetenv("LOGIN_RATE_LIMIT_WINDOW_MINUTES")
+
+	config := LoadConfig()
+
+	assert.Equal(t, 5, config.LoginRateLimitMax, "默认登录限流次数应为 5")
+	assert.Equal(t, 15, config.LoginRateLimitWindowMinutes, "默认登录限流窗口应为 15 分钟")
+}
+
+func TestLoadConfig_LoginRateLimitFromEnv(t *testing.T) {
+	t.Setenv("LOGIN_RATE_LIMIT_MAX", "10")
+	t.Setenv("LOGIN_RATE_LIMIT_WINDOW_MINUTES", "30")
+
+	config := LoadConfig()
+
+	assert.Equal(t, 10, config.LoginRateLimitMax)
+	assert.Equal(t, 30, config.LoginRateLimitWindowMinutes)
+}

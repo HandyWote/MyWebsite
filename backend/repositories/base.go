@@ -30,6 +30,7 @@ type UnitOfWork struct {
 	Avatars    *AvatarRepository
 	AISettings *AISettingRepository
 	Outbox     *RevalidationOutboxRepository
+	Users      *UserRepository
 }
 
 func newUnitOfWork(tx *gorm.DB) *UnitOfWork {
@@ -40,6 +41,7 @@ func newUnitOfWork(tx *gorm.DB) *UnitOfWork {
 		Avatars:    NewAvatarRepository(tx),
 		AISettings: NewAISettingRepository(tx),
 		Outbox:     NewRevalidationOutboxRepository(tx),
+		Users:      NewUserRepository(tx),
 	}
 }
 

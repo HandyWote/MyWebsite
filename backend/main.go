@@ -76,6 +76,7 @@ func runDatabaseMigrations(db *gorm.DB) error {
 		&models.AISetting{},
 		&models.RevalidationOutbox{},
 		&models.MediaDeleteTask{},
+		&models.User{},
 	); err != nil {
 		return fmt.Errorf("auto migrate schema: %w", err)
 	}

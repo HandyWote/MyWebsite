@@ -121,3 +121,20 @@ type MediaDeleteTask struct {
 func (MediaDeleteTask) TableName() string {
 	return "media_delete_tasks"
 }
+
+// User represents an OAuth identity (currently GitHub). Provider/ProviderID
+// pair is unique; profile fields are display-only and refreshed on each login.
+type User struct {
+	ID          uint      `gorm:"primaryKey" json:"id"`
+	Provider    string    `gorm:"size:32;not null;uniqueIndex:idx_user_provider" json:"provider"`
+	ProviderID  string    `gorm:"size:64;not null;uniqueIndex:idx_user_provider" json:"provider_id"`
+	Username    string    `gorm:"size:64" json:"username"`
+	DisplayName string    `gorm:"size:128" json:"display_name"`
+	AvatarURL   string    `gorm:"size:512" json:"avatar_url"`
+	Email       string    `gorm:"size:255" json:"email"` // 可空，无唯一约束
+	LastLoginAt time.Time `json:"last_login_at"`
+}
+
+func (User) TableName() string {
+	return "users"
+}
