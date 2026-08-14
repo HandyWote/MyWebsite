@@ -92,6 +92,15 @@ JWT claims：`{ username, provider, exp }`。`GenerateToken(username, provider, 
 | F5 | 前端：e2e mock-backend 扩展 + 全量测试 | F2, F3, F4 |
 | V1 | 收尾：全量验证 + 生产 GitHub App 对齐 + 测试记录清理 | B6, F5 |
 
+### 5.1 合并后修正（实施中发现）
+
+- **移除 `remember` 字段**：`authApi.login` 请求体类型（`authApi.ts`）与终端登录调用（`TerminalCommandBar.tsx`）中的 `remember: false` 是无效参数——后端 `POST /api/auth/login`（`routes/auth.go`）只绑定 `username`/`password`，从不解析该字段，登录态一律 localStorage 持久化（`useSession`，刷新不丢、JWT 默认 24h 过期后降级 guest）。删除字段类型、调用处传参与 `TerminalCommandBar.test.tsx` / `authApi.test.ts` 中对应的请求体断言，保持前端契约与后端一致；后端无改动。
+- **终端输入框自动聚焦（已回退）**：`TerminalCommandBar` 的真实 input（透明覆盖层）目前无任何聚焦逻辑（无 `autoFocus`/`ref`），用户进入页面后焦点不在输入框。曾试修复：input 挂 `ref`，mount 后 `useEffect` 聚焦。**回退原因**：与下方"终端聚焦守护"一同撤销——mount 聚焦对 3D 接管后失焦无效，且配套守护误抢评论框焦点。保留记录备查，方案见下方"聚焦守护"条目的 v2 方向。
+- **文章详情光标位置**：`app/(public)/articles/[id]/page.tsx` 的闪烁光标（`cursor-blink` Box）是 `h1` 标题的**兄弟节点**，块级标题自带 `mb: 2`，光标因此落在标题下方独立一行（带 16px 空隙），不符合"光标紧跟刚打出的标题"的终端语义。修复：把光标 Box 移入 `Typography h1` 内部、标题文本之后，内联在标题行末尾；共享 CSS（`.cursor-blink::after`）不动，终端栏不受影响。补测试断言（光标位于 h1 内）。
+- **光标尺寸统一 em 化**：两处光标块都是固定 `width: 8, height: 16`（px），与各自字号不匹配——终端栏字号 `0.8125rem`（16px 块比 13px 字还高），文章标题 `variant="h2"`（≈48px，8×16 块太小，且 `::after` 的 `_` 继承 h1 字号后与块大小分裂）。修复：两处光标 Box 尺寸改 `em` 相对单位（`height: "1.2em"`、`width: "0.55em"`、`ml: "0.15em"`），块与下划线随容器字号同步缩放，比例与终端一致。
+- **终端聚焦守护（已回退，留 v2 方向）**：mount 时 `useEffect` 聚焦后，桌面 3D 模式下 `CSS3DRenderer` 会把 `#screen-host`（含输入框）移入其 DOM 树（`appendChild` = 先 remove 再 append），焦点元素脱离文档时被浏览器 blur 到 body；曾试修复：`focusout` 监听（capture），`document.activeElement` 落回 `body` 时抢回终端输入框。**回退原因**：① 抢回发生在元素 detached 期间，`focus()` 对脱离文档的元素无效，3D 失焦未救回；② 评论框等输入区同样受 3D 干扰失焦时，守护一律抢回终端，导致评论无法输入。**v2 方向（暂缓）**：a) focusout 后 `requestAnimationFrame` 延迟抢回（等 remove→append 完成、元素重新挂载）；b) `pointerdown` 记录用户最后点击的输入元素，失焦 1s 内把焦点还给该元素而非终端；c) 点击终端栏区域（非输入区）聚焦终端；d) 可选 MutationObserver 观察 `#screen-host` 父节点变化兜底。
+- **评论复用 GitHub 身份**：评论系统（`CommentSection.jsx` + 后端 `CreateComment`）未接入登录态，GitHub 登录后仍强制手填 `$ name`，头像只显示首字母。修复：后端 `Comment` 表加 `avatar_url` 列（仅存 GitHub 头像**链接**，不存文件）；`CreateComment` 带有效 JWT 时查 `users` 表，用 GitHub 用户的 `DisplayName`/`AvatarURL` 覆盖 `author`/头像（防伪造）；匿名不带 token 照旧可评。前端 `CommentSection` 接 `useSession`：GitHub 登录后隐藏 `$ name` 输入框，提交自动带用户名 + 头像；评论列表有 `avatar_url` 渲染 `<Avatar src>`，否则首字母回退。
+
 ## 6. 实施顺序与并行
 
 ```
