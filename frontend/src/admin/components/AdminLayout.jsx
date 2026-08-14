@@ -5,7 +5,7 @@ import { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Box, AppBar, Toolbar, Typography, Tabs, Tab, Button, useMediaQuery, Divider } from '@mui/material';
 import { Database, FileText, MessageSquare, Settings, LogOut } from 'lucide-react';
-import { verifyToken, clearAuth, saveRedirectPath } from '../utils/auth';
+import { verifyToken, clearAuth } from '../utils/auth';
 import { api, API_ENDPOINTS } from '../../config/api';
 import { colors, typography } from '../../components/pixel/tokens';
 import NotificationSnackbar from '../../components/NotificationSnackbar';
@@ -32,8 +32,7 @@ export default function AdminLayout({ children }) {
       const result = await verifyToken();
       if (!result.valid) {
         clearAuth();
-        saveRedirectPath(pathname);
-        router.replace('/admin/login?message=' + encodeURIComponent('登录已过期，请重新登录'));
+        router.replace('/?message=' + encodeURIComponent('登录已过期，请重新登录'));
       }
     };
 
@@ -53,7 +52,7 @@ export default function AdminLayout({ children }) {
       // 即使后端登出失败，前端也清除认证
     }
     clearAuth();
-    router.replace('/admin/login');
+    router.replace('/');
   };
 
   const renderTabs = (orientation = 'vertical') => (

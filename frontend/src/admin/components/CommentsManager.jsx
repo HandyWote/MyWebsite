@@ -33,7 +33,7 @@ const PER_PAGE = 10;
 
 const StatItem = ({ value, label, color }) => (
   <AdminFieldGridItem size={{ xs: 12, sm: 3 }}>
-    <Box textAlign="center">
+    <Box sx={{ textAlign: 'center' }}>
       <Typography variant="h4" color={color}>{value}</Typography>
       <Typography variant="body2" color="text.secondary">{label}</Typography>
     </Box>
@@ -152,12 +152,14 @@ export default function CommentsManager() {
                 placeholder="搜索评论内容、作者、IP地址..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SearchIcon />
-                    </InputAdornment>
-                  ),
+                slotProps={{
+                  input: {
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <SearchIcon />
+                      </InputAdornment>
+                    ),
+                  },
                 }}
               />
             </AdminFieldGridItem>
@@ -174,7 +176,7 @@ export default function CommentsManager() {
               </AdminSelect>
             </AdminFieldGridItem>
             <AdminFieldGridItem size={{ xs: 12, sm: 3 }}>
-              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+              <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
                 <Button
                   variant="outlined"
                   startIcon={<RefreshIcon />}
@@ -197,7 +199,7 @@ export default function CommentsManager() {
 
         {/* 评论列表 */}
         {loading ? (
-          <Box textAlign="center" sx={{ py: 4 }}>
+          <Box sx={{ textAlign: 'center', py: 4 }}>
             <CircularProgress />
           </Box>
         ) : comments.length > 0 ? (

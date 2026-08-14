@@ -64,7 +64,7 @@ const MarkdownUploadPreview = ({
         <Stack
           direction={{ xs: 'column', sm: 'row' }}
           spacing={2}
-          alignItems={{ xs: 'stretch', sm: 'center' }}
+          sx={{ alignItems: { xs: 'stretch', sm: 'center' } }}
         >
           <Box sx={{ flex: 1 }}>
             <Typography variant="subtitle2" sx={{ mb: 0.5 }}>

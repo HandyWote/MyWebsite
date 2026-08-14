@@ -25,7 +25,6 @@ vi.mock('lucide-react', () => ({
 vi.mock('../utils/auth', () => ({
   verifyToken: vi.fn(async () => ({ valid: true })),
   clearAuth: vi.fn(),
-  saveRedirectPath: vi.fn(),
 }));
 
 vi.mock('../../config/api', () => ({

@@ -109,6 +109,9 @@ describe("article page SEO rendering", () => {
 		expect(html).toContain("Article summary");
 		expect(html).toContain("SEO");
 		expect(html).toContain("next");
+		// 光标内联在 h1 标题文字末尾（紧跟标题文本，不落在标题下方独立一行）。
+		expect(html).toContain("SSR article<span");
+		expect(html).toContain("cursor-blink");
 		expect(html).toContain(
 			'href="https://portfolio.example/uploads/articles/pdfs/paper.pdf"',
 		);

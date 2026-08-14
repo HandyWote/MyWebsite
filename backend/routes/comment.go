@@ -6,7 +6,9 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/handywote/website/config"
+	"github.com/handywote/website/middleware"
 	"github.com/handywote/website/models"
 	"github.com/handywote/website/utils"
 )
@@ -28,6 +30,31 @@ func GetComments(c *gin.Context) {
 		"comments": comments,
 		"total":    len(comments),
 	})
+}
+
+// commentIdentityUser 解析可选的 Bearer token，返回 GitHub 登录用户；
+// 无 token / token 无效 / 非 github provider（admin 等）一律返回 nil，匿名评论照旧。
+func commentIdentityUser(c *gin.Context) *models.User {
+	authHeader := c.GetHeader("Authorization")
+	tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+	if tokenString == authHeader || tokenString == "" {
+		return nil
+	}
+
+	cfg := config.LoadConfig()
+	claims := &middleware.Claims{}
+	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+		return []byte(cfg.JWTSecretKey), nil
+	})
+	if err != nil || !token.Valid || claims.Provider != "github" {
+		return nil
+	}
+
+	user, lookupErr := meUserLookup(c.Request.Context(), claims.Provider, claims.Username)
+	if lookupErr != nil {
+		return nil
+	}
+	return user
 }
 
 // CreateComment 创建评论
@@ -83,6 +110,15 @@ func CreateComment(c *gin.Context) {
 		IPAddress: identityIP,
 		UserAgent: c.GetHeader("User-Agent"),
 		Status:    "pending",
+	}
+
+	// GitHub 登录用户评论：用服务端身份覆盖 author/头像（防伪造），匿名评论保留手填。
+	if identity := commentIdentityUser(c); identity != nil {
+		comment.Author = identity.DisplayName
+		if comment.Author == "" {
+			comment.Author = identity.Username
+		}
+		comment.AvatarURL = identity.AvatarURL
 	}
 
 	if err := commentService.Create(&comment); err != nil {

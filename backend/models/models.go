@@ -32,6 +32,7 @@ type Comment struct {
 	ArticleID uint      `gorm:"index;not null" json:"article_id"`
 	Author    string    `gorm:"size:100;not null" json:"author"`
 	Email     string    `gorm:"size:255" json:"email"`
+	AvatarURL string    `gorm:"size:512" json:"avatar_url"` // GitHub 头像链接，仅存 URL 不存文件
 	Content   string    `gorm:"type:text;not null" json:"content"`
 	IPAddress string    `gorm:"size:45" json:"ip_address"`            // 记录IP地址
 	UserAgent string    `gorm:"type:text" json:"user_agent"`          // 记录用户代理
@@ -120,4 +121,21 @@ type MediaDeleteTask struct {
 
 func (MediaDeleteTask) TableName() string {
 	return "media_delete_tasks"
+}
+
+// User represents an OAuth identity (currently GitHub). Provider/ProviderID
+// pair is unique; profile fields are display-only and refreshed on each login.
+type User struct {
+	ID          uint      `gorm:"primaryKey" json:"id"`
+	Provider    string    `gorm:"size:32;not null;uniqueIndex:idx_user_provider" json:"provider"`
+	ProviderID  string    `gorm:"size:64;not null;uniqueIndex:idx_user_provider" json:"provider_id"`
+	Username    string    `gorm:"size:64" json:"username"`
+	DisplayName string    `gorm:"size:128" json:"display_name"`
+	AvatarURL   string    `gorm:"size:512" json:"avatar_url"`
+	Email       string    `gorm:"size:255" json:"email"` // 可空，无唯一约束
+	LastLoginAt time.Time `json:"last_login_at"`
+}
+
+func (User) TableName() string {
+	return "users"
 }

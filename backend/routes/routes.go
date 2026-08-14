@@ -51,11 +51,15 @@ func SetupRoutes(r *gin.Engine, cfg *config.Config) error {
 		// Auth
 		api.POST("/auth/login", Login)
 		api.POST("/auth/logout", Logout)
+		api.GET("/auth/me", Me)
+		api.GET("/auth/github/authorize", GithubOAuthAuthorize)
+		api.GET("/auth/github/callback", GithubOAuthCallback)
+		api.POST("/auth/exchange", GithubOAuthExchange)
 	}
 
-	// Admin API (with JWT auth)
+	// Admin API (JWT auth + admin-only: provider 必须为 password，GitHub OAuth 用户一律 403)
 	admin := r.Group("/api/admin")
-	admin.Use(middleware.JWTAuth(cfg.JWTSecretKey))
+	admin.Use(middleware.JWTAuth(cfg.JWTSecretKey), middleware.RequireAdmin())
 	{
 		// Auth
 		admin.GET("/verify", Verify)

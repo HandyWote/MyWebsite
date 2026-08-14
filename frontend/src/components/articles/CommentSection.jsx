@@ -13,6 +13,7 @@ import { api, API_ENDPOINTS, ApiError } from "../../config/api";
 import { formatDateTime } from "../../utils/formatDate";
 import { PixelCard, PixelButton, PixelInput } from "../pixel";
 import useNotification from "../../hooks/useNotification";
+import { useSession } from "../../hooks/useSession";
 
 /**
  * 文章评论区组件。
@@ -25,6 +26,13 @@ export default function CommentSection({ articleId, demoMode = false }) {
 	const [newComment, setNewComment] = useState("");
 	const [commentAuthor, setCommentAuthor] = useState("");
 	const { showNotification, ...snackbarProps } = useNotification();
+	const session = useSession();
+	// GitHub 登录用户评论身份：隐藏手填名字，自动带 GitHub 用户名/头像。
+	const githubUser =
+		session.status === "authed" && session.user?.provider === "github"
+			? session.user
+			: null;
+	const githubAuthor = githubUser?.display_name || githubUser?.username || "";
 
 	const fetchComments = useCallback(async () => {
 		if (!articleId || demoMode) return;
@@ -47,13 +55,19 @@ export default function CommentSection({ articleId, demoMode = false }) {
 	}, [fetchComments]);
 
 	const handleSubmitComment = async () => {
-		if (!newComment.trim() || !commentAuthor.trim() || demoMode) return;
+		if (
+			!newComment.trim() ||
+			(!githubUser && !commentAuthor.trim()) ||
+			demoMode
+		)
+			return;
 
 		try {
 			setSubmittingComment(true);
 			await api.post(API_ENDPOINTS.PUBLIC.CREATE_COMMENT(articleId), {
-				author: commentAuthor.trim(),
-				email: "",
+				author: githubUser ? githubAuthor : commentAuthor.trim(),
+				email: githubUser?.email || "",
+				avatar_url: githubUser?.avatar_url || "",
 				content: newComment.trim(),
 			});
 
@@ -93,14 +107,38 @@ export default function CommentSection({ articleId, demoMode = false }) {
 
 					<Grid container spacing={2} sx={{ mb: 2 }}>
 						<Grid size={{ xs: 12, sm: 6 }}>
-							<PixelInput
-								fullWidth
-								size="small"
-								label="$ name"
-								value={commentAuthor}
-								onChange={(e) => setCommentAuthor(e.target.value)}
-								disabled={demoMode}
-							/>
+							{githubUser ? (
+								<Box
+									sx={{
+										display: "flex",
+										alignItems: "center",
+										gap: 1,
+										minHeight: 56,
+									}}
+								>
+									<Avatar
+										src={githubUser.avatar_url || undefined}
+										sx={{ width: 32, height: 32 }}
+									>
+										{githubAuthor.charAt(0)}
+									</Avatar>
+									<Typography
+										variant="body2"
+										sx={{ fontFamily: "monospace", color: "text.secondary" }}
+									>
+										$ name {githubAuthor} (github)
+									</Typography>
+								</Box>
+							) : (
+								<PixelInput
+									fullWidth
+									size="small"
+									label="$ name"
+									value={commentAuthor}
+									onChange={(e) => setCommentAuthor(e.target.value)}
+									disabled={demoMode}
+								/>
+							)}
 						</Grid>
 					</Grid>
 
@@ -121,7 +159,7 @@ export default function CommentSection({ articleId, demoMode = false }) {
 						disabled={
 							demoMode ||
 							!newComment.trim() ||
-							!commentAuthor.trim() ||
+							(!githubUser && !commentAuthor.trim()) ||
 							submittingComment
 						}
 						onClick={handleSubmitComment}
@@ -141,8 +179,11 @@ export default function CommentSection({ articleId, demoMode = false }) {
 					<Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
 						{comments.map((comment) => (
 							<Box key={comment.id} sx={{ display: "flex", gap: 2 }}>
-								<Avatar sx={{ width: 40, height: 40, bgcolor: "primary.main" }}>
-									{comment.author.charAt(0)}
+								<Avatar
+									src={comment.avatar_url || undefined}
+									sx={{ width: 40, height: 40, bgcolor: "primary.main" }}
+								>
+									{!comment.avatar_url && comment.author.charAt(0)}
 								</Avatar>
 								<Box sx={{ flex: 1 }}>
 									<Box

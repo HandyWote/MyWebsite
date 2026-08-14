@@ -31,10 +31,12 @@ export function AdminPage({ title, subtitle, actions, children, maxWidth = 'lg',
       {(title || subtitle || actions) && (
         <Stack
           direction={{ xs: 'column', sm: 'row' }}
-          alignItems={{ xs: 'stretch', sm: 'flex-start' }}
-          justifyContent="space-between"
           spacing={2}
-          sx={{ mb: 3 }}
+          sx={{
+            mb: 3,
+            alignItems: { xs: 'stretch', sm: 'flex-start' },
+            justifyContent: 'space-between',
+          }}
         >
           <Box sx={{ minWidth: 0 }}>
             {title && (
@@ -72,9 +74,11 @@ export function AdminSection({ icon, title, subtitle, actions, children, spacing
       {(icon || title || subtitle || actions) && (
         <Stack
           direction={{ xs: 'column', sm: 'row' }}
-          alignItems={{ xs: 'stretch', sm: 'flex-start' }}
-          justifyContent="space-between"
           spacing={2}
+          sx={{
+            alignItems: { xs: 'stretch', sm: 'flex-start' },
+            justifyContent: 'space-between',
+          }}
         >
           <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5, minWidth: 0 }}>
             {icon && <Box sx={{ mt: 0.5, flexShrink: 0 }}>{icon}</Box>}

@@ -179,6 +179,7 @@ export interface GameCenterApi {
 ## 后续计划引用
 
 - **P1**：login 命令体系（TerminalCommandBar 掩码输入态 + GitHub OAuth + `-u` env 凭据）、users 表、公共画布版本化（drawing_versions 全量快照 + base_version 乐观锁）、四层审核链（TextDetector 粗筛 → ASCII 96×72 → OCR → 人工 pending）、限流
+  - **子计划已先行落地**：GitHub OAuth 登录 + login 命令体系 → 见 [2026-08-12-p1-github-oauth-login.md](./2026-08-12-p1-github-oauth-login.md)（分支 `feat/p1-github-login`，独立 worktree）
 - **M3D**：空白纸堆抽卡交互（冻结稿 v2.0，见上文第 3 条），技术栈后定
 - **P2**：评论账号化（草稿模式 + login 提醒 + GitHub 头像昵称）
 - **P3**：/members 成员页（GitHub 链接 + SEO）

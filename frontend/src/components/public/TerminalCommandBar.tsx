@@ -3,6 +3,8 @@
 import { Box } from "@mui/material";
 import { useRouter } from "next/navigation";
 import { useState, type KeyboardEvent } from "react";
+import { authApi } from "@/api/authApi";
+import { useSession } from "@/hooks/useSession";
 import { uniqueCommands, type ShellArticle } from "./shellUtils";
 
 const HELP_LINES = [
@@ -17,12 +19,20 @@ const HELP_LINES = [
 	"  exit              leave current article buffer",
 	"  clear             clear terminal output",
 	"  help              show this help",
+	"  login              sign in with GitHub",
+	"  logout             sign out",
+	"  whoami             show current user",
 ];
 
 const normalizeCommand = (value: string) => value.trim().replace(/\s+/g, " ");
 
 const toCommandSlug = (value: string) =>
 	value.trim().toLowerCase().replace(/\s+/g, "-");
+
+/** 整页跳转：模块级函数持有对 window.location 的修改，避免在组件内直接赋值。 */
+function redirectTo(url: string): void {
+	window.location.href = url;
+}
 
 export function TerminalCommandBar({
 	cwd,
@@ -36,20 +46,79 @@ export function TerminalCommandBar({
 	currentArticleId?: number;
 }) {
 	const router = useRouter();
+	const session = useSession();
 	const [command, setCommand] = useState("");
 	const [outputLines, setOutputLines] = useState<string[]>([]);
 	const [activeIndex, setActiveIndex] = useState(0);
+	// 掩码模式：password 模式镜像层渲染 * 遮罩，真实 input 保持透明值。
+	const [inputMode, setInputMode] = useState<"command" | "password">("command");
+	const [password, setPassword] = useState("");
+	// 进入密码模式时记住用户名，`login -u`（不带用户名）缺省复用。
+	const [passwordUsername, setPasswordUsername] = useState("");
+	// 提交期间禁用输入，防连击。
+	const [busy, setBusy] = useState(false);
+
+	const promptUser =
+		session.status === "authed" && session.user
+			? session.user.username
+			: "guest";
 
 	const availableCommands = uniqueCommands([
 		...commands,
 		...articles.map((article) => `open ${article.title}`),
+		"login",
+		"login github",
+		"logout",
+		"whoami",
 	]);
 	const normalizedInput = command.trim().toLowerCase();
-	const visibleCandidates = normalizedInput
-		? availableCommands
-				.filter((item) => item.toLowerCase().includes(normalizedInput))
-				.slice(0, 8)
-		: [];
+	const visibleCandidates =
+		inputMode === "command" && normalizedInput
+			? availableCommands
+					.filter((item) => item.toLowerCase().includes(normalizedInput))
+					.slice(0, 8)
+			: [];
+
+	const startPasswordMode = (username: string) => {
+		setPasswordUsername(username);
+		setPassword("");
+		setInputMode("password");
+		setActiveIndex(0);
+		setOutputLines(["password:"]);
+	};
+
+	const cancelPassword = () => {
+		setInputMode("command");
+		setPassword("");
+		setOutputLines([]);
+	};
+
+	const submitPassword = async () => {
+		if (busy) return;
+		if (!password) {
+			// 空回车取消回命令模式。
+			cancelPassword();
+			return;
+		}
+		setBusy(true);
+		try {
+			const data = await authApi.login({
+				username: passwordUsername,
+				password,
+				remember: false,
+			});
+			session.login(data.token, {
+				username: passwordUsername,
+				provider: "password",
+			});
+			router.push("/admin");
+		} catch {
+			// 失败留在密码模式可重试，清空已输入密码。
+			setBusy(false);
+			setPassword("");
+			setOutputLines(["password:", "invalid credentials"]);
+		}
+	};
 
 	const executeCommand = (rawCommand: string) => {
 		const nextCommand = normalizeCommand(rawCommand);
@@ -57,6 +126,56 @@ export function TerminalCommandBar({
 
 		setCommand("");
 		setActiveIndex(0);
+
+		// login/logout/whoami 大小写与空格归一化后匹配。
+		const commandKey = nextCommand.toLowerCase();
+
+		if (commandKey === "login" || commandKey === "login github") {
+			if (session.status === "authed" && session.user) {
+				setOutputLines([
+					`already logged in as ${session.user.username}, use logout first`,
+				]);
+				return;
+			}
+			setOutputLines(["opening GitHub authorization…"]);
+			// 仅传站内路径（pathname + search）；未配置的 400 降级提示由后端返回。
+			redirectTo(
+				authApi.buildGithubAuthorizeUrl(
+					`${window.location.pathname}${window.location.search}`,
+				),
+			);
+			return;
+		}
+
+		if (commandKey === "login -u" || commandKey.startsWith("login -u ")) {
+			const username =
+				commandKey === "login -u"
+					? passwordUsername
+					: commandKey.slice("login -u ".length).trim();
+			startPasswordMode(username);
+			return;
+		}
+
+		if (commandKey === "logout") {
+			if (session.status === "authed") {
+				session.logout();
+				setOutputLines(["logged out"]);
+			} else {
+				setOutputLines(["not logged in"]);
+			}
+			return;
+		}
+
+		if (commandKey === "whoami") {
+			if (session.status === "authed" && session.user) {
+				const kind =
+					session.user.provider === "password" ? "admin" : "github";
+				setOutputLines([`${session.user.username} (${kind})`]);
+			} else {
+				setOutputLines(["not logged in"]);
+			}
+			return;
+		}
 
 		if (nextCommand === "cd articles/" || nextCommand === "cd articles") {
 			router.push("/articles");
@@ -148,6 +267,19 @@ export function TerminalCommandBar({
 	};
 
 	const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+		if (busy) return;
+
+		if (inputMode === "password") {
+			if (event.key === "Escape") {
+				event.preventDefault();
+				cancelPassword();
+			} else if (event.key === "Enter") {
+				event.preventDefault();
+				void submitPassword();
+			}
+			return;
+		}
+
 		if (event.key === "Tab") {
 			event.preventDefault();
 			completeCommand();
@@ -269,7 +401,7 @@ export function TerminalCommandBar({
 						whiteSpace: "nowrap",
 					}}
 				>
-					Guess@{cwd} $
+					{promptUser}@{cwd} $
 				</Box>
 				<Box
 					sx={{
@@ -282,22 +414,22 @@ export function TerminalCommandBar({
 						fontSize: "0.8125rem",
 					}}
 				>
-					{/* 镜像文本 + 光标（视觉层）：光标紧跟输入内容末尾 */}
+					{/* 镜像文本 + 光标（视觉层）：密码模式渲染 * 遮罩，光标紧跟末尾 */}
 					<Box
 						component="span"
 						aria-hidden="true"
 						sx={{ color: "text.primary", whiteSpace: "pre" }}
 					>
-						{command}
+						{inputMode === "password" ? "*".repeat(password.length) : command}
 						<Box
 							component="span"
 							className="cursor-blink"
 							sx={{
 								display: "inline-block",
-								width: 8,
-								height: 16,
+								width: "0.55em",
+								height: "1.2em",
 								bgcolor: "primary.main",
-								ml: 0.25,
+								ml: "0.15em",
 								flexShrink: 0,
 							}}
 						/>
@@ -306,13 +438,20 @@ export function TerminalCommandBar({
 					<Box
 						id={`command-${cwd}`}
 						component="input"
-						value={command}
+						value={inputMode === "password" ? password : command}
 						onChange={(event) => {
-							setCommand(event.target.value);
-							setActiveIndex(0);
+							if (inputMode === "password") {
+								setPassword(event.target.value);
+							} else {
+								setCommand(event.target.value);
+								setActiveIndex(0);
+							}
 						}}
 						onKeyDown={onKeyDown}
-						aria-label="Terminal command"
+						disabled={busy}
+						aria-label={
+							inputMode === "password" ? "Password" : "Terminal command"
+						}
 						autoComplete="off"
 						spellCheck={false}
 						sx={{

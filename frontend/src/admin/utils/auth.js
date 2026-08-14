@@ -17,13 +17,3 @@ export const verifyToken = async () => {
 		return { valid: false, error: "Token已过期或无效" };
 	}
 };
-
-export const saveRedirectPath = (path) => {
-	sessionStorage.setItem("redirectPath", path);
-};
-
-export const getAndClearRedirectPath = () => {
-	const path = sessionStorage.getItem("redirectPath");
-	sessionStorage.removeItem("redirectPath");
-	return path?.startsWith("/admin") && !path.startsWith("//") ? path : "/admin";
-};
