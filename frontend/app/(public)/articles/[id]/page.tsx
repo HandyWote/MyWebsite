@@ -90,18 +90,18 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
 							sx={{ mb: 2, overflowWrap: "anywhere" }}
 						>
 							{article.title}
+							<Box
+								component="span"
+								className="cursor-blink"
+								sx={{
+									display: "inline-block",
+									width: "0.55em",
+									height: "1.2em",
+									bgcolor: "primary.main",
+									ml: "0.15em",
+								}}
+							/>
 						</Typography>
-						<Box
-							component="span"
-							className="cursor-blink"
-							sx={{
-								display: "inline-block",
-								width: 8,
-								height: 16,
-								bgcolor: "primary.main",
-								ml: 0.5,
-							}}
-						/>
 						<Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", mb: 2 }}>
 							{article.category && <PixelChip label={article.category} />}
 							{tags.map((tag) => (

@@ -426,10 +426,10 @@ export function TerminalCommandBar({
 							className="cursor-blink"
 							sx={{
 								display: "inline-block",
-								width: 8,
-								height: 16,
+								width: "0.55em",
+								height: "1.2em",
 								bgcolor: "primary.main",
-								ml: 0.25,
+								ml: "0.15em",
 								flexShrink: 0,
 							}}
 						/>
