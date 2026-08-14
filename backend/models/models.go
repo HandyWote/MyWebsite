@@ -32,6 +32,7 @@ type Comment struct {
 	ArticleID uint      `gorm:"index;not null" json:"article_id"`
 	Author    string    `gorm:"size:100;not null" json:"author"`
 	Email     string    `gorm:"size:255" json:"email"`
+	AvatarURL string    `gorm:"size:512" json:"avatar_url"` // GitHub 头像链接，仅存 URL 不存文件
 	Content   string    `gorm:"type:text;not null" json:"content"`
 	IPAddress string    `gorm:"size:45" json:"ip_address"`            // 记录IP地址
 	UserAgent string    `gorm:"type:text" json:"user_agent"`          // 记录用户代理
