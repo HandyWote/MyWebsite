@@ -101,6 +101,8 @@ export class PaperScreen {
 	private readonly styleBefore: AttributeSnapshot;
 	private readonly draggableBefore: AttributeSnapshot;
 	private readonly attachedBefore: AttributeSnapshot;
+	private placeholder: HTMLElement | null = null;
+	private hostTransformSnapshot: string | null = null;
 	private destroyed = false;
 
 	constructor(
@@ -167,15 +169,77 @@ export class PaperScreen {
 		);
 	}
 
+	/**
+	 * The invisible stand-in element currently swapped into the CSS3D scene
+	 * while the host lives in a plain 2D layer, or null while attached.
+	 * Exposed so the 2D layer can re-measure the projected AABB (the
+	 * placeholder keeps receiving the renderer-written CSS3D transform).
+	 */
+	get placeholderElement(): HTMLElement | null {
+		return this.placeholder;
+	}
+
+	/**
+	 * Moves the game host out of the CSS3D scene: swaps `object.element` for
+	 * an invisible same-sized placeholder (the renderer keeps writing the 3D
+	 * transform into it, so the projection stays measurable) and clears the
+	 * host's inline transform so a plain 2D layer can position it. All other
+	 * host inline styles (width/height/clip-path/overflow/…) are untouched.
+	 * Idempotent; no-op after destroy.
+	 */
+	detachHost(): void {
+		if (this.destroyed || this.placeholder) return;
+		const snapshot = this.host.style.transform;
+		const placeholder = document.createElement("div");
+		placeholder.dataset.paperPlaceholder = "true";
+		placeholder.style.width = this.host.style.width;
+		placeholder.style.height = this.host.style.height;
+		placeholder.style.position = "absolute";
+		placeholder.style.pointerEvents = "none";
+		placeholder.style.background = "transparent";
+		// Seed with the host's last CSS3D transform: the renderer caches per
+		// object styles and skips rewriting identical transforms after the
+		// element swap, so without this the placeholder would sit untransformed
+		// at the top-left until the camera moves.
+		placeholder.style.transform = snapshot;
+		this.placeholder = placeholder;
+		this.hostTransformSnapshot = snapshot;
+		this.object.element = placeholder;
+		this.host.style.transform = "";
+	}
+
+	/**
+	 * Swaps the host back into the CSS3D scene and restores the transform
+	 * snapshot taken at detach time, so the CSS3D projection picks up exactly
+	 * where the 2D layer left off (the two coincide at the swap instant).
+	 * Idempotent; no-op after destroy.
+	 */
+	reattachHost(): void {
+		if (this.destroyed || !this.placeholder) return;
+		const placeholder = this.placeholder;
+		this.placeholder = null;
+		this.object.element = this.host;
+		this.host.style.transform = this.hostTransformSnapshot ?? "";
+		this.hostTransformSnapshot = null;
+		placeholder.remove();
+	}
+
 	destroy(): void {
 		if (this.destroyed) return;
 		this.destroyed = true;
 
 		// CSS3DObject removes its element from the DOM on the Object3D 'removed'
 		// event. Point it at a sacrificial node before removal so the real host
-		// (possibly reparented by the CSS3D renderer) survives untouched.
+		// (possibly reparented by the CSS3D renderer or a 2D focus layer)
+		// survives untouched.
 		const removalMarker = document.createElement("div");
 		this.object.element = removalMarker;
+		// The placeholder is no longer managed by anything once the object is
+		// destroyed; drop it out of the CSS3D DOM explicitly (the 'removed'
+		// event only takes care of the marker above).
+		this.placeholder?.remove();
+		this.placeholder = null;
+		this.hostTransformSnapshot = null;
 		this.restoreHost();
 		this.cssScene.remove(this.object);
 	}

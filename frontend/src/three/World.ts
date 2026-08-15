@@ -137,6 +137,15 @@ export class World {
 		return this.paperMesh;
 	}
 
+	/**
+	 * The paper overlay, created only after the decor model loads (its paper
+	 * mesh defines the overlay frame); null until then. Application wires the
+	 * 2D focus layer to this lazily via a getter — no polling, no callbacks.
+	 */
+	getPaperScreen(): PaperScreen | null {
+		return this.paperScreen;
+	}
+
 	// Locates the flat desk paper inside the decor model and feeds its real
 	// world-space center to the camera's paper keyframe. Degrades gracefully
 	// when the model has no node named 'paper'.

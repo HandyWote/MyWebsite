@@ -156,3 +156,93 @@ describe("runtime lifecycle services", () => {
 		expect(camera.toggleDeskView).toHaveBeenCalledTimes(1);
 	});
 });
+
+describe("camera view observer", () => {
+	function createCamera() {
+		const group = new Group();
+		const sizes = new Sizes(window);
+		const camera = new Camera(
+			new THREE.Scene(),
+			sizes,
+			new Mouse(),
+			new Time(),
+			group,
+		);
+		return { group, sizes, camera };
+	}
+
+	it("fires onTransitionStart synchronously before the tween and onSettled on completion", () => {
+		const { group, sizes, camera } = createCamera();
+		let tweensAtStart = -1;
+		const onTransitionStart = vi.fn(() => {
+			tweensAtStart = group.getAll().length;
+		});
+		const onSettled = vi.fn();
+		camera.setViewObserver({ onTransitionStart, onSettled });
+
+		camera.transition("desk", 100);
+
+		// Called synchronously during transition(), before any tween exists.
+		expect(onTransitionStart).toHaveBeenCalledTimes(1);
+		expect(onTransitionStart).toHaveBeenCalledWith("loading", "desk");
+		expect(tweensAtStart).toBe(0);
+		expect(group.getAll().length).toBeGreaterThan(0);
+		expect(onSettled).not.toHaveBeenCalled();
+
+		// Settled only after the position tween completes.
+		group.update(performance.now() + 1000);
+		expect(onSettled).toHaveBeenCalledTimes(1);
+		expect(onSettled).toHaveBeenCalledWith("desk");
+
+		camera.destroy();
+		sizes.destroy();
+	});
+
+	it("reports the effective source view, including mid-flight interruptions", () => {
+		const { group, sizes, camera } = createCamera();
+		const onTransitionStart = vi.fn();
+		const onSettled = vi.fn();
+		camera.setViewObserver({ onTransitionStart, onSettled });
+
+		camera.transition("desk", 100);
+		group.update(performance.now() + 1000); // settle on desk
+		camera.transition("paper", 100);
+		expect(onTransitionStart).toHaveBeenLastCalledWith("desk", "paper");
+		// Interrupted before settling: current is null, so the source falls
+		// back to the in-flight target — leaving 'paper' must still be reported.
+		camera.transition("idle", 100);
+		expect(onTransitionStart).toHaveBeenLastCalledWith("paper", "idle");
+
+		camera.destroy();
+		sizes.destroy();
+	});
+
+	it("does not fire callbacks when the transition guard rejects", () => {
+		const { group, sizes, camera } = createCamera();
+		const onTransitionStart = vi.fn();
+		const onSettled = vi.fn();
+		camera.setViewObserver({ onTransitionStart, onSettled });
+
+		camera.transition("desk", 100);
+		expect(onTransitionStart).toHaveBeenCalledTimes(1);
+		// Same key while in flight (target guard)…
+		camera.transition("desk", 100);
+		expect(onTransitionStart).toHaveBeenCalledTimes(1);
+		group.update(performance.now() + 1000);
+		expect(onSettled).toHaveBeenCalledTimes(1);
+		// …and same key once settled (current guard).
+		camera.transition("desk", 100);
+		expect(onTransitionStart).toHaveBeenCalledTimes(1);
+		expect(onSettled).toHaveBeenCalledTimes(1);
+
+		// Replaceable: detaching stops notifications.
+		camera.setViewObserver(null);
+		camera.transition("idle", 100);
+		expect(onTransitionStart).toHaveBeenCalledTimes(1);
+		group.update(performance.now() + 1000);
+		expect(onSettled).toHaveBeenCalledTimes(1);
+
+		camera.destroy();
+		sizes.destroy();
+	});
+});

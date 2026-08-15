@@ -4,6 +4,7 @@ import { Camera } from "./Camera";
 import { disposeObject } from "./dispose";
 import { MonitorPointerTracker } from "./MonitorPointerTracker";
 import { Mouse } from "./Mouse";
+import { PaperFocusLayer } from "./PaperFocusLayer";
 import { PaperPointerTracker } from "./PaperPointerTracker";
 import { Renderer } from "./Renderer";
 import { createBrowserResourceLoader, Resources } from "./Resources";
@@ -34,6 +35,7 @@ export class Application implements ThreeExperience {
 	private readonly camera: Camera;
 	private readonly renderer: Renderer;
 	private readonly world: World;
+	private readonly focusLayer: PaperFocusLayer;
 	private readonly pointerTracker: MonitorPointerTracker;
 	private readonly paperPointerTracker: PaperPointerTracker;
 	private readonly unsubscribeResize: () => void;
@@ -75,6 +77,25 @@ export class Application implements ThreeExperience {
 			this.camera,
 			this.mouse,
 		);
+		// Paper close-up: swap the game host between the CSS3D scene and a
+		// plain 2D layer (Chromium mis-hit-tests preserve-3d content near the
+		// close camera plane — see PaperFocusLayer). Driven purely by camera
+		// observer callbacks; the paper screen itself only exists after the
+		// decor model loads, hence the lazy getter (no per-frame DOM polling).
+		this.focusLayer = new PaperFocusLayer(options.paperMount, () =>
+			this.world.getPaperScreen(),
+		);
+		this.camera.setViewObserver({
+			onTransitionStart: (from) => {
+				// Leaving paper (settled or targeted): move the host back while
+				// the camera still holds the paper pose so the CSS3D projection
+				// the tween continues from coincides with the 2D layer.
+				if (from === "paper") this.focusLayer.release();
+			},
+			onSettled: (key) => {
+				if (key === "paper") this.focusLayer.engage();
+			},
+		});
 		this.paperPointerTracker = new PaperPointerTracker(
 			document,
 			options.screenHost,
@@ -107,6 +128,9 @@ export class Application implements ThreeExperience {
 		if (this.destroyed) return;
 		this.destroyed = true;
 
+		// Host back into the CSS3D scene first, then the existing teardown
+		// chain (world.destroy → paperScreen.destroy → renderer).
+		this.focusLayer.destroy();
 		// World parks the real ScreenHost before renderer/CSS scene teardown.
 		this.world.destroy();
 		this.resources.destroy();
@@ -130,6 +154,8 @@ export class Application implements ThreeExperience {
 		if (this.destroyed) return;
 		this.camera.resize();
 		this.renderer.resize();
+		// Re-measure the projected AABB while the host lives in the 2D layer.
+		this.focusLayer.realign();
 	}
 
 	private update(): void {

@@ -12,6 +12,20 @@ import type { Mouse } from "./Mouse";
 import type { Sizes } from "./Sizes";
 import type { Time } from "./Time";
 
+/**
+ * Reacts to camera view changes without coupling listeners to Camera
+ * internals. `onTransitionStart` fires synchronously after the transition
+ * guards pass but before any tween is created — the camera still holds the
+ * old pose, so side effects that must stay visually continuous with the
+ * CSS3D projection (e.g. moving the paper game host between DOM layers)
+ * happen while both projections coincide. `onSettled` fires when the
+ * position tween completes and `key` became the current view.
+ */
+export type CameraViewObserver = {
+	onTransitionStart(from: CameraKey | null, to: CameraKey): void;
+	onSettled(key: CameraKey): void;
+};
+
 export class Camera {
 	readonly instance: THREE.PerspectiveCamera;
 	private readonly position = new THREE.Vector3();
@@ -24,6 +38,7 @@ export class Camera {
 	private upTween: Tween<THREE.Vector3> | null = null;
 	private current: CameraKey | null = "loading";
 	private target: CameraKey | null = null;
+	private viewObserver: CameraViewObserver | null = null;
 	private destroyed = false;
 
 	constructor(
@@ -61,12 +76,21 @@ export class Camera {
 		this.controls.update();
 	}
 
+	/** Optional and replaceable; pass null to detach. Cleared on destroy. */
+	setViewObserver(observer: CameraViewObserver | null): void {
+		this.viewObserver = observer;
+	}
+
 	transition(
 		key: CameraKey,
 		duration = 1000,
 		easing: (amount: number) => number = Easing.Quintic.InOut,
 	): void {
 		if (this.destroyed || this.current === key || this.target === key) return;
+		// Still at the old pose here: report before any tween exists so a
+		// listener can act while the CSS3D projection matches the last frame.
+		const from = this.current ?? this.target;
+		this.viewObserver?.onTransitionStart(from, key);
 		this.stopTransitionTweens();
 		this.current = null;
 		this.target = key;
@@ -79,6 +103,7 @@ export class Camera {
 				this.current = key;
 				this.target = null;
 				this.positionTween = null;
+				this.viewObserver?.onSettled(key);
 			})
 			.start();
 		this.focalPointTween = new Tween(this.focalPoint, this.tweens)
@@ -179,6 +204,7 @@ export class Camera {
 	destroy(): void {
 		if (this.destroyed) return;
 		this.destroyed = true;
+		this.viewObserver = null;
 		this.stopTransitionTweens();
 		this.controls?.dispose();
 		this.controls = null;

@@ -329,3 +329,96 @@ describe("PaperScreen", () => {
 		expect(paper.object.element).not.toBe(host);
 	});
 });
+
+// What CSS3DRenderer writes into object.element's inline style every frame
+// (see getObjectCSSMatrix()): translate(-50%,-50%) + the world matrix3d.
+const CSS3D_TRANSFORM =
+	"translate(-50%,-50%)matrix3d(1,0,0,0,0,1,0,0,0,0,1,0,10,20,30,1)";
+
+describe("PaperScreen host detach/reattach", () => {
+	function createPaper(hostParent?: HTMLElement) {
+		const cssScene = new THREE.Scene();
+		const host = document.createElement("div");
+		hostParent?.appendChild(host);
+		const paper = new PaperScreen(
+			cssScene,
+			host,
+			paperGeometry(),
+			paperMatrixWorld(),
+		);
+		return { cssScene, host, paper };
+	}
+
+	it("swaps the host for an invisible placeholder on detach and restores it on reattach", () => {
+		const { cssScene, host, paper } = createPaper();
+		host.style.transform = CSS3D_TRANSFORM; // renderer-written each frame
+
+		paper.detachHost();
+		paper.detachHost(); // idempotent
+
+		// Shell swap: the CSS3DObject now drives a placeholder, not the host.
+		const placeholder = paper.object.element as HTMLElement;
+		expect(placeholder).not.toBe(host);
+		expect(placeholder.dataset.paperPlaceholder).toBe("true");
+		expect(placeholder.style.position).toBe("absolute");
+		expect(placeholder.style.pointerEvents).toBe("none");
+		expect(placeholder.style.background).toBe("transparent");
+		expect(placeholder.style.width).toBe(host.style.width);
+		expect(placeholder.style.height).toBe(host.style.height);
+		// The placeholder keeps the last CSS3D transform: the renderer caches
+		// per-object styles and would otherwise skip rewriting it after the
+		// element swap, leaving the projection unmeasurable.
+		expect(placeholder.style.transform).toBe(CSS3D_TRANSFORM);
+		expect(paper.placeholderElement).toBe(placeholder);
+
+		// The host loses only its transform; every inline style the game
+		// overlay relies on (size, clip, overflow) stays untouched.
+		expect(host.style.transform).toBe("");
+		expect(host.style.width).toBeTruthy();
+		expect(host.style.height).toBeTruthy();
+		expect(host.style.clipPath).toMatch(/^polygon\(/);
+		expect(host.style.overflow).toBe("hidden");
+		expect(cssScene.children).toContain(paper.object);
+
+		paper.reattachHost();
+		paper.reattachHost(); // idempotent
+
+		expect(paper.object.element).toBe(host);
+		expect(host.style.transform).toBe(CSS3D_TRANSFORM);
+		expect(paper.placeholderElement).toBeNull();
+	});
+
+	it("destroys cleanly from a detached state without touching the real host", () => {
+		const parking = document.createElement("div");
+		document.body.appendChild(parking);
+		const { cssScene, host, paper } = createPaper(parking);
+		host.style.transform = CSS3D_TRANSFORM;
+
+		paper.detachHost();
+		// Simulate the renderer having moved the placeholder into its DOM
+		// (renderObject appends object.element to its cameraElement).
+		const cssCameraElement = document.createElement("div");
+		document.body.appendChild(cssCameraElement);
+		cssCameraElement.appendChild(paper.object.element as HTMLElement);
+
+		paper.destroy();
+		paper.destroy(); // idempotent
+
+		expect(cssScene.children).toHaveLength(0);
+		// The sacrificial marker absorbed the 'removed' event: the real host
+		// stays exactly where the focus layer put it…
+		expect(host.parentElement).toBe(parking);
+		expect(host.getAttribute("style")).toBeNull();
+		expect(host.getAttribute("draggable")).toBeNull();
+		// …while the placeholder is dropped out of the CSS3D DOM.
+		expect(cssCameraElement.children).toHaveLength(0);
+		expect(paper.object.element).not.toBe(host);
+		expect(paper.placeholderElement).toBeNull();
+
+		// After destroy, detach/reattach are no-ops (no element resurrection).
+		paper.detachHost();
+		expect(paper.object.element).not.toBe(host);
+		paper.reattachHost();
+		expect(paper.object.element).not.toBe(host);
+	});
+});
