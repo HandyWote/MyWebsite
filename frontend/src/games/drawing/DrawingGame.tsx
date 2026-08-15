@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
-import { ChevronDown, ChevronUp, Eraser, Redo, Trash2, Undo } from "lucide-react";
+import { ChevronLeft, ChevronRight, Eraser, Redo, Trash2, Undo } from "lucide-react";
 import type { Drawing, GameViewProps, Stroke } from "../types";
 import {
 	BRUSH_WIDTHS,
@@ -514,7 +514,9 @@ export function DrawingGame({ host }: GameViewProps) {
 					onClick={() => setToolsOpen((prev) => !prev)}
 					style={toggleButtonStyle}
 				>
-					{toolsOpen ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
+					{/* 箭头顺运动方向：展开时钮从中心滑向右端（›），
+					    收起时滑回中心（‹） */}
+					{toolsOpen ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
 				</button>
 			</div>
 
