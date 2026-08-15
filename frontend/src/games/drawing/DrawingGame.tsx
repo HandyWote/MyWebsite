@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
+import { Eraser, Redo, Trash2, Undo } from "lucide-react";
 import type { Drawing, GameViewProps, Stroke } from "../types";
 import {
 	BRUSH_WIDTHS,
@@ -387,7 +388,7 @@ export function DrawingGame({ host }: GameViewProps) {
 						borderColor: erasing ? "#1d3557" : "transparent",
 					}}
 				>
-					⌫
+					<Eraser size={16} />
 				</button>
 
 				<span style={dividerStyle} aria-hidden="true" />
@@ -404,7 +405,7 @@ export function DrawingGame({ host }: GameViewProps) {
 						cursor: past.length === 0 ? "default" : "pointer",
 					}}
 				>
-					↶
+					<Undo size={16} />
 				</button>
 				<button
 					type="button"
@@ -418,7 +419,7 @@ export function DrawingGame({ host }: GameViewProps) {
 						cursor: future.length === 0 ? "default" : "pointer",
 					}}
 				>
-					↷
+					<Redo size={16} />
 				</button>
 				<button
 					type="button"
@@ -432,7 +433,7 @@ export function DrawingGame({ host }: GameViewProps) {
 						cursor: strokeCount === 0 ? "default" : "pointer",
 					}}
 				>
-					✕
+					<Trash2 size={16} />
 				</button>
 
 				<span style={dividerStyle} aria-hidden="true" />
