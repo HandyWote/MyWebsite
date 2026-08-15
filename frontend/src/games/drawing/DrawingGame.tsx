@@ -60,8 +60,11 @@ const toolbarStyle: CSSProperties = {
 	maxWidth: "96%",
 	padding: 6,
 	borderRadius: 12,
-	background: "rgba(255, 255, 255, 0.72)",
-	boxShadow: "0 1px 6px rgba(0, 0, 0, 0.18)",
+	// 近透明暖色底：透出底下 WebGL 纸面纹理；不用 backdrop-filter
+	// （3D 变换元素上合成开销大且易闪烁）
+	background: "rgba(255, 251, 240, 0.18)",
+	border: "1px solid rgba(38, 70, 83, 0.16)",
+	boxShadow: "0 1px 4px rgba(0, 0, 0, 0.12)",
 };
 
 const toolButtonStyle: CSSProperties = {
@@ -74,7 +77,8 @@ const toolButtonStyle: CSSProperties = {
 	boxSizing: "border-box",
 	borderRadius: 8,
 	border: "2px solid transparent",
-	background: "rgba(255, 255, 255, 0.9)",
+	background: "rgba(38, 70, 83, 0.1)",
+	boxShadow: "inset 0 0 0 1px rgba(38, 70, 83, 0.22)",
 	fontSize: 14,
 	lineHeight: 1,
 	color: "#264653",
@@ -85,7 +89,7 @@ const dividerStyle: CSSProperties = {
 	width: 1,
 	height: 18,
 	margin: "0 2px",
-	background: "rgba(0, 0, 0, 0.18)",
+	background: "rgba(38, 70, 83, 0.28)",
 };
 
 const promptButtonStyle: CSSProperties = {
@@ -290,7 +294,7 @@ export function DrawingGame({ host }: GameViewProps) {
 				onPointerLeave={finishStroke}
 			/>
 
-			{/* 工具栏：小尺寸、半透明，不遮整张纸 */}
+			{/* 工具栏：近透明底，透出纸面纹理，不遮整张纸 */}
 			<div style={toolbarStyle} role="toolbar" aria-label="Drawing tools">
 				{PALETTE.map((c) => {
 					const selected = !erasing && color === c;
@@ -437,7 +441,7 @@ export function DrawingGame({ host }: GameViewProps) {
 						display: "flex",
 						alignItems: "center",
 						justifyContent: "center",
-						background: "rgba(244, 236, 216, 0.88)",
+						background: "rgba(244, 236, 216, 0.55)",
 					}}
 				>
 					<div style={{ textAlign: "center", padding: 16, maxWidth: "80%" }}>
