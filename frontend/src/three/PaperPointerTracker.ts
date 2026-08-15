@@ -7,8 +7,9 @@ import type { Camera } from "./Camera";
 // none), so this tracker raycasts from the pointer's NDC position on every
 // pointermove. Hovering enters the paper camera view; the view is sticky and
 // is only left via the monitor tracker's click-to-toggle behavior, so clicks
-// on the paper itself are swallowed (stopImmediatePropagation) to keep the
-// monitor tracker from treating them as clicks outside the screen.
+// on the paper itself — the mesh or the game overlay host — are swallowed
+// (stopImmediatePropagation) to keep the monitor tracker from treating them
+// as clicks outside the screen.
 export class PaperPointerTracker {
 	private readonly raycaster = new THREE.Raycaster();
 	private destroyed = false;
@@ -67,7 +68,13 @@ export class PaperPointerTracker {
 	};
 
 	private readonly onPointerDown = (event: PointerEvent) => {
-		if (this.isInsideHost(event)) return;
+		if (this.isInsideHost(event)) {
+			// Clicks on the game overlay are clicks on the paper too: swallow
+			// them as well, or the monitor tracker toggles the desk view every
+			// time a game interaction starts (e.g. every drawing stroke).
+			event.stopImmediatePropagation();
+			return;
+		}
 		if (!this.hovering) return;
 		// Clicking the paper is a no-op; swallow the event so the monitor tracker
 		// (registered after this one) does not toggle the desk view.

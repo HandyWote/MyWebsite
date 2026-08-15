@@ -148,7 +148,7 @@ describe("PaperPointerTracker", () => {
 		cleanup(tracker);
 	});
 
-	it("ignores events inside the monitor host", () => {
+	it("swallows pointerdown inside the paper host so game clicks never toggle the desk view", () => {
 		const { tracker, host, cameraMock } = setup();
 		const later = vi.fn();
 		document.addEventListener("pointerdown", later);
@@ -171,7 +171,9 @@ describe("PaperPointerTracker", () => {
 		);
 
 		expect(cameraMock.enterPaper).not.toHaveBeenCalled();
-		expect(later).toHaveBeenCalledTimes(1);
+		// 旧行为：host 内点击会漏给 monitor tracker 触发 toggleDeskView，
+		// 导致每次在画板起笔相机就切视角；现在一并吞掉。
+		expect(later).not.toHaveBeenCalled();
 
 		document.removeEventListener("pointerdown", later);
 		cleanup(tracker);
