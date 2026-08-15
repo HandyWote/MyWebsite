@@ -1,4 +1,11 @@
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+	act,
+	cleanup,
+	createEvent,
+	fireEvent,
+	render,
+	screen,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PaperGameHost } from "../host";
 import type { Drawing } from "../types";
@@ -123,6 +130,28 @@ function pointerInit(overrides: Record<string, unknown> = {}) {
 	};
 }
 
+/**
+ * 派发带 offsetX/offsetY 覆写的 pointer 事件。
+ * jsdom 的 PointerEvent 构造器不接受这两个 init（其原型 getter 只会
+ * 退回 clientX/clientY），只能在事件实例上 defineProperty 覆写；
+ * offset 传 undefined 即可模拟旧环境/合成事件没有 offset 的 fallback。
+ */
+function firePointerWithOffset(
+	node: HTMLElement,
+	type: "pointerDown" | "pointerMove" | "pointerUp",
+	offset: { x: number | undefined; y: number | undefined },
+	client: { x: number; y: number },
+	init: Record<string, unknown> = {},
+) {
+	const event = createEvent[type](
+		node,
+		pointerInit({ clientX: client.x, clientY: client.y, ...init }),
+	);
+	Object.defineProperty(event, "offsetX", { value: offset.x });
+	Object.defineProperty(event, "offsetY", { value: offset.y });
+	return fireEvent(node, event);
+}
+
 function drawStroke(from = { x: 100, y: 50 }, to = { x: 200, y: 100 }) {
 	const node = canvas();
 	fireEvent.pointerDown(node, pointerInit({ clientX: from.x, clientY: from.y }));
@@ -219,6 +248,79 @@ describe("DrawingGame", () => {
 		expect(strokeCount()).toBe(1);
 		expect(calls).toContain("arc 100,50,16.5,0,6.283185307179586");
 		expect(calls).toContain("fill");
+	});
+
+	it("prefers offsetX/offsetY over the rect mapping when they disagree", () => {
+		renderBoard();
+		const node = canvas();
+		// 变换后的纸面上 AABB rect ≠ 元素四边形：rect（800×600 @ 0,0）把
+		// client (100,50) 线性映射到 (0.125, 0.083)，而逆投影 offset
+		// (400,300)/(500,360) 映射到 (0.5, 0.5)/(0.625, 0.6)——断言笔触跟随
+		// offset。jsdom 无布局（clientWidth=0），尺寸回退 rect（800×600）。
+		firePointerWithOffset(node, "pointerDown", { x: 400, y: 300 }, { x: 100, y: 50 });
+		firePointerWithOffset(
+			node,
+			"pointerMove",
+			{ x: 500, y: 360 },
+			{ x: 200, y: 100 },
+			{ buttons: 1 },
+		);
+		firePointerWithOffset(node, "pointerUp", { x: 500, y: 360 }, { x: 200, y: 100 });
+		expect(strokeCount()).toBe(1);
+		expect(calls).toContain("moveTo 400,300");
+		expect(calls).toContain("lineTo 500,360");
+		expect(calls).not.toContain("moveTo 100,50");
+		expect(calls).not.toContain("lineTo 200,100");
+	});
+
+	it("divides offsets by the canvas layout size, not the bounding rect", () => {
+		renderBoard();
+		const node = canvas();
+		// 显式提供布局尺寸 400×300（rect 仍为 800×600）：offset (100,150)
+		// 应归一化为 (0.25, 0.5) → 渲染回 (200, 300)；若误用 rect 尺寸
+		// 则会得到 (100, 150)。
+		Object.defineProperty(node, "clientWidth", {
+			value: 400,
+			configurable: true,
+		});
+		Object.defineProperty(node, "clientHeight", {
+			value: 300,
+			configurable: true,
+		});
+		firePointerWithOffset(node, "pointerDown", { x: 100, y: 150 }, { x: 100, y: 150 });
+		firePointerWithOffset(node, "pointerUp", { x: 100, y: 150 }, { x: 100, y: 150 });
+		expect(strokeCount()).toBe(1);
+		expect(calls).toContain("arc 200,300,16.5,0,6.283185307179586");
+	});
+
+	it("falls back to clientX + rect mapping when offsets are unavailable", () => {
+		renderBoard();
+		const node = canvas();
+		// 旧环境/合成事件可能没有 offset：覆写为 undefined 强制走 fallback；
+		// rect 带非零偏移以证明 clientX/Y + rect 线性映射被使用。
+		vi.spyOn(
+			HTMLCanvasElement.prototype,
+			"getBoundingClientRect",
+		).mockReturnValue({
+			...CANVAS_RECT,
+			left: 40,
+			top: 20,
+		} as DOMRect);
+		firePointerWithOffset(
+			node,
+			"pointerDown",
+			{ x: undefined, y: undefined },
+			{ x: 140, y: 70 },
+		);
+		firePointerWithOffset(
+			node,
+			"pointerUp",
+			{ x: undefined, y: undefined },
+			{ x: 140, y: 70 },
+		);
+		expect(strokeCount()).toBe(1);
+		// (140-40)/800 = 0.125, (70-20)/600 = 0.0833 → 渲染回 (100, 50)
+		expect(calls).toContain("arc 100,50,16.5,0,6.283185307179586");
 	});
 
 	it("undoes, redoes and clears with history snapshots", () => {

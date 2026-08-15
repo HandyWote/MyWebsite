@@ -55,9 +55,32 @@ function clamp01(value: number): number {
 }
 
 /**
- * 把屏幕 clientX/clientY 归一化为纸面 0-1 相对坐标（clamp 到 [0,1]）。
- * rect 取 canvas.getBoundingClientRect()：CSS3D transform 缩放纸面后
- * client 坐标与 rect 同处屏幕空间，比值仍然正确。
+ * 把 PointerEvent 的 offsetX/offsetY 归一化为纸面 0-1 相对坐标（clamp 到 [0,1]）。
+ * offset 是浏览器命中测试对 transform 元素做的**精确逆投影**结果：命中点在
+ * 元素未变换局部坐标系中的位置，天然涵盖 CSS3D 的透视、面内旋转与缩放；
+ * 因此只需除以元素的布局尺寸（clientWidth/clientHeight）即得相对坐标，
+ * 这也是变换画布上绘图的标准做法（setPointerCapture 后事件目标保持
+ * 画布，offset 始终是画布局部值）。
+ */
+export function pixelToLocal(
+	offsetX: number,
+	offsetY: number,
+	layoutWidth: number,
+	layoutHeight: number,
+): { x: number; y: number } {
+	const x = layoutWidth > 0 ? offsetX / layoutWidth : 0;
+	const y = layoutHeight > 0 ? offsetY / layoutHeight : 0;
+	return { x: clamp01(x), y: clamp01(y) };
+}
+
+/**
+ * （fallback 路径）把屏幕 clientX/clientY 归一化为纸面 0-1 相对坐标
+ * （clamp 到 [0,1]）。
+ * rect 取 canvas.getBoundingClientRect()：它返回变换后元素的 **AABB
+ * 外接矩形**，线性映射只在元素没有任何 transform（平移/缩放/旋转/透视）
+ * 时成立。纸面遮罩是 CSS3D 变换元素（面内旋转 + 透视 + 相机漂移），
+ * AABB ≠ 元素四边形，此路径会失真——仅当 offsetX/offsetY 不可用
+ * （旧环境/合成事件）时兜底，主路径见 pixelToLocal。
  */
 export function pointToLocal(
 	clientX: number,

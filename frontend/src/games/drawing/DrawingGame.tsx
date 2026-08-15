@@ -9,6 +9,7 @@ import {
 	ERASER_COLOR,
 	PALETTE,
 	createStroke,
+	pixelToLocal,
 	pointToLocal,
 	renderDrawing,
 } from "./drawingCanvas";
@@ -18,8 +19,10 @@ import { clearDraft, flushDraft, loadDraft, scheduleSave } from "./draftStore";
  * 画板游戏本体（P0 计划 Task 5 / G4）。
  * - 根 div 铺满宿主（#paper-screen-host），ResizeObserver 兜底尺寸
  *   （PaperScreen 接管前可能为 0，接管后 RO 触发重绘）。
- * - pointer 事件经 getBoundingClientRect 归一化为 0-1 相对坐标
- *   （CSS3D transform 下仍正确），存储结构与 P1 上传契约一致。
+ * - pointer 事件归一化为 0-1 相对坐标：优先 offsetX/offsetY（浏览器对
+ *   transform 元素命中测试的精确逆投影，含透视/面内旋转）除以画布局
+ *   尺寸；offset 不可用时回退 clientX/Y + getBoundingClientRect 线性
+ *   映射。存储结构与 P1 上传契约一致。
  * - 笔刷/橡皮/撤销/重做/清空 + localStorage 草稿；提交为禁用占位（P1）。
  * - 无任何网络请求。
  */
@@ -170,8 +173,25 @@ export function DrawingGame({ host }: GameViewProps) {
 	}, [strokes, current, size]);
 
 	const localPoint = (e: ReactPointerEvent): { x: number; y: number } | null => {
-		const rect = canvasRef.current?.getBoundingClientRect();
-		return rect ? pointToLocal(e.clientX, e.clientY, rect) : null;
+		const target = canvasRef.current;
+		if (!target) return null;
+		const { offsetX, offsetY } = e.nativeEvent;
+		// 主路径：offset 是浏览器对 transform 元素（含 CSS3D 透视/面内旋转）
+		// 命中测试的精确逆投影，本身就是画布局部坐标；除以未变换的布局
+		// 尺寸即得相对坐标。布局尺寸拿不到（未布局/无布局引擎环境）时退
+		// 回 rect 尺寸。offset 非有限数值（旧环境/合成事件）时回退 client
+		// 坐标 + AABB rect 线性映射（仅无 transform 时准确）。
+		if (Number.isFinite(offsetX) && Number.isFinite(offsetY)) {
+			let width = target.clientWidth;
+			let height = target.clientHeight;
+			if (width <= 0 || height <= 0) {
+				const rect = target.getBoundingClientRect();
+				width = rect.width;
+				height = rect.height;
+			}
+			return pixelToLocal(offsetX, offsetY, width, height);
+		}
+		return pointToLocal(e.clientX, e.clientY, target.getBoundingClientRect());
 	};
 
 	const handlePointerDown = (e: ReactPointerEvent<HTMLCanvasElement>) => {

@@ -5,6 +5,7 @@ import {
 	ERASER_COLOR,
 	PALETTE,
 	createStroke,
+	pixelToLocal,
 	pointToLocal,
 	renderDrawing,
 } from "./drawingCanvas";
@@ -97,6 +98,20 @@ describe("createStroke", () => {
 		]);
 		expect(stroke.width).toBe(BRUSH_WIDTHS[1]);
 		expect(stroke.points).toEqual([{ x: 0.1, y: 0.2, t: 1 }]);
+	});
+});
+
+describe("pixelToLocal", () => {
+	it("normalizes element-local offsets by the untransformed layout size", () => {
+		expect(pixelToLocal(100, 50, 200, 100)).toEqual({ x: 0.5, y: 0.5 });
+	});
+
+	it("clamps out-of-bounds offsets to [0, 1]", () => {
+		expect(pixelToLocal(-10, 200, 200, 100)).toEqual({ x: 0, y: 1 });
+	});
+
+	it("returns zeros for a zero layout size", () => {
+		expect(pixelToLocal(50, 50, 0, 0)).toEqual({ x: 0, y: 0 });
 	});
 });
 
