@@ -370,3 +370,39 @@ a:hover {
 	content: "▸ ";
 	color: var(--accent-blue);
 }
+
+/* ================================================================
+   games 页面样式（P0 画板游戏 G3：/games 大厅与 /games/[id] 一页两用）
+   可见性查询与 src/games/media.ts 的 DESKTOP_3D_MEDIA 保持一致。
+   ================================================================ */
+/* 默认（非桌面）：隐藏说明块、显示查看模式块 */
+[data-game-description] {
+	display: none;
+}
+
+[data-game-detail-view] {
+	display: block;
+}
+
+/* 桌面 3D 能力下反转：说明块显示（monitor 内）、查看模式块隐藏 */
+@media (min-width: 1024px) and (hover: hover) and (pointer: fine) {
+	[data-game-description] {
+		display: block;
+	}
+
+	[data-game-detail-view] {
+		display: none;
+	}
+}
+
+/* 块样式：终端/像素风（背景、边框参考 .screen-page 区） */
+[data-game-description],
+[data-game-detail-view] {
+	padding: var(--spacing-md);
+	border: 1px dashed var(--border-default);
+	background: var(--bg-secondary);
+}
+
+[data-game-description] {
+	border-style: solid;
+}
