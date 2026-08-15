@@ -381,7 +381,9 @@ export function DrawingGame({ host }: GameViewProps) {
 								...toolButtonStyle,
 								background: c,
 								boxShadow: selected
-									? "0 0 0 2px rgba(29, 53, 87, 0.9)"
+									// 选中环用 inset 内描边：外扩环会被 morph 行的
+									// overflow:hidden 裁切（上下各缺 2px），内画永远安全
+									? "inset 0 0 0 2px rgba(29, 53, 87, 0.9)"
 									: "inset 0 0 0 1px rgba(0, 0, 0, 0.25)",
 							}}
 						/>
