@@ -22,4 +22,16 @@ describe('normalizeBrowserPdfUrl', () => {
     expect(normalizeBrowserPdfUrl('https://example.com/redirect')).toBeNull();
     expect(normalizeBrowserPdfUrl('javascript:alert(1)')).toBeNull();
   });
+
+  it('allows configured external MinIO hosts and keeps the full URL', () => {
+    expect(
+      normalizeBrowserPdfUrl('https://minio-api.unself.cn/web/articles/pdfs/guide.pdf'),
+    ).toBe('https://minio-api.unself.cn/web/articles/pdfs/guide.pdf');
+    expect(
+      normalizeBrowserPdfUrl('https://minio-api.unself.cn/web/articles/pdfs/guide.pdf?download=1'),
+    ).toBe('https://minio-api.unself.cn/web/articles/pdfs/guide.pdf?download=1');
+    expect(
+      normalizeBrowserPdfUrl('https://other.example.com/web/articles/pdfs/guide.pdf'),
+    ).toBeNull();
+  });
 });
