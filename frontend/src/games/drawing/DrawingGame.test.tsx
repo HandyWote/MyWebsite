@@ -120,6 +120,11 @@ function canvas(): HTMLCanvasElement {
 	return node;
 }
 
+/** 工具栏默认收起：需要与工具交互的用例先点开关钮展开。 */
+function openTools(): void {
+	fireEvent.click(screen.getByRole("button", { name: "Show drawing tools" }));
+}
+
 function pointerInit(overrides: Record<string, unknown> = {}) {
 	return {
 		bubbles: true,
@@ -193,6 +198,7 @@ describe("DrawingGame", () => {
 
 	it("exposes the toolbar with the documented data attributes", () => {
 		renderBoard();
+		openTools();
 		expect(document.querySelectorAll('[data-tool="color"]')).toHaveLength(8);
 		expect(
 			document.querySelector('[data-tool="color"][data-color="#264653"]'),
@@ -216,6 +222,33 @@ describe("DrawingGame", () => {
 		) as HTMLButtonElement;
 		expect(submit.disabled).toBe(true);
 		expect(submit.title).toContain("P1");
+	});
+
+	it("collapses the toolbar by default and toggles it via the corner switch", () => {
+		renderBoard();
+		// 默认收起：页眉条 display:none（不进无障碍树），只剩开关钮
+		const toggle = screen.getByRole("button", { name: "Show drawing tools" });
+		expect(toggle.getAttribute("aria-expanded")).toBe("false");
+		expect(toggle.getAttribute("aria-controls")).toBe("drawing-toolbar");
+		expect(screen.queryByRole("toolbar")).toBeNull();
+		expect(
+				(document.getElementById("drawing-toolbar") as HTMLElement).style
+					.display,
+		).toBe("none");
+
+		// 展开：页眉条可访问，chevron 翻转为向下（点击收起）
+		fireEvent.click(toggle);
+		expect(toggle.getAttribute("aria-expanded")).toBe("true");
+		expect(screen.getByRole("toolbar")).toBeTruthy();
+		expect(
+				(document.getElementById("drawing-toolbar") as HTMLElement).style
+					.display,
+		).toBe("flex");
+
+		// 再点（标签已翻转为 Hide）收起
+		fireEvent.click(screen.getByRole("button", { name: "Hide drawing tools" }));
+		expect(toggle.getAttribute("aria-expanded")).toBe("false");
+		expect(screen.queryByRole("toolbar")).toBeNull();
 	});
 
 	it("draws a stroke from pointer events and commits it on pointer up", () => {
@@ -325,6 +358,7 @@ describe("DrawingGame", () => {
 
 	it("undoes, redoes and clears with history snapshots", () => {
 		renderBoard();
+		openTools();
 		drawStroke();
 		drawStroke({ x: 300, y: 200 }, { x: 400, y: 250 });
 		expect(strokeCount()).toBe(2);
@@ -353,6 +387,7 @@ describe("DrawingGame", () => {
 
 	it("toggles the eraser and draws sentinel-colored strokes", () => {
 		renderBoard();
+		openTools();
 		const eraser = screen.getByRole("button", { name: "Eraser" });
 		expect(eraser.getAttribute("aria-pressed")).toBe("false");
 		fireEvent.click(eraser);
@@ -454,6 +489,7 @@ describe("DrawingGame", () => {
 		renderBoard();
 		expect(strokeCount()).toBe(1);
 
+		openTools();
 		fireEvent.click(screen.getByRole("button", { name: "Clear canvas" }));
 		expect(strokeCount()).toBe(0);
 		// 清空 = 弃稿：storage 不留空数组

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
-import { Eraser, Redo, Trash2, Undo } from "lucide-react";
+import { ChevronDown, ChevronUp, Eraser, Redo, Trash2, Undo } from "lucide-react";
 import type { Drawing, GameViewProps, Stroke } from "../types";
 import {
 	BRUSH_WIDTHS,
@@ -18,12 +18,15 @@ import { clearDraft, flushDraft, loadDraft, scheduleSave } from "./draftStore";
 
 /**
  * 画板游戏本体（P0 计划 Task 5 / G4）。
- * - 根 div 铺满宿主（#paper-screen-host），ResizeObserver 兜底尺寸
- *   （PaperScreen 接管前可能为 0，接管后 RO 触发重绘）。
+ * - 根 div 铺满宿主（#paper-screen-host）；画布区域（工具条展开时
+ *   向下让位后的剩余空间）由 ResizeObserver 兜底尺寸（PaperScreen 接管
+ *   前可能为 0，接管后 RO 触发重绘）。
  * - pointer 事件归一化为 0-1 相对坐标：优先 offsetX/offsetY（浏览器对
  *   transform 元素命中测试的精确逆投影，含透视/面内旋转）除以画布局
  *   尺寸；offset 不可用时回退 clientX/Y + getBoundingClientRect 线性
  *   映射。存储结构与 P1 上传契约一致。
+ * - 工具栏是纸内顶部页眉条（正常流占一行，画布让位、不遮绘画区），
+ *   默认收起（display:none），只留右上角 chevron 开关钮，点击展开/收起。
  * - 笔刷/橡皮/撤销/重做/清空 + localStorage 草稿（挂载静默恢复，
  *   无按钮 toast 告知“存在本机、未上传”）；提交为禁用占位（P1）。
  * - 无任何网络请求。
@@ -33,6 +36,8 @@ const ZERO_SIZE = { width: 0, height: 0 };
 
 const rootStyle: CSSProperties = {
 	position: "relative",
+	display: "flex",
+	flexDirection: "column",
 	width: "100%",
 	height: "100%",
 	overflow: "hidden",
@@ -48,25 +53,19 @@ const canvasStyle: CSSProperties = {
 	touchAction: "none",
 };
 
+/** 页眉条式工具栏：正常流内占一行（画布向下让位）；收起时由 JSX
+ *  覆写 display:none（不占布局、不进无障碍树）。实底让按钮在纸纹上可读。 */
 const toolbarStyle: CSSProperties = {
-	position: "absolute",
-	top: 8,
-	left: "50%",
-	transform: "translateX(-50%)",
-	zIndex: 1,
+	flex: "none",
 	display: "flex",
 	alignItems: "center",
 	flexWrap: "wrap",
 	justifyContent: "center",
 	gap: 4,
-	maxWidth: "96%",
-	padding: 6,
-	borderRadius: 12,
-	// 近透明暖色底：透出底下 WebGL 纸面纹理；不用 backdrop-filter
-	// （3D 变换元素上合成开销大且易闪烁）
-	background: "rgba(255, 251, 240, 0.18)",
-	border: "1px solid rgba(38, 70, 83, 0.16)",
-	boxShadow: "0 1px 4px rgba(0, 0, 0, 0.12)",
+	padding: "4px 8px",
+	boxSizing: "border-box",
+	background: "rgba(255, 251, 240, 0.92)",
+	borderBottom: "1px solid rgba(38, 70, 83, 0.22)",
 };
 
 const toolButtonStyle: CSSProperties = {
@@ -92,6 +91,27 @@ const dividerStyle: CSSProperties = {
 	height: 18,
 	margin: "0 2px",
 	background: "rgba(38, 70, 83, 0.28)",
+};
+
+/** 画布区域：吃掉工具条让位后的剩余高度，画布 absolute 铺满它。
+ *  （RO 观察它而非整根——工具条展开/收起时画布尺寸随之变化） */
+const canvasAreaStyle: CSSProperties = {
+	position: "relative",
+	flex: "1 1 auto",
+	minHeight: 0,
+};
+
+/** 工具条开关钮：绝对定位于纸内右上角，任何状态常驻（收起时纸面只剩它）。
+ *  实底 + 描边让它在纸纹/笔画上都可读。 */
+const toggleButtonStyle: CSSProperties = {
+	...toolButtonStyle,
+	position: "absolute",
+	top: 4,
+	right: 4,
+	zIndex: 2,
+	background: "rgba(255, 251, 240, 0.92)",
+	boxShadow:
+		"inset 0 0 0 1px rgba(38, 70, 83, 0.35), 0 1px 4px rgba(0, 0, 0, 0.15)",
 };
 
 /** 草稿恢复 toast 的显示时长：出现后自动消失。 */
@@ -121,6 +141,8 @@ const draftToastStyle: CSSProperties = {
 export function DrawingGame({ host }: GameViewProps) {
 	const rootRef = useRef<HTMLDivElement>(null);
 	const canvasRef = useRef<HTMLCanvasElement>(null);
+	/** 画布区域：工具条展开时向下让位后的剩余空间（RO 观察它而非整根）。 */
+	const canvasAreaRef = useRef<HTMLDivElement>(null);
 	/** 进行中笔画的同步镜像：pointerup 后同帧可能再触发 pointerleave，
 	 *  用 ref 保证只提交一次（React 状态在事件间已刷新，但同帧二次事件
 	 *  仍会读到旧闭包）。 */
@@ -155,18 +177,20 @@ export function DrawingGame({ host }: GameViewProps) {
 	const [draftToastVisible, setDraftToastVisible] = useState(
 		restoredDraft !== null,
 	);
+	/** 工具栏（页眉条）默认收起：纸面只见右上角开关钮，点击展开。 */
+	const [toolsOpen, setToolsOpen] = useState(false);
 
 	// —— 尺寸：ResizeObserver 兜底（缺失时仅用初始尺寸）——
 	useEffect(() => {
-		const root = rootRef.current;
-		if (!root || typeof ResizeObserver === "undefined") return;
+		const area = canvasAreaRef.current;
+		if (!area || typeof ResizeObserver === "undefined") return;
 		const observer = new ResizeObserver((entries) => {
 			const entry = entries[0];
 			if (!entry) return;
 			const { width: w, height: h } = entry.contentRect;
 			setSize({ width: w, height: h });
 		});
-		observer.observe(root);
+		observer.observe(area);
 		return () => observer.disconnect();
 	}, [host]);
 
@@ -310,18 +334,26 @@ export function DrawingGame({ host }: GameViewProps) {
 
 	return (
 		<div ref={rootRef} data-game="drawing" data-stroke-count={strokeCount} style={rootStyle}>
-			<canvas
-				ref={canvasRef}
-				style={canvasStyle}
-				onPointerDown={handlePointerDown}
-				onPointerMove={handlePointerMove}
-				onPointerUp={finishStroke}
-				onPointerCancel={finishStroke}
-				onPointerLeave={finishStroke}
-			/>
+			<div ref={canvasAreaRef} style={canvasAreaStyle}>
+				<canvas
+					ref={canvasRef}
+					style={canvasStyle}
+					onPointerDown={handlePointerDown}
+					onPointerMove={handlePointerMove}
+					onPointerUp={finishStroke}
+					onPointerCancel={finishStroke}
+					onPointerLeave={finishStroke}
+				/>
+			</div>
 
-			{/* 工具栏：近透明底，透出纸面纹理，不遮整张纸 */}
-			<div style={toolbarStyle} role="toolbar" aria-label="Drawing tools">
+			{/* 工具栏（页眉条）：默认收起（display:none 不占布局），
+			    展开时画布向下让位、不再遮住绘画区 */}
+			<div
+				id="drawing-toolbar"
+				style={{ ...toolbarStyle, display: toolsOpen ? "flex" : "none" }}
+				role="toolbar"
+				aria-label="Drawing tools"
+			>
 				{PALETTE.map((c) => {
 					const selected = !erasing && color === c;
 					return (
@@ -456,6 +488,21 @@ export function DrawingGame({ host }: GameViewProps) {
 					Submit
 				</button>
 			</div>
+
+			{/* 工具条开关：右上角常驻小钮（收起时纸面只剩它）；chevron 方向
+			    指示动作——展开后向下收、收起时向上拉 */}
+			<button
+				type="button"
+				data-toolbar-toggle
+				aria-expanded={toolsOpen}
+				aria-controls="drawing-toolbar"
+				aria-label={toolsOpen ? "Hide drawing tools" : "Show drawing tools"}
+				title={toolsOpen ? "Hide drawing tools" : "Show drawing tools"}
+				onClick={() => setToolsOpen((prev) => !prev)}
+				style={toggleButtonStyle}
+			>
+				{toolsOpen ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
+			</button>
 
 			{/* 草稿恢复 toast：无按钮、不拦截绘制（pointerEvents: none），
 			    出现 4s 后自动消失 */}

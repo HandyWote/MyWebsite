@@ -239,7 +239,12 @@ test("desktop mounts the drawing board on the paper: draw, draft, reload, undo",
 	const board = await waitForDesktopDrawingBoard(page);
 	const canvas = board.locator("canvas");
 
-	// 工具条契约：颜色/笔宽/橡皮/提交占位
+	// 工具条契约：默认收起只露右上角开关钮，展开后颜色/笔宽/橡皮/提交占位
+	const toolsToggle = board.locator("[data-toolbar-toggle]");
+	await expect(toolsToggle).toBeVisible();
+	await expect(toolsToggle).toHaveAttribute("aria-expanded", "false");
+	await toolbarClick(toolsToggle);
+	await expect(toolsToggle).toHaveAttribute("aria-expanded", "true");
 	await expect(board.locator('[data-tool="color"][data-color="#264653"]')).toBeVisible();
 	await expect(board.locator('[data-tool="width"][data-width="0.02"]')).toBeVisible();
 	await expect(board.locator('[data-tool="eraser"]')).toBeVisible();
@@ -287,6 +292,8 @@ test("desktop mounts the drawing board on the paper: draw, draft, reload, undo",
 	await drawStrokeOnPaper(page, canvasAfterReload);
 	await expect(boardAfterReload).toHaveAttribute("data-stroke-count", "2");
 
+	// 刷新后工具条重新收起，先展开再操作撤销/重做
+	await toolbarClick(boardAfterReload.locator("[data-toolbar-toggle]"));
 	await toolbarClick(boardAfterReload.locator('[data-action="undo"]'));
 	await expect(boardAfterReload).toHaveAttribute("data-stroke-count", "1");
 	await toolbarClick(boardAfterReload.locator('[data-action="redo"]'));
