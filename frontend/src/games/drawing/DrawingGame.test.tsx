@@ -403,32 +403,65 @@ describe("DrawingGame", () => {
 		expect(window.localStorage.getItem(DRAFT_KEY)).toBeNull();
 	});
 
-	it("offers continue/discard for an existing draft", () => {
-		window.localStorage.setItem(DRAFT_KEY, JSON.stringify(sampleDraft));
-		renderBoard();
+	it("silently restores an existing draft and shows a buttonless toast", () => {
+		vi.useFakeTimers();
+		try {
+			window.localStorage.setItem(DRAFT_KEY, JSON.stringify(sampleDraft));
+			renderBoard();
 
-		const continueButton = document.querySelector(
-			'[data-draft-action="continue"]',
-		);
-		expect(continueButton).not.toBeNull();
+			// 静默恢复：挂载即载入草稿笔画，立即可继续画
+			expect(strokeCount()).toBe(sampleDraft.strokes.length);
+			const toast = document.querySelector('[data-draft-toast="restored"]');
+			expect(toast).not.toBeNull();
+			expect(toast?.getAttribute("role")).toBe("status");
+			expect(toast?.getAttribute("aria-live")).toBe("polite");
+			expect(toast?.textContent).toBe(
+				"Restored your last doodle — saved on this device",
+			);
+			// 恢复本身不写盘：storage 保持原始草稿内容
+			expect(window.localStorage.getItem(DRAFT_KEY)).toBe(
+				JSON.stringify(sampleDraft),
+			);
+			// 无按钮模态：不存在任何草稿操作按钮
+			expect(document.querySelectorAll("[data-draft-action]")).toHaveLength(0);
 
-		fireEvent.click(continueButton as HTMLButtonElement);
-		expect(strokeCount()).toBe(1);
-		expect(document.querySelector('[data-draft-action="continue"]')).toBeNull();
+			// 4s 后自动消失
+			act(() => {
+				vi.advanceTimersByTime(4000);
+			});
+			expect(
+				document.querySelector('[data-draft-toast="restored"]'),
+			).toBeNull();
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
-	it("discards the draft and clears storage", () => {
+	it("does not show the toast without a draft or for an empty draft", () => {
+		renderBoard();
+		expect(document.querySelector('[data-draft-toast="restored"]')).toBeNull();
+		expect(strokeCount()).toBe(0);
+		cleanup();
+
+		window.localStorage.setItem(DRAFT_KEY, JSON.stringify({ strokes: [] }));
+		renderBoard();
+		expect(document.querySelector('[data-draft-toast="restored"]')).toBeNull();
+		expect(strokeCount()).toBe(0);
+	});
+
+	it("clearing the canvas removes the draft from storage", () => {
 		window.localStorage.setItem(DRAFT_KEY, JSON.stringify(sampleDraft));
 		renderBoard();
+		expect(strokeCount()).toBe(1);
 
-		fireEvent.click(
-			document.querySelector('[data-draft-action="discard"]') as HTMLButtonElement,
-		);
+		fireEvent.click(screen.getByRole("button", { name: "Clear canvas" }));
 		expect(strokeCount()).toBe(0);
+		// 清空 = 弃稿：storage 不留空数组
 		expect(window.localStorage.getItem(DRAFT_KEY)).toBeNull();
-		expect(
-			document.querySelector('[data-draft-action="discard"]'),
-		).toBeNull();
+
+		// 卸载 flushDraft 也不把空状态写回
+		cleanup();
+		expect(window.localStorage.getItem(DRAFT_KEY)).toBeNull();
 	});
 
 	it("recovers a zero initial host size via ResizeObserver", () => {

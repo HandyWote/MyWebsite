@@ -23,7 +23,8 @@ import { clearDraft, flushDraft, loadDraft, scheduleSave } from "./draftStore";
  *   transform 元素命中测试的精确逆投影，含透视/面内旋转）除以画布局
  *   尺寸；offset 不可用时回退 clientX/Y + getBoundingClientRect 线性
  *   映射。存储结构与 P1 上传契约一致。
- * - 笔刷/橡皮/撤销/重做/清空 + localStorage 草稿；提交为禁用占位（P1）。
+ * - 笔刷/橡皮/撤销/重做/清空 + localStorage 草稿（挂载静默恢复，
+ *   无按钮 toast 告知“存在本机、未上传”）；提交为禁用占位（P1）。
  * - 无任何网络请求。
  */
 
@@ -92,27 +93,28 @@ const dividerStyle: CSSProperties = {
 	background: "rgba(38, 70, 83, 0.28)",
 };
 
-/** 草稿提示层的中央小卡片：自带底色/描边/投影，提示层本身完全
- *  透明，不给画面区域罩任何颜色。 */
-const promptCardStyle: CSSProperties = {
-	textAlign: "center",
-	padding: "16px 20px",
-	maxWidth: "80%",
+/** 草稿恢复 toast 的显示时长：出现后自动消失。 */
+const DRAFT_TOAST_MS = 4000;
+
+/** 草稿恢复 toast：绝对定位悬于画布底部水平居中，pointerEvents:
+ *  none 绝不拦截绘制；自带底色/描边/投影，无任何按钮。 */
+const draftToastStyle: CSSProperties = {
+	position: "absolute",
+	bottom: 12,
+	left: "50%",
+	transform: "translateX(-50%)",
+	zIndex: 2,
+	pointerEvents: "none",
+	maxWidth: "96%",
+	padding: "8px 14px",
+	borderRadius: 10,
 	background: "rgba(244, 236, 216, 0.95)",
 	border: "1px solid rgba(38, 70, 83, 0.35)",
-	borderRadius: 12,
 	boxShadow: "0 2px 10px rgba(0, 0, 0, 0.18)",
-};
-
-const promptButtonStyle: CSSProperties = {
-	padding: "7px 14px",
-	borderRadius: 8,
-	border: "1px solid #264653",
-	background: "#264653",
-	color: "#fff",
+	textAlign: "center",
 	fontSize: 13,
 	fontWeight: 600,
-	cursor: "pointer",
+	color: "#264653",
 };
 
 export function DrawingGame({ host }: GameViewProps) {
@@ -122,14 +124,25 @@ export function DrawingGame({ host }: GameViewProps) {
 	 *  用 ref 保证只提交一次（React 状态在事件间已刷新，但同帧二次事件
 	 *  仍会读到旧闭包）。 */
 	const currentRef = useRef<Stroke | null>(null);
-	/** 用户是否对画布做过任何修改（画/撤销/重做/清空）：只在这些时候
-	 *  写草稿，避免覆盖既有草稿或为从未动笔的访问者落盘空数据。 */
+	/** 用户是否对画布有未落盘的修改（画/撤销/重做置 true；清空视为
+	 *  弃稿重置为 false）：只在这些时候写草稿，避免覆盖既有草稿或
+	 *  为从未动笔的访问者落盘空数据。 */
 	const touchedRef = useRef(false);
 
 	const [size, setSize] = useState(() =>
 		typeof window === "undefined" ? ZERO_SIZE : host.getSize(),
 	);
-	const [strokes, setStrokes] = useState<Stroke[]>([]);
+	/** 草稿：挂载时读取一次（只挂到桌面纸面上，纯客户端，无 SSR）。
+	 *  有笔画则静默恢复——直接载入立即可继续画，不置 touchedRef
+	 *  （不主动写盘，用户动笔后照常防抖保存），只弹一条无按钮 toast
+	 *  告知“存在本机、未上传”。用惰性初始化而非 effect，避免级联渲染。 */
+	const [restoredDraft] = useState<Drawing | null>(() => {
+		const draft = loadDraft();
+		return draft !== null && draft.strokes.length > 0 ? draft : null;
+	});
+	const [strokes, setStrokes] = useState<Stroke[]>(
+		() => restoredDraft?.strokes ?? [],
+	);
 	const [current, setCurrent] = useState<Stroke | null>(null);
 	/** 历史快照栈：past = 可撤销的历史，future = 可重做的未来。 */
 	const [past, setPast] = useState<Stroke[][]>([]);
@@ -137,12 +150,10 @@ export function DrawingGame({ host }: GameViewProps) {
 	const [color, setColor] = useState<string>(PALETTE[0]);
 	const [width, setWidth] = useState<number>(DEFAULT_WIDTH);
 	const [erasing, setErasing] = useState(false);
-	/** 草稿：挂载时读取一次（只挂到桌面纸面上，纯客户端，无 SSR），
-	 *  非空则出提示层。用惰性初始化而非 effect，避免级联渲染。 */
-	const [draftPrompt, setDraftPrompt] = useState<Drawing | null>(() => {
-		const draft = loadDraft();
-		return draft !== null && draft.strokes.length > 0 ? draft : null;
-	});
+	/** 草稿恢复 toast：出现 DRAFT_TOAST_MS 后自动消失。 */
+	const [draftToastVisible, setDraftToastVisible] = useState(
+		restoredDraft !== null,
+	);
 
 	// —— 尺寸：ResizeObserver 兜底（缺失时仅用初始尺寸）——
 	useEffect(() => {
@@ -170,6 +181,16 @@ export function DrawingGame({ host }: GameViewProps) {
 			flushDraft();
 		};
 	}, []);
+
+	// —— 草稿 toast：出现后计时自动消失（卸载/隐藏时清理定时器）——
+	useEffect(() => {
+		if (!draftToastVisible) return;
+		const timer = setTimeout(
+			() => setDraftToastVisible(false),
+			DRAFT_TOAST_MS,
+		);
+		return () => clearTimeout(timer);
+	}, [draftToastVisible]);
 
 	// —— 绘制：strokes + 进行中笔画 + 尺寸变化时全量重绘 ——
 	useEffect(() => {
@@ -270,26 +291,18 @@ export function DrawingGame({ host }: GameViewProps) {
 
 	const handleClear = () => {
 		if (strokes.length === 0) return;
-		touchedRef.current = true;
+		// 清空 = 弃稿：重置 untouched（strokes effect 不会把空数组防抖
+		// 写回，后续任何编辑会重新置 touched），并删除 storage 草稿。
+		touchedRef.current = false;
 		setPast((prev) => [...prev, strokes]);
 		setFuture([]);
 		setStrokes([]);
+		clearDraft();
 	};
 
 	const handleColorSelect = (next: string) => {
 		setColor(next);
 		setErasing(false);
-	};
-
-	const handleContinueDraft = () => {
-		if (!draftPrompt) return;
-		setStrokes(draftPrompt.strokes);
-		setDraftPrompt(null);
-	};
-
-	const handleDiscardDraft = () => {
-		setDraftPrompt(null);
-		clearDraft();
 	};
 
 	const strokeCount = strokes.length;
@@ -443,55 +456,16 @@ export function DrawingGame({ host }: GameViewProps) {
 				</button>
 			</div>
 
-			{/* 草稿提示层：inset:0 全幅覆盖仅用于拦截绘制（模态行为），
-			    自身无背景，画面区域完全透明 */}
-			{draftPrompt && (
+			{/* 草稿恢复 toast：无按钮、不拦截绘制（pointerEvents: none），
+			    出现 4s 后自动消失 */}
+			{draftToastVisible && (
 				<div
-					style={{
-						position: "absolute",
-						inset: 0,
-						zIndex: 2,
-						display: "flex",
-						alignItems: "center",
-						justifyContent: "center",
-					}}
+					data-draft-toast="restored"
+					role="status"
+					aria-live="polite"
+					style={draftToastStyle}
 				>
-					<div style={promptCardStyle}>
-						<p
-							style={{
-								margin: "0 0 12px",
-								fontSize: 14,
-								fontWeight: 600,
-								color: "#264653",
-							}}
-						>
-							Found a previous doodle
-						</p>
-						<div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
-							<button
-								type="button"
-								data-draft-action="continue"
-								aria-label="Continue previous doodle"
-								onClick={handleContinueDraft}
-								style={promptButtonStyle}
-							>
-								Continue
-							</button>
-							<button
-								type="button"
-								data-draft-action="discard"
-								aria-label="Discard previous doodle and start new"
-								onClick={handleDiscardDraft}
-								style={{
-									...promptButtonStyle,
-									background: "transparent",
-									color: "#264653",
-								}}
-							>
-								New drawing
-							</button>
-						</div>
-					</div>
+					Restored your last doodle — saved on this device
 				</div>
 			)}
 		</div>
