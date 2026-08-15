@@ -26,10 +26,12 @@ const TRANSLATION = new THREE.Vector3(1, 2, 3);
 const WORLD_UP = new THREE.Vector3(0, 1, 0);
 
 // Content-driven host frame for the fixture above: content-up is −e1 (the
-// long-edge direction negated), so local +y (CSS-down) = −content-up, the
-// width axis is the short-edge direction and the host is portrait.
+// long-edge direction negated). CSS3DRenderer's getObjectCSSMatrix()
+// negates the matrix3d second column, so the element's visual up is three
+// local +y: local +y = content-up ≈ (−0.584, 0, −0.812), the width axis is
+// the short-edge direction ≈ (0.812, 0, −0.584) and the host is portrait.
 const CONTENT_UP = new THREE.Vector3(-0.568, 0, -0.789).normalize();
-const EXPECTED_Y = CONTENT_UP.clone().negate();
+const EXPECTED_Y = CONTENT_UP.clone();
 const EXPECTED_X = new THREE.Vector3()
 	.crossVectors(EXPECTED_Y, WORLD_UP)
 	.normalize();
@@ -156,9 +158,11 @@ describe("PaperScreen", () => {
 		expectClose(parseFloat(host.style.width), 624, 1);
 		expectClose(parseFloat(host.style.height), 875, 1);
 
-		// Orientation: element CSS-up (local −y) shows the printed content "up"
-		// edge (content-up = −e1 of the long edge), element front (local +z)
-		// still faces world up, and the basis is right-handed (x × y = z).
+		// Orientation: element visual up (local +y — CSS3DRenderer's
+		// getObjectCSSMatrix() negates the matrix3d second column, so visual up
+		// is three local +y) shows the printed content "up" edge (content-up =
+		// −e1 of the long edge), element front (local +z) still faces world up,
+		// and the basis is right-handed (x × y = z).
 		const { xDir, yDir, zDir } = basisDirections(paper.object);
 		expectVectorClose(
 			new THREE.Vector3().crossVectors(xDir, yDir),
@@ -166,8 +170,7 @@ describe("PaperScreen", () => {
 			1e-6,
 		);
 		expectVectorClose(zDir, WORLD_UP, 1e-6);
-		expectVectorClose(yDir, EXPECTED_Y, 1e-6);
-		expectVectorClose(yDir.clone().negate(), CONTENT_UP, 1e-6);
+		expectVectorClose(yDir, CONTENT_UP, 1e-6);
 		expectVectorClose(xDir, EXPECTED_X, 1e-6);
 
 		// clip-path: 4 percentages, inset 2% toward the (50%, 50%) centre.
@@ -283,7 +286,7 @@ describe("PaperScreen", () => {
 		expectVectorClose(zDir, WORLD_UP, 1e-6);
 		expectVectorClose(
 			yDir,
-			new THREE.Vector3(0.562, 0, -0.405).normalize().negate(),
+			new THREE.Vector3(0.562, 0, -0.405).normalize(),
 			1e-6,
 		);
 		expect(host.style.clipPath).toMatch(/^polygon\(/);

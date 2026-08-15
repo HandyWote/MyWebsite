@@ -79,8 +79,10 @@ export function paperContentUp(
  * monitor's cssScene and is unaffected by it. Everything is derived from the
  * mesh geometry at runtime (no baked model data): unique vertices are
  * extracted and de-duplicated, the host frame is content-driven (element
- * CSS-up = the printed content's "up" direction from paperContentUp(),
- * element front = world up, width/height span the content axes — so a
+ * visual up = the printed content's "up" direction from paperContentUp() —
+ * CSS3DRenderer's getObjectCSSMatrix() negates the matrix3d second column,
+ * so the element's visual up is three local +y, not −y; element front =
+ * world up; width/height span the content axes — so a
  * portrait printed page stays a portrait overlay), and a clip-path polygon
  * (inset 2% toward the centre) keeps game content inside the paper's
  * silhouette.
@@ -122,11 +124,12 @@ export class PaperScreen {
 		center.divideScalar(world.length);
 
 		// Content-driven basis: the element front (local +z) faces world up and
-		// the element CSS-up (local −y) shows the printed content "up" edge, so
-		// the host reads the same way round as the printed page. Local +y (CSS
-		// downward) is therefore the negated content-up direction.
+		// the element visual up shows the printed content "up" edge, so the
+		// host reads the same way round as the printed page. CSS3DRenderer's
+		// getObjectCSSMatrix() negates the matrix3d second column, so the
+		// element's visual up equals three local +y — take contentUp directly.
 		const contentUp = paperContentUp(geometry, matrixWorld);
-		const yAxis = contentUp.clone().negate();
+		const yAxis = contentUp.clone();
 		const zAxis = new THREE.Vector3(0, 1, 0);
 		zAxis.addScaledVector(yAxis, -zAxis.dot(yAxis));
 		if (zAxis.lengthSq() < 1e-16) {
@@ -225,7 +228,8 @@ export class PaperScreen {
 	/**
 	 * Clip-path polygon (in % of the host) mapping every world vertex into the
 	 * content-driven host frame: u runs along the width axis (local +x), v
-	 * along the content-up axis (local −y), inset 2% toward the centre.
+	 * along the content-up axis (local +y, the element's visual up), inset 2%
+	 * toward the centre.
 	 */
 	private clipPath(
 		world: THREE.Vector3[],
