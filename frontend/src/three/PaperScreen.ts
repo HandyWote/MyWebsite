@@ -13,15 +13,79 @@ const LIFT = new THREE.Vector3(0, 1, 0);
 type AttributeSnapshot = string | null;
 
 /**
+ * World-space direction of the paper's printed content "up" edge: the vertex
+ * with the largest UV v minus the smallest (UV v runs up the page), flipped
+ * 180° because the baked decor texture stores the paper content head-down.
+ * Falls back to the longest edge between any two vertices when the mesh has
+ * no usable UVs. Shared by World (camera paper framing) and PaperScreen
+ * (overlay orientation) so both consumers always agree on which way the
+ * printed content reads.
+ */
+export function paperContentUp(
+	geometry: THREE.BufferGeometry,
+	matrixWorld: THREE.Matrix4,
+): THREE.Vector3 {
+	const position = geometry.getAttribute("position");
+	const uv =
+		geometry.getAttribute("uv") ?? geometry.getAttribute("TEXCOORD_0");
+	if (uv && uv.count >= 2) {
+		let maxI = 0;
+		let minI = 0;
+		for (let i = 1; i < uv.count; i++) {
+			if (uv.getY(i) > uv.getY(maxI)) maxI = i;
+			if (uv.getY(i) < uv.getY(minI)) minI = i;
+		}
+		if (maxI !== minI) {
+			return (
+				new THREE.Vector3()
+					.subVectors(
+						new THREE.Vector3().fromBufferAttribute(position, maxI),
+						new THREE.Vector3().fromBufferAttribute(position, minI),
+					)
+					.transformDirection(matrixWorld)
+					.normalize()
+					// The baked decor texture stores the paper content head-down
+					// (content "up" points toward the smaller UV v, verified in
+					// the rendered scene), so flip the derived direction 180°.
+					.multiplyScalar(-1)
+			);
+		}
+	}
+	// Fallback: the longest edge between any two vertices.
+	let best = new THREE.Vector3(0, 0, 1);
+	let bestLength = -1;
+	for (let i = 0; i < position.count; i++) {
+		for (let j = i + 1; j < position.count; j++) {
+			const direction = new THREE.Vector3()
+				.subVectors(
+					new THREE.Vector3().fromBufferAttribute(position, j),
+					new THREE.Vector3().fromBufferAttribute(position, i),
+				)
+				.transformDirection(matrixWorld);
+			if (direction.lengthSq() > bestLength) {
+				bestLength = direction.lengthSq();
+				best = direction;
+			}
+		}
+	}
+	return best.normalize();
+}
+
+/**
  * Transparent CSS3D overlay mounted above the desk paper quad — the mount
  * point for future mini-games. The scene passed in is the paper-dedicated
  * CSS layer (paperCssScene), rendered by a second CSS3DRenderer into its own
  * z3 container above the WebGL canvas, so the overlay no longer shares the
  * monitor's cssScene and is unaffected by it. Everything is derived from the
  * mesh geometry at runtime (no baked model data): unique vertices are
- * extracted and de-duplicated, the longest hull edge becomes the host's
- * width axis, and a clip-path polygon (inset 2% toward the centre) keeps
- * game content inside the paper's silhouette.
+ * extracted and de-duplicated, the host frame is content-driven (element
+ * visual up = the printed content's "up" direction from paperContentUp() —
+ * CSS3DRenderer's getObjectCSSMatrix() negates the matrix3d second column,
+ * so the element's visual up is three local +y, not −y; element front =
+ * world up; width/height span the content axes — so a
+ * portrait printed page stays a portrait overlay), and a clip-path polygon
+ * (inset 2% toward the centre) keeps game content inside the paper's
+ * silhouette.
  *
  * No occlusion plane: CSS3DRenderer composites its elements in the DOM layer
  * above the WebGL canvas, so a depth-writing plane cannot make 3D geometry
@@ -37,6 +101,8 @@ export class PaperScreen {
 	private readonly styleBefore: AttributeSnapshot;
 	private readonly draggableBefore: AttributeSnapshot;
 	private readonly attachedBefore: AttributeSnapshot;
+	private placeholder: HTMLElement | null = null;
+	private hostTransformSnapshot: string | null = null;
 	private destroyed = false;
 
 	constructor(
@@ -54,30 +120,108 @@ export class PaperScreen {
 		const world = local.map((vertex) =>
 			vertex.clone().applyMatrix4(matrixWorld),
 		);
-		const { a, b, c, L1, L2 } = this.selectSides(local, world);
 
 		const center = new THREE.Vector3();
 		for (const vertex of world) center.add(vertex);
 		center.divideScalar(world.length);
 
-		// e1 follows the longest paper edge (sign is arbitrary: the rotation and
-		// the clip-path share the same basis, so flipping it mirrors both).
-		const e1 = new THREE.Vector3().subVectors(world[a], world[b]).normalize();
-		const e2 = new THREE.Vector3().subVectors(world[c], world[a]).normalize();
+		// Content-driven basis: the element front (local +z) faces world up and
+		// the element visual up shows the printed content "up" edge, so the
+		// host reads the same way round as the printed page. CSS3DRenderer's
+		// getObjectCSSMatrix() negates the matrix3d second column, so the
+		// element's visual up equals three local +y — take contentUp directly.
+		const contentUp = paperContentUp(geometry, matrixWorld);
+		const yAxis = contentUp.clone();
+		const zAxis = new THREE.Vector3(0, 1, 0);
+		zAxis.addScaledVector(yAxis, -zAxis.dot(yAxis));
+		if (zAxis.lengthSq() < 1e-16) {
+			// Content up is parallel to world up (standing paper): pick any
+			// perpendicular to keep the basis deterministic.
+			zAxis.crossVectors(new THREE.Vector3(0, 0, 1), yAxis).normalize();
+		} else {
+			zAxis.normalize();
+		}
+		// Right-handed by construction: x = y × z ⟹ x × y = z.
+		const xAxis = new THREE.Vector3().crossVectors(yAxis, zAxis).normalize();
+		const width = this.extentAlong(world, xAxis);
+		const height = this.extentAlong(world, contentUp);
 
-		// The host lies flat over the paper, long edge along local +x, facing up.
 		this.object = new CSS3DObject(host);
 		this.object.position.copy(center).add(LIFT);
-		this.object.quaternion.setFromRotationMatrix(this.rotationBasis(e1));
+		this.object.quaternion.setFromRotationMatrix(
+			new THREE.Matrix4().makeBasis(xAxis, yAxis, zAxis),
+		);
 		this.cssScene.add(this.object);
 
 		host.dataset.threePaperAttached = "true";
-		host.style.width = `${L1}px`;
-		host.style.height = `${L2}px`;
+		host.style.width = `${width}px`;
+		host.style.height = `${height}px`;
 		host.style.background = "transparent";
 		host.style.pointerEvents = "auto";
 		host.style.overflow = "hidden";
-		host.style.clipPath = this.clipPath(world, center, e1, e2, L1, L2);
+		host.style.clipPath = this.clipPath(
+			world,
+			center,
+			xAxis,
+			contentUp,
+			width,
+			height,
+		);
+	}
+
+	/**
+	 * The invisible stand-in element currently swapped into the CSS3D scene
+	 * while the host lives in a plain 2D layer, or null while attached.
+	 * Exposed so the 2D layer can re-measure the projected AABB (the
+	 * placeholder keeps receiving the renderer-written CSS3D transform).
+	 */
+	get placeholderElement(): HTMLElement | null {
+		return this.placeholder;
+	}
+
+	/**
+	 * Moves the game host out of the CSS3D scene: swaps `object.element` for
+	 * an invisible same-sized placeholder (the renderer keeps writing the 3D
+	 * transform into it, so the projection stays measurable) and clears the
+	 * host's inline transform so a plain 2D layer can position it. All other
+	 * host inline styles (width/height/clip-path/overflow/…) are untouched.
+	 * Idempotent; no-op after destroy.
+	 */
+	detachHost(): void {
+		if (this.destroyed || this.placeholder) return;
+		const snapshot = this.host.style.transform;
+		const placeholder = document.createElement("div");
+		placeholder.dataset.paperPlaceholder = "true";
+		placeholder.style.width = this.host.style.width;
+		placeholder.style.height = this.host.style.height;
+		placeholder.style.position = "absolute";
+		placeholder.style.pointerEvents = "none";
+		placeholder.style.background = "transparent";
+		// Seed with the host's last CSS3D transform: the renderer caches per
+		// object styles and skips rewriting identical transforms after the
+		// element swap, so without this the placeholder would sit untransformed
+		// at the top-left until the camera moves.
+		placeholder.style.transform = snapshot;
+		this.placeholder = placeholder;
+		this.hostTransformSnapshot = snapshot;
+		this.object.element = placeholder;
+		this.host.style.transform = "";
+	}
+
+	/**
+	 * Swaps the host back into the CSS3D scene and restores the transform
+	 * snapshot taken at detach time, so the CSS3D projection picks up exactly
+	 * where the 2D layer left off (the two coincide at the swap instant).
+	 * Idempotent; no-op after destroy.
+	 */
+	reattachHost(): void {
+		if (this.destroyed || !this.placeholder) return;
+		const placeholder = this.placeholder;
+		this.placeholder = null;
+		this.object.element = this.host;
+		this.host.style.transform = this.hostTransformSnapshot ?? "";
+		this.hostTransformSnapshot = null;
+		placeholder.remove();
 	}
 
 	destroy(): void {
@@ -86,9 +230,16 @@ export class PaperScreen {
 
 		// CSS3DObject removes its element from the DOM on the Object3D 'removed'
 		// event. Point it at a sacrificial node before removal so the real host
-		// (possibly reparented by the CSS3D renderer) survives untouched.
+		// (possibly reparented by the CSS3D renderer or a 2D focus layer)
+		// survives untouched.
 		const removalMarker = document.createElement("div");
 		this.object.element = removalMarker;
+		// The placeholder is no longer managed by anything once the object is
+		// destroyed; drop it out of the CSS3D DOM explicitly (the 'removed'
+		// event only takes care of the marker above).
+		this.placeholder?.remove();
+		this.placeholder = null;
+		this.hostTransformSnapshot = null;
 		this.restoreHost();
 		this.cssScene.remove(this.object);
 	}
@@ -126,99 +277,39 @@ export class PaperScreen {
 		return vertices;
 	}
 
+	/** World-space range of the vertex projections onto `axis`. */
+	private extentAlong(world: THREE.Vector3[], axis: THREE.Vector3): number {
+		let min = Infinity;
+		let max = -Infinity;
+		for (const vertex of world) {
+			const projection = vertex.dot(axis);
+			if (projection < min) min = projection;
+			if (projection > max) max = projection;
+		}
+		return max - min;
+	}
+
 	/**
-	 * Hull edges only: a pair is a side when every other vertex lies on the
-	 * same side of its line (a diagonal splits the remaining vertices). Returns
-	 * the longest side (a, b) and the longest other side (a, c) sharing a —
-	 * (a, c) covers subdivided edges, where the true corner is the farthest
-	 * collinear neighbour. Sizes are world-space distances.
+	 * Clip-path polygon (in % of the host) mapping every world vertex into the
+	 * content-driven host frame: u runs along the width axis (local +x), v
+	 * along the content-up axis (local +y, the element's visual up), inset 2%
+	 * toward the centre.
 	 */
-	private selectSides(
-		local: THREE.Vector3[],
-		world: THREE.Vector3[],
-	): { a: number; b: number; c: number; L1: number; L2: number } {
-		const sides: Array<[number, number]> = [];
-		for (let i = 0; i < local.length; i++) {
-			for (let j = i + 1; j < local.length; j++) {
-				if (this.isHullEdge(local, i, j)) sides.push([i, j]);
-			}
-		}
-
-		let a = -1;
-		let b = -1;
-		let L1 = -1;
-		for (const [i, j] of sides) {
-			const length = world[i].distanceTo(world[j]);
-			if (length > L1) {
-				a = i;
-				b = j;
-				L1 = length;
-			}
-		}
-
-		let c = -1;
-		let L2 = -1;
-		for (const [i, j] of sides) {
-			const other = i === a ? j : j === a ? i : -1;
-			if (other === -1 || other === b) continue;
-			const length = world[a].distanceTo(world[other]);
-			if (length > L2) {
-				c = other;
-				L2 = length;
-			}
-		}
-		if (a === -1 || c === -1) {
-			throw new Error("PaperScreen: could not find two paper edges");
-		}
-		return { a, b, c, L1, L2 };
-	}
-
-	private isHullEdge(points: THREE.Vector3[], i: number, j: number): boolean {
-		const base = new THREE.Vector3().subVectors(points[j], points[i]);
-		let reference: THREE.Vector3 | null = null;
-		for (let k = 0; k < points.length; k++) {
-			if (k === i || k === j) continue;
-			const cross = new THREE.Vector3()
-				.subVectors(points[k], points[i])
-				.cross(base);
-			if (cross.lengthSq() < 1e-24) continue; // collinear with the edge
-			if (reference === null) reference = cross;
-			else if (reference.dot(cross) < 0) return false; // opposite sides: a diagonal
-		}
-		return true;
-	}
-
-	/** Rotation matrix mapping local +x onto e1 and local +z onto world +y. */
-	private rotationBasis(e1: THREE.Vector3): THREE.Matrix4 {
-		const xAxis = e1.clone().normalize();
-		const up = new THREE.Vector3(0, 1, 0);
-		const zAxis = new THREE.Vector3()
-			.copy(up)
-			.addScaledVector(xAxis, -up.dot(xAxis));
-		if (zAxis.lengthSq() < 1e-16) {
-			// e1 parallel to world up (standing paper): pick any perpendicular.
-			zAxis.crossVectors(new THREE.Vector3(0, 0, 1), xAxis).normalize();
-		} else {
-			zAxis.normalize();
-		}
-		const yAxis = new THREE.Vector3().crossVectors(zAxis, xAxis);
-		return new THREE.Matrix4().makeBasis(xAxis, yAxis, zAxis);
-	}
-
 	private clipPath(
 		world: THREE.Vector3[],
 		center: THREE.Vector3,
-		e1: THREE.Vector3,
-		e2: THREE.Vector3,
-		L1: number,
-		L2: number,
+		xAxis: THREE.Vector3,
+		contentUp: THREE.Vector3,
+		width: number,
+		height: number,
 	): string {
 		const projected = world.map((vertex) => {
 			const offset = vertex.clone().sub(center);
-			const u = offset.dot(e1) / L1;
-			const v = offset.dot(e2) / L2;
-			// CSS y runs downward, hence the flipped v sign; then inset 2% toward
-			// the host centre (50%, 50%).
+			const u = offset.dot(xAxis) / width;
+			const v = offset.dot(contentUp) / height;
+			// CSS y runs downward while v grows along the content-up axis,
+			// hence the flipped v sign; then inset 2% toward the host centre
+			// (50%, 50%).
 			const px = 50 + ((u + 0.5) * 100 - 50) * CLIP_INSET;
 			const py = 50 + ((0.5 - v) * 100 - 50) * CLIP_INSET;
 			return new THREE.Vector2(px, py);

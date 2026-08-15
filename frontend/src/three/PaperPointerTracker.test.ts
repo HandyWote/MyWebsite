@@ -16,10 +16,12 @@ const RECT = {
 } as DOMRect;
 
 function setup() {
-	const host = document.createElement("div");
+	const screenHost = document.createElement("div");
+	const paperHost = document.createElement("div");
 	const canvas = document.createElement("canvas");
 	canvas.getBoundingClientRect = () => RECT;
-	document.body.appendChild(host);
+	document.body.appendChild(screenHost);
+	document.body.appendChild(paperHost);
 	document.body.appendChild(canvas);
 
 	// Camera directly above a flat paper lying at y = -10 (world center 0,0,0).
@@ -42,13 +44,14 @@ function setup() {
 
 	const tracker = new PaperPointerTracker(
 		document,
-		host,
+		screenHost,
+		paperHost,
 		canvas,
 		cameraMock,
 		() => paper,
 	);
 	tracker.start();
-	return { tracker, host, canvas, paper, cameraMock };
+	return { tracker, screenHost, paperHost, canvas, paper, cameraMock };
 }
 
 function cleanup(tracker: PaperPointerTracker) {
@@ -148,12 +151,12 @@ describe("PaperPointerTracker", () => {
 		cleanup(tracker);
 	});
 
-	it("ignores events inside the monitor host", () => {
-		const { tracker, host, cameraMock } = setup();
+	it("passes through clicks inside the monitor screen host", () => {
+		const { tracker, screenHost, cameraMock } = setup();
 		const later = vi.fn();
 		document.addEventListener("pointerdown", later);
 		const inside = document.createElement("div");
-		host.appendChild(inside);
+		screenHost.appendChild(inside);
 
 		inside.dispatchEvent(
 			new PointerEvent("pointermove", {
@@ -177,8 +180,33 @@ describe("PaperPointerTracker", () => {
 		cleanup(tracker);
 	});
 
+	it("swallows pointerdown inside the paper host so game clicks never toggle the desk view", () => {
+		const { tracker, paperHost, cameraMock } = setup();
+		const later = vi.fn();
+		document.addEventListener("pointerdown", later);
+		const inside = document.createElement("div");
+		paperHost.appendChild(inside);
+
+		inside.dispatchEvent(
+			new PointerEvent("pointerdown", {
+				bubbles: true,
+				clientX: 50,
+				clientY: 50,
+			}),
+		);
+
+		// 无条件吞掉（覆盖触摸首次落笔等无先行 hover 的场景），
+		// monitor tracker（后注册）不会把它当作屏幕外点击切换 desk 视角。
+		expect(later).not.toHaveBeenCalled();
+		expect(cameraMock.toggleDeskView).not.toHaveBeenCalled();
+
+		document.removeEventListener("pointerdown", later);
+		cleanup(tracker);
+	});
+
 	it("degrades safely without a paper mesh", () => {
-		const host = document.createElement("div");
+		const screenHost = document.createElement("div");
+		const paperHost = document.createElement("div");
 		const canvas = document.createElement("canvas");
 		canvas.getBoundingClientRect = () => RECT;
 		document.body.appendChild(canvas);
@@ -188,7 +216,8 @@ describe("PaperPointerTracker", () => {
 		} as unknown as Camera;
 		const tracker = new PaperPointerTracker(
 			document,
-			host,
+			screenHost,
+			paperHost,
 			canvas,
 			cameraMock,
 			() => null,

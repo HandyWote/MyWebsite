@@ -6,7 +6,7 @@ import { Decor } from "./Decor";
 import { disposeObject, disposeTexture } from "./dispose";
 import { Environment } from "./Environment";
 import { MonitorScreen } from "./MonitorScreen";
-import { PaperScreen } from "./PaperScreen";
+import { PaperScreen, paperContentUp } from "./PaperScreen";
 import type { Resources } from "./Resources";
 import { COMPUTER_MODEL_NAME, DECOR_MODEL_NAME } from "./sources";
 import type {
@@ -137,6 +137,15 @@ export class World {
 		return this.paperMesh;
 	}
 
+	/**
+	 * The paper overlay, created only after the decor model loads (its paper
+	 * mesh defines the overlay frame); null until then. Application wires the
+	 * 2D focus layer to this lazily via a getter — no polling, no callbacks.
+	 */
+	getPaperScreen(): PaperScreen | null {
+		return this.paperScreen;
+	}
+
 	// Locates the flat desk paper inside the decor model and feeds its real
 	// world-space center to the camera's paper keyframe. Degrades gracefully
 	// when the model has no node named 'paper'.
@@ -159,7 +168,9 @@ export class World {
 			.applyMatrix4(mesh.matrixWorld);
 		this.camera.setPaperTarget(
 			bounds.getCenter(new THREE.Vector3()),
-			this.paperContentUp(mesh),
+			// Shared derivation (also orients the PaperScreen overlay): the
+			// printed content "up" edge from the mesh UVs, longest-edge fallback.
+			paperContentUp(mesh.geometry, mesh.matrixWorld),
 		);
 
 		// Transparent CSS3D overlay aligned to the paper mesh — the mount
@@ -171,57 +182,6 @@ export class World {
 			mesh.geometry,
 			mesh.matrixWorld,
 		);
-	}
-
-	// World-space direction of the paper's printed content "up" edge: the
-	// vertex with the largest UV v minus the smallest (UV v runs up the page).
-	// Falls back to the longest geometry edge when the mesh has no UVs.
-	private paperContentUp(mesh: THREE.Mesh): THREE.Vector3 {
-		const position = mesh.geometry.getAttribute("position");
-		const uv =
-			mesh.geometry.getAttribute("uv") ??
-			mesh.geometry.getAttribute("TEXCOORD_0");
-		if (uv && uv.count >= 2) {
-			let maxI = 0;
-			let minI = 0;
-			for (let i = 1; i < uv.count; i++) {
-				if (uv.getY(i) > uv.getY(maxI)) maxI = i;
-				if (uv.getY(i) < uv.getY(minI)) minI = i;
-			}
-			if (maxI !== minI) {
-				return (
-					new THREE.Vector3()
-						.subVectors(
-							new THREE.Vector3().fromBufferAttribute(position, maxI),
-							new THREE.Vector3().fromBufferAttribute(position, minI),
-						)
-						.transformDirection(mesh.matrixWorld)
-						.normalize()
-						// The baked decor texture stores the paper content head-down
-						// (content "up" points toward the smaller UV v, verified in
-						// the rendered scene), so flip the derived direction 180°.
-						.multiplyScalar(-1)
-				);
-			}
-		}
-		// Fallback: the longest edge between any two vertices.
-		let best = new THREE.Vector3(0, 0, 1);
-		let bestLength = -1;
-		for (let i = 0; i < position.count; i++) {
-			for (let j = i + 1; j < position.count; j++) {
-				const direction = new THREE.Vector3()
-					.subVectors(
-						new THREE.Vector3().fromBufferAttribute(position, j),
-						new THREE.Vector3().fromBufferAttribute(position, i),
-					)
-					.transformDirection(mesh.matrixWorld);
-				if (direction.lengthSq() > bestLength) {
-					bestLength = direction.lengthSq();
-					best = direction;
-				}
-			}
-		}
-		return best.normalize();
 	}
 
 	private handleTexture(name: TextureSourceName, texture: LoadedTexture): void {

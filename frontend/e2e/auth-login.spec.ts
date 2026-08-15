@@ -39,9 +39,7 @@ test("guest terminal: whoami/logout report not logged in, help lists auth comman
 	await expect(host(page)).toContainText(
 		"  login              sign in with GitHub",
 	);
-	await expect(host(page)).toContainText(
-		"  login -u <user>    admin password login",
-	);
+	// a4d5100 起 help 不再暴露 login -u（仅支持直接输入，见掩码密码用例）
 	await expect(host(page)).toContainText("  logout             sign out");
 	await expect(host(page)).toContainText("  whoami             show current user");
 });

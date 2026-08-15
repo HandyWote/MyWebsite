@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { CSS3DObject } from "three/examples/jsm/renderers/CSS3DRenderer.js";
 import { describe, expect, it } from "vitest";
-import { PaperScreen } from "./PaperScreen";
+import { PaperScreen, paperContentUp } from "./PaperScreen";
 
 // The desk paper quad from decor.glb (local GLB coordinates; the decor model
 // is baked at ×900, so the scale lives in matrixWorld).
@@ -12,15 +12,42 @@ const PAPER_LOCAL: ReadonlyArray<readonly [number, number, number]> = [
 	[-2.296, -0.494, 0.499],
 ];
 
+// TEXCOORD_0 of the same decor.glb paper node: UV v runs along the B→A edge,
+// so the printed content "up" edge is A−B flipped 180° (head-down bake).
+const PAPER_UV: ReadonlyArray<readonly [number, number]> = [
+	[0.0138, 0.6901],
+	[0.0138, 0.0325],
+	[0.4829, 0.6901],
+	[0.4829, 0.0325],
+];
+
 const SCALE = 900;
 const TRANSLATION = new THREE.Vector3(1, 2, 3);
+const WORLD_UP = new THREE.Vector3(0, 1, 0);
 
-function paperGeometry(): THREE.BufferGeometry {
+// Content-driven host frame for the fixture above: content-up is −e1 (the
+// long-edge direction negated). CSS3DRenderer's getObjectCSSMatrix()
+// negates the matrix3d second column, so the element's visual up is three
+// local +y: local +y = content-up ≈ (−0.584, 0, −0.812), the width axis is
+// the short-edge direction ≈ (0.812, 0, −0.584) and the host is portrait.
+const CONTENT_UP = new THREE.Vector3(-0.568, 0, -0.789).normalize();
+const EXPECTED_Y = CONTENT_UP.clone();
+const EXPECTED_X = new THREE.Vector3()
+	.crossVectors(EXPECTED_Y, WORLD_UP)
+	.normalize();
+
+function paperGeometry(withUv = true): THREE.BufferGeometry {
 	const geometry = new THREE.BufferGeometry();
 	geometry.setAttribute(
 		"position",
 		new THREE.BufferAttribute(new Float32Array(PAPER_LOCAL.flat()), 3),
 	);
+	if (withUv) {
+		geometry.setAttribute(
+			"uv",
+			new THREE.BufferAttribute(new Float32Array(PAPER_UV.flat()), 2),
+		);
+	}
 	return geometry;
 }
 
@@ -63,6 +90,35 @@ function expectVectorClose(
 	expect(actual.distanceTo(expected)).toBeLessThanOrEqual(tolerance);
 }
 
+function basisDirections(object: THREE.Object3D): {
+	xDir: THREE.Vector3;
+	yDir: THREE.Vector3;
+	zDir: THREE.Vector3;
+} {
+	object.updateMatrixWorld();
+	return {
+		xDir: new THREE.Vector3(1, 0, 0).transformDirection(object.matrixWorld),
+		yDir: new THREE.Vector3(0, 1, 0).transformDirection(object.matrixWorld),
+		zDir: new THREE.Vector3(0, 0, 1).transformDirection(object.matrixWorld),
+	};
+}
+
+describe("paperContentUp", () => {
+	it("derives the printed content-up direction from UVs (head-down bake)", () => {
+		const up = paperContentUp(paperGeometry(), paperMatrixWorld());
+		// Max-v vertex minus min-v vertex (A − B = the long-edge direction),
+		// flipped 180° because the baked texture stores content head-down.
+		expectVectorClose(up, CONTENT_UP, 1e-6);
+	});
+
+	it("falls back to a deterministic vertex-pair direction without UVs", () => {
+		const up = paperContentUp(paperGeometry(false), paperMatrixWorld());
+		// The fallback's longest vertex pair for this fixture is the short-edge
+		// diagonal V2 − V0 — in-plane and deterministic, just not content-aware.
+		expectVectorClose(up, new THREE.Vector3(0.562, 0, -0.405).normalize(), 1e-6);
+	});
+});
+
 describe("PaperScreen", () => {
 	it("aligns the CSS3D overlay to the paper quad extracted from the geometry", () => {
 		const cssScene = new THREE.Scene();
@@ -85,38 +141,43 @@ describe("PaperScreen", () => {
 			1e-6,
 		);
 
-		// Host dimensions: long side ≈ 875, short side ≈ 624 (×900 scale).
+		// Host dimensions: content-driven, so width spans the short paper
+		// edge ≈ 624 and height the long edge ≈ 875 — the printed page is
+		// portrait and so is the overlay. (The quad is slightly skewed, so the
+		// extents are projection ranges along the content axes, not the raw
+		// edge lengths.)
 		const world = worldVertices(geometry);
-		const L1 = world[0].distanceTo(world[1]);
-		const L2 = world[0].distanceTo(world[2]);
-		expectClose(parseFloat(host.style.width), L1, 1e-4);
-		expectClose(parseFloat(host.style.height), L2, 1e-4);
-		expectClose(parseFloat(host.style.width), 875, 1);
-		expectClose(parseFloat(host.style.height), 624, 1);
+		const extentAlong = (axis: THREE.Vector3): number => {
+			const projections = world.map((vertex) => vertex.dot(axis));
+			return Math.max(...projections) - Math.min(...projections);
+		};
+		const width = extentAlong(EXPECTED_X);
+		const height = extentAlong(CONTENT_UP);
+		expectClose(parseFloat(host.style.width), width, 1e-4);
+		expectClose(parseFloat(host.style.height), height, 1e-4);
+		expectClose(parseFloat(host.style.width), 624, 1);
+		expectClose(parseFloat(host.style.height), 875, 1);
 
-		// Local +x maps to the longest edge direction (A − B, i.e.
-		// (0.568, 0, 0.789) / 0.972 in world), local +z to world up.
-		const expectedE1 = new THREE.Vector3(0.568, 0, 0.789).normalize();
-		const fromVertices = new THREE.Vector3()
-			.subVectors(world[0], world[1])
-			.normalize();
-		expectVectorClose(fromVertices, expectedE1, 1e-6);
-		paper.object.updateMatrixWorld();
-		const xDir = new THREE.Vector3(1, 0, 0).transformDirection(
-			paper.object.matrixWorld,
+		// Orientation: element visual up (local +y — CSS3DRenderer's
+		// getObjectCSSMatrix() negates the matrix3d second column, so visual up
+		// is three local +y) shows the printed content "up" edge (content-up =
+		// −e1 of the long edge), element front (local +z) still faces world up,
+		// and the basis is right-handed (x × y = z).
+		const { xDir, yDir, zDir } = basisDirections(paper.object);
+		expectVectorClose(
+			new THREE.Vector3().crossVectors(xDir, yDir),
+			zDir,
+			1e-6,
 		);
-		const zDir = new THREE.Vector3(0, 0, 1).transformDirection(
-			paper.object.matrixWorld,
-		);
-		expectVectorClose(xDir, expectedE1, 1e-6);
-		expectVectorClose(zDir, new THREE.Vector3(0, 1, 0), 1e-6);
+		expectVectorClose(zDir, WORLD_UP, 1e-6);
+		expectVectorClose(yDir, CONTENT_UP, 1e-6);
+		expectVectorClose(xDir, EXPECTED_X, 1e-6);
 
 		// clip-path: 4 percentages, inset 2% toward the (50%, 50%) centre.
-		const e2 = new THREE.Vector3().subVectors(world[2], world[0]).normalize();
 		const expected = world.map((vertex) => {
 			const offset = vertex.clone().sub(center);
-			const u = offset.dot(expectedE1) / L1;
-			const v = offset.dot(e2) / L2;
+			const u = offset.dot(EXPECTED_X) / width;
+			const v = offset.dot(CONTENT_UP) / height;
 			const px = 50 + ((u + 0.5) * 100 - 50) * 0.98;
 			const py = 50 + ((0.5 - v) * 100 - 50) * 0.98;
 			return new THREE.Vector2(px, py);
@@ -158,7 +219,8 @@ describe("PaperScreen", () => {
 	});
 
 	it("deduplicates shared vertices before measuring the paper", () => {
-		// Two triangles sharing vertices, like a real GLB quad strip.
+		// Two triangles sharing vertices, like a real GLB quad strip (UVs
+		// duplicated with their vertices).
 		const positions = [
 			...PAPER_LOCAL[0],
 			...PAPER_LOCAL[1],
@@ -167,28 +229,67 @@ describe("PaperScreen", () => {
 			...PAPER_LOCAL[3],
 			...PAPER_LOCAL[2],
 		];
+		const uvs = [
+			...PAPER_UV[0],
+			...PAPER_UV[1],
+			...PAPER_UV[2],
+			...PAPER_UV[1],
+			...PAPER_UV[3],
+			...PAPER_UV[2],
+		];
 		const geometry = new THREE.BufferGeometry();
 		geometry.setAttribute(
 			"position",
 			new THREE.BufferAttribute(new Float32Array(positions), 3),
+		);
+		geometry.setAttribute(
+			"uv",
+			new THREE.BufferAttribute(new Float32Array(uvs), 2),
 		);
 
 		const cssScene = new THREE.Scene();
 		const host = document.createElement("div");
 		const paper = new PaperScreen(cssScene, host, geometry, paperMatrixWorld());
 
+		// Same content-driven portrait frame as the unique-vertex quad.
+		expectClose(parseFloat(host.style.width), 624, 1);
+		expectClose(parseFloat(host.style.height), 875, 1);
+		const { yDir, zDir } = basisDirections(paper.object);
+		expectVectorClose(yDir, EXPECTED_Y, 1e-6);
+		expectVectorClose(zDir, WORLD_UP, 1e-6);
+		expect(cssScene.children).toContain(paper.object);
+		expect(cssScene.children).toHaveLength(1);
+	});
+
+	it("degrades to a deterministic orientation when the mesh has no UVs", () => {
+		const cssScene = new THREE.Scene();
+		const host = document.createElement("div");
+		const paper = new PaperScreen(
+			cssScene,
+			host,
+			paperGeometry(false),
+			paperMatrixWorld(),
+		);
+
+		// Without UVs the shared helper's longest vertex-pair fallback points
+		// the content-up axis along the short edge, so the host degrades to a
+		// deterministic landscape frame — still aligned to the paper, front
+		// facing world up, right-handed; no crash.
 		expectClose(parseFloat(host.style.width), 875, 1);
 		expectClose(parseFloat(host.style.height), 624, 1);
-		paper.object.updateMatrixWorld();
-		const xDir = new THREE.Vector3(1, 0, 0).transformDirection(
-			paper.object.matrixWorld,
-		);
+		const { xDir, yDir, zDir } = basisDirections(paper.object);
 		expectVectorClose(
-			xDir,
-			new THREE.Vector3(0.568, 0, 0.789).normalize(),
+			new THREE.Vector3().crossVectors(xDir, yDir),
+			zDir,
 			1e-6,
 		);
-		expect(cssScene.children).toContain(paper.object);
+		expectVectorClose(zDir, WORLD_UP, 1e-6);
+		expectVectorClose(
+			yDir,
+			new THREE.Vector3(0.562, 0, -0.405).normalize(),
+			1e-6,
+		);
+		expect(host.style.clipPath).toMatch(/^polygon\(/);
 		expect(cssScene.children).toHaveLength(1);
 	});
 
@@ -225,6 +326,99 @@ describe("PaperScreen", () => {
 		// so restore returns it to that original value.
 		expect(host.getAttribute("data-three-paper-attached")).toBe("before");
 		expect(host.style.width).toBe("");
+		expect(paper.object.element).not.toBe(host);
+	});
+});
+
+// What CSS3DRenderer writes into object.element's inline style every frame
+// (see getObjectCSSMatrix()): translate(-50%,-50%) + the world matrix3d.
+const CSS3D_TRANSFORM =
+	"translate(-50%,-50%)matrix3d(1,0,0,0,0,1,0,0,0,0,1,0,10,20,30,1)";
+
+describe("PaperScreen host detach/reattach", () => {
+	function createPaper(hostParent?: HTMLElement) {
+		const cssScene = new THREE.Scene();
+		const host = document.createElement("div");
+		hostParent?.appendChild(host);
+		const paper = new PaperScreen(
+			cssScene,
+			host,
+			paperGeometry(),
+			paperMatrixWorld(),
+		);
+		return { cssScene, host, paper };
+	}
+
+	it("swaps the host for an invisible placeholder on detach and restores it on reattach", () => {
+		const { cssScene, host, paper } = createPaper();
+		host.style.transform = CSS3D_TRANSFORM; // renderer-written each frame
+
+		paper.detachHost();
+		paper.detachHost(); // idempotent
+
+		// Shell swap: the CSS3DObject now drives a placeholder, not the host.
+		const placeholder = paper.object.element as HTMLElement;
+		expect(placeholder).not.toBe(host);
+		expect(placeholder.dataset.paperPlaceholder).toBe("true");
+		expect(placeholder.style.position).toBe("absolute");
+		expect(placeholder.style.pointerEvents).toBe("none");
+		expect(placeholder.style.background).toBe("transparent");
+		expect(placeholder.style.width).toBe(host.style.width);
+		expect(placeholder.style.height).toBe(host.style.height);
+		// The placeholder keeps the last CSS3D transform: the renderer caches
+		// per-object styles and would otherwise skip rewriting it after the
+		// element swap, leaving the projection unmeasurable.
+		expect(placeholder.style.transform).toBe(CSS3D_TRANSFORM);
+		expect(paper.placeholderElement).toBe(placeholder);
+
+		// The host loses only its transform; every inline style the game
+		// overlay relies on (size, clip, overflow) stays untouched.
+		expect(host.style.transform).toBe("");
+		expect(host.style.width).toBeTruthy();
+		expect(host.style.height).toBeTruthy();
+		expect(host.style.clipPath).toMatch(/^polygon\(/);
+		expect(host.style.overflow).toBe("hidden");
+		expect(cssScene.children).toContain(paper.object);
+
+		paper.reattachHost();
+		paper.reattachHost(); // idempotent
+
+		expect(paper.object.element).toBe(host);
+		expect(host.style.transform).toBe(CSS3D_TRANSFORM);
+		expect(paper.placeholderElement).toBeNull();
+	});
+
+	it("destroys cleanly from a detached state without touching the real host", () => {
+		const parking = document.createElement("div");
+		document.body.appendChild(parking);
+		const { cssScene, host, paper } = createPaper(parking);
+		host.style.transform = CSS3D_TRANSFORM;
+
+		paper.detachHost();
+		// Simulate the renderer having moved the placeholder into its DOM
+		// (renderObject appends object.element to its cameraElement).
+		const cssCameraElement = document.createElement("div");
+		document.body.appendChild(cssCameraElement);
+		cssCameraElement.appendChild(paper.object.element as HTMLElement);
+
+		paper.destroy();
+		paper.destroy(); // idempotent
+
+		expect(cssScene.children).toHaveLength(0);
+		// The sacrificial marker absorbed the 'removed' event: the real host
+		// stays exactly where the focus layer put it…
+		expect(host.parentElement).toBe(parking);
+		expect(host.getAttribute("style")).toBeNull();
+		expect(host.getAttribute("draggable")).toBeNull();
+		// …while the placeholder is dropped out of the CSS3D DOM.
+		expect(cssCameraElement.children).toHaveLength(0);
+		expect(paper.object.element).not.toBe(host);
+		expect(paper.placeholderElement).toBeNull();
+
+		// After destroy, detach/reattach are no-ops (no element resurrection).
+		paper.detachHost();
+		expect(paper.object.element).not.toBe(host);
+		paper.reattachHost();
 		expect(paper.object.element).not.toBe(host);
 	});
 });

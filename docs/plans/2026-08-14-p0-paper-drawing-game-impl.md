@@ -42,6 +42,7 @@
    }
    type Drawing = { strokes: Stroke[] };
    ```
+   实施补记：橡皮笔画以哨兵色 `ERASER_COLOR = "__eraser__"` 存于 `stroke.color`（渲染时 destination-out）；P1 上传契约需约定该哨兵的识别与序列化。
 2. **宿主契约**：`mount(element)` / `unmount()` / `getSize()`（L1×L2 CSS 像素）。CSS3DObject 的 DOM transform 已自动处理坐标，游戏内 pointer 事件即纸面本地坐标，无需三维↔二维换算。
 3. **PublicExperience 集成**：`usePathname()` 解析 `/games/[id]`；命中注册表创建 host 并挂载 `GameView`，未命中挂默认游戏（drawing）；`desktop-ready` 就绪前不挂载（沿用现有模式状态机）；**路由切换不重建 3D 场景**，仅重挂纸面内容；切出游戏路由卸载。纸面容器 `#paper-screen-host` 常驻，`PaperScreen` 接管 transform 的机制不变。
 4. **画板渲染**：`<canvas>` 铺满 host（`getSize()` × devicePixelRatio），2D context 渲染；host resize 时重绘。笔刷：6-8 色板 + 2-3 级粗细 + 橡皮（覆盖模式）。撤销/重做栈、清空。
