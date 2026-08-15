@@ -7,9 +7,11 @@ import type { Camera } from "./Camera";
 // none), so this tracker raycasts from the pointer's NDC position on every
 // pointermove. Hovering enters the paper camera view; the view is sticky and
 // is only left via the monitor tracker's click-to-toggle behavior, so clicks
-// on the paper itself — the mesh or the game overlay host — are swallowed
-// (stopImmediatePropagation) to keep the monitor tracker from treating them
-// as clicks outside the screen.
+// on the paper — the mesh or the game overlay host (#paper-screen-host) — are
+// swallowed (stopImmediatePropagation) to keep the monitor tracker from
+// treating them as clicks outside the screen. The overlay-host check matters
+// for touches: a first contact has no preceding pointermove raycast, so the
+// hover state alone would not cover it.
 export class PaperPointerTracker {
 	private readonly raycaster = new THREE.Raycaster();
 	private destroyed = false;
@@ -17,7 +19,10 @@ export class PaperPointerTracker {
 
 	constructor(
 		private readonly documentTarget: Document,
-		private readonly host: HTMLElement,
+		/** Monitor 屏幕宿主：悬停其上时排除纸面 hover。 */
+		private readonly screenHost: HTMLElement,
+		/** 纸面游戏宿主（#paper-screen-host）：其内的点击一律吞掉。 */
+		private readonly paperHost: HTMLElement,
 		private readonly canvas: HTMLCanvasElement,
 		private readonly camera: Camera,
 		private readonly getPaper: () => THREE.Mesh | null,
@@ -37,12 +42,20 @@ export class PaperPointerTracker {
 		this.hovering = false;
 	}
 
-	private isInsideHost(event: Event): boolean {
-		return event.target instanceof Node && this.host.contains(event.target);
+	private isInsideScreenHost(event: Event): boolean {
+		return (
+			event.target instanceof Node && this.screenHost.contains(event.target)
+		);
+	}
+
+	private isInsidePaperHost(event: Event): boolean {
+		return (
+			event.target instanceof Node && this.paperHost.contains(event.target)
+		);
 	}
 
 	private readonly onPointerMove = (event: PointerEvent) => {
-		if (this.isInsideHost(event)) {
+		if (this.isInsideScreenHost(event)) {
 			this.setHovering(false);
 			return;
 		}
@@ -68,10 +81,11 @@ export class PaperPointerTracker {
 	};
 
 	private readonly onPointerDown = (event: PointerEvent) => {
-		if (this.isInsideHost(event)) {
-			// Clicks on the game overlay are clicks on the paper too: swallow
-			// them as well, or the monitor tracker toggles the desk view every
-			// time a game interaction starts (e.g. every drawing stroke).
+		// 屏幕宿主内的点击维持透传（monitor tracker 自身对其 no-op）。
+		if (this.isInsideScreenHost(event)) return;
+		// 游戏遮罩内的点击就是纸面上的点击：无条件吞掉，否则 monitor tracker
+		// 会把它当作屏幕外点击切换 desk 视角（触摸首次落笔无先行 hover）。
+		if (this.isInsidePaperHost(event)) {
 			event.stopImmediatePropagation();
 			return;
 		}

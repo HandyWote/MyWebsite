@@ -78,6 +78,7 @@ export class Application implements ThreeExperience {
 		this.paperPointerTracker = new PaperPointerTracker(
 			document,
 			options.screenHost,
+			options.paperHost,
 			this.renderer.webgl.domElement,
 			this.camera,
 			() => this.world.getPaperMesh(),
