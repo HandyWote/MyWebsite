@@ -2,39 +2,20 @@ name: Deploy
 
 on:
   workflow_dispatch:
-    inputs:
-      deploy_ref:
-        description: Git tag, branch, or commit to deploy
-        required: true
-        type: string
 
 jobs:
   deploy:
     runs-on: ubuntu-local
     steps:
-      - name: Resolve deploy ref
-        id: deploy-ref
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          MANUAL_REF: ${{ inputs.deploy_ref }}
-          PUSH_REF: ${{ github.ref_name }}
-        run: |
-          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
-            printf 'ref=%s\n' "$MANUAL_REF" >> "$GITHUB_OUTPUT"
-          else
-            printf 'ref=%s\n' "$PUSH_REF" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         env:
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
-          DEPLOY_REF: ${{ steps.deploy-ref.outputs.ref }}
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           password: ${{ secrets.DEPLOY_PASSWORD }}
-          envs: DEPLOY_PATH,DEPLOY_REF
+          envs: DEPLOY_PATH
           script: |
             set -euo pipefail
             cd "$DEPLOY_PATH"
@@ -42,15 +23,8 @@ jobs:
             # intentional, so force the checkout to discard dirty state.
             # (core.filemode=false is set locally on the host so NAS ACL
             # mode rewrites are not seen as changes.)
-            # Gitea may deliver a branch ref (refs/heads/...) instead of
-            # the typed value; map it to the remote branch so we never
-            # check out a stale local branch. Tags/commits pass through.
-            git fetch --tags origin
-            case "$DEPLOY_REF" in
-              refs/heads/*) CHECKOUT_REF="origin/${DEPLOY_REF#refs/heads/}" ;;
-              *)            CHECKOUT_REF="$DEPLOY_REF" ;;
-            esac
-            git checkout --detach --force "$CHECKOUT_REF"
+            git fetch --prune origin
+            git reset --hard origin/main
             # Images are built on GitHub Actions and pushed to the Gitea
             # registry; the server only pulls. Requires a one-time
             # `docker login git.unself.cn` on the deploy host.

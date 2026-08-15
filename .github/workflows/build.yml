@@ -90,7 +90,6 @@ jobs:
         if: success()
         env:
           TOKEN: ${{ secrets.GITEA_REGISTRY_TOKEN }}
-          TAG: ${{ steps.resolve.outputs.tag }}
         run: |
           # After images land in the registry, kick off the Gitea
           # deploy workflow so the server pulls and starts them.
@@ -98,6 +97,6 @@ jobs:
           curl -fsS -X POST \
             -H "Authorization: token $TOKEN" \
             -H "Content-Type: application/json" \
-            -d "{\"ref\":\"main\",\"inputs\":{\"deploy_ref\":\"$TAG\"}}" \
+            -d '{"ref":"main"}' \
             "$api/actions/workflows/deploy.yml/dispatches"
-          echo "Triggered Gitea deploy for $TAG"
+          echo "Triggered Gitea deploy"
