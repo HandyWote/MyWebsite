@@ -6,6 +6,8 @@ import type { ThreeExperienceOptions } from '@/three/types';
 import { DESKTOP_3D_MEDIA, PublicExperience } from './PublicExperience';
 
 const { loadRuntimeMock } = vi.hoisted(() => ({ loadRuntimeMock: vi.fn() }));
+const { usePathnameMock } = vi.hoisted(() => ({ usePathnameMock: vi.fn(() => '/') }));
+vi.mock('next/navigation', () => ({ usePathname: usePathnameMock }));
 vi.mock('./threeRuntimeLoader', () => ({ loadThreeRuntime: loadRuntimeMock }));
 vi.mock('./PublicPortalBoundary', () => ({
   PublicPortalBoundary: ({ children }: { children: ReactNode }) => <>{children}</>,
@@ -71,6 +73,8 @@ function runtimeModule(onCreate?: (options: ThreeExperienceOptions) => void) {
 describe('PublicExperience', () => {
   beforeEach(() => {
     loadRuntimeMock.mockReset();
+    usePathnameMock.mockReset();
+    usePathnameMock.mockReturnValue('/');
   });
 
   it('server-renders scene mounts, stable parking, and one real ScreenHost tree', () => {
@@ -168,5 +172,82 @@ describe('PublicExperience', () => {
     expect(document.querySelector('[data-public-experience="desktop-error"]')).not.toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Retry computer model' }));
     expect(runtime.runtime.retryComputer).toHaveBeenCalledTimes(1);
+  });
+
+  it('mounts the routed game onto the paper screen when the desktop is ready', async () => {
+    installMedia(true);
+    usePathnameMock.mockReturnValue('/games/drawing');
+    let options: ThreeExperienceOptions | undefined;
+    const runtime = runtimeModule((createdOptions) => { options = createdOptions; });
+    loadRuntimeMock.mockResolvedValue(runtime.module);
+    render(<PublicExperience><p>Route content</p></PublicExperience>);
+    await waitFor(() => expect(options).toBeDefined());
+
+    act(() => options?.onComputerReady());
+    await waitFor(() => {
+      expect(document.getElementById('paper-screen-host')?.querySelector('[data-game="drawing"]')).not.toBeNull();
+    });
+  });
+
+  it('keeps one 3D runtime across game route changes and keeps rendering the derived game', async () => {
+    installMedia(true);
+    usePathnameMock.mockReturnValue('/games/drawing');
+    let options: ThreeExperienceOptions | undefined;
+    const runtime = runtimeModule((createdOptions) => { options = createdOptions; });
+    loadRuntimeMock.mockResolvedValue(runtime.module);
+    const view = render(<PublicExperience><p>Route content</p></PublicExperience>);
+    await waitFor(() => expect(runtime.createThreeExperience).toHaveBeenCalledTimes(1));
+    act(() => options?.onComputerReady());
+    const gameNode = await waitFor(() => {
+      const node = document.querySelector('#paper-screen-host [data-game="drawing"]');
+      expect(node).not.toBeNull();
+      return node;
+    });
+
+    usePathnameMock.mockReturnValue('/');
+    view.rerender(<PublicExperience><p>Route content</p></PublicExperience>);
+
+    expect(runtime.createThreeExperience).toHaveBeenCalledTimes(1);
+    // 切出游戏路由后回退到默认游戏，纸面内容继续渲染且不重建节点。
+    expect(document.querySelector('#paper-screen-host [data-game="drawing"]')).toBe(gameNode);
+  });
+
+  it('falls back to the default game for an unknown game route id', async () => {
+    installMedia(true);
+    usePathnameMock.mockReturnValue('/games/nope');
+    let options: ThreeExperienceOptions | undefined;
+    const runtime = runtimeModule((createdOptions) => { options = createdOptions; });
+    loadRuntimeMock.mockResolvedValue(runtime.module);
+    render(<PublicExperience><p>Route content</p></PublicExperience>);
+    await waitFor(() => expect(options).toBeDefined());
+
+    act(() => options?.onComputerReady());
+    await waitFor(() => {
+      expect(document.getElementById('paper-screen-host')?.querySelector('[data-game="drawing"]')).not.toBeNull();
+    });
+  });
+
+  it('does not mount any game when the desktop capability is unavailable', async () => {
+    installMedia(false);
+    usePathnameMock.mockReturnValue('/games/drawing');
+    render(<PublicExperience><p>Mobile content</p></PublicExperience>);
+    await act(async () => Promise.resolve());
+
+    expect(loadRuntimeMock).not.toHaveBeenCalled();
+    expect(document.getElementById('paper-screen-host')?.childElementCount).toBe(0);
+  });
+
+  it('does not mount the game when the computer model fails', async () => {
+    installMedia(true);
+    usePathnameMock.mockReturnValue('/games/drawing');
+    let options: ThreeExperienceOptions | undefined;
+    const runtime = runtimeModule((createdOptions) => { options = createdOptions; });
+    loadRuntimeMock.mockResolvedValue(runtime.module);
+    render(<PublicExperience><p>Route content</p></PublicExperience>);
+    await waitFor(() => expect(options).toBeDefined());
+
+    act(() => options?.onComputerError(new Error('computer unavailable')));
+    expect(document.querySelector('[data-public-experience="desktop-error"]')).not.toBeNull();
+    expect(document.getElementById('paper-screen-host')?.childElementCount).toBe(0);
   });
 });
