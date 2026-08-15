@@ -92,6 +92,18 @@ const dividerStyle: CSSProperties = {
 	background: "rgba(38, 70, 83, 0.28)",
 };
 
+/** 草稿提示层的中央小卡片：自带底色/描边/投影，提示层本身完全
+ *  透明，不给画面区域罩任何颜色。 */
+const promptCardStyle: CSSProperties = {
+	textAlign: "center",
+	padding: "16px 20px",
+	maxWidth: "80%",
+	background: "rgba(244, 236, 216, 0.95)",
+	border: "1px solid rgba(38, 70, 83, 0.35)",
+	borderRadius: 12,
+	boxShadow: "0 2px 10px rgba(0, 0, 0, 0.18)",
+};
+
 const promptButtonStyle: CSSProperties = {
 	padding: "7px 14px",
 	borderRadius: 8,
@@ -431,7 +443,8 @@ export function DrawingGame({ host }: GameViewProps) {
 				</button>
 			</div>
 
-			{/* 草稿提示层：继续上次 / 新画 */}
+			{/* 草稿提示层：inset:0 全幅覆盖仅用于拦截绘制（模态行为），
+			    自身无背景，画面区域完全透明 */}
 			{draftPrompt && (
 				<div
 					style={{
@@ -441,10 +454,9 @@ export function DrawingGame({ host }: GameViewProps) {
 						display: "flex",
 						alignItems: "center",
 						justifyContent: "center",
-						background: "rgba(244, 236, 216, 0.55)",
 					}}
 				>
-					<div style={{ textAlign: "center", padding: 16, maxWidth: "80%" }}>
+					<div style={promptCardStyle}>
 						<p
 							style={{
 								margin: "0 0 12px",
