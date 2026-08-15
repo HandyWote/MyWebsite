@@ -226,24 +226,23 @@ describe("DrawingGame", () => {
 
 	it("collapses the toolbar by default and toggles it via the corner switch", () => {
 		renderBoard();
-		// 默认收起：页眉条 display:none（不进无障碍树），只剩开关钮
+		// 默认收起：卡缩成只剩开关钮的小扁胶囊，工具行宽 0 且退出
+		// 无障碍树（visibility hidden + 无 toolbar role）
 		const toggle = screen.getByRole("button", { name: "Show drawing tools" });
 		expect(toggle.getAttribute("aria-expanded")).toBe("false");
 		expect(toggle.getAttribute("aria-controls")).toBe("drawing-toolbar");
 		expect(screen.queryByRole("toolbar")).toBeNull();
-		expect(
-				(document.getElementById("drawing-toolbar") as HTMLElement).style
-					.display,
-		).toBe("none");
+		const row = document.getElementById("drawing-toolbar")
+			?.firstElementChild as HTMLElement;
+		expect(row.style.maxWidth).toBe("0px");
+		expect(row.style.visibility).toBe("hidden");
 
-		// 展开：页眉条可访问，chevron 翻转为向下（点击收起）
+		// 展开：原地丝滑展开为单行面板（max-width/opacity/visibility 过渡）
 		fireEvent.click(toggle);
 		expect(toggle.getAttribute("aria-expanded")).toBe("true");
 		expect(screen.getByRole("toolbar")).toBeTruthy();
-		expect(
-				(document.getElementById("drawing-toolbar") as HTMLElement).style
-					.display,
-		).toBe("flex");
+		expect(row.style.maxWidth).toBe("560px");
+		expect(row.style.visibility).toBe("visible");
 
 		// 再点（标签已翻转为 Hide）收起
 		fireEvent.click(screen.getByRole("button", { name: "Hide drawing tools" }));

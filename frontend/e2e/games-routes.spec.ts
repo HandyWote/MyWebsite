@@ -239,7 +239,8 @@ test("desktop mounts the drawing board on the paper: draw, draft, reload, undo",
 	const board = await waitForDesktopDrawingBoard(page);
 	const canvas = board.locator("canvas");
 
-	// 工具条契约：默认收起只露右上角开关钮，展开后颜色/笔宽/橡皮/提交占位
+	// 工具条契约：默认收起只剩居中小扁胶囊，展开后颜色/笔宽/橡皮/提交占位
+	// （画布零缩放断言在聚焦测试里做——idle 相机有正弦漂移，无法精确比对）
 	const toolsToggle = board.locator("[data-toolbar-toggle]");
 	await expect(toolsToggle).toBeVisible();
 	await expect(toolsToggle).toHaveAttribute("aria-expanded", "false");
@@ -314,6 +315,14 @@ test("desktop paper focus: host swaps into the 2D layer and the dead zone become
 
 	// 悬停纸面 → enterPaper → settle 后宿主搬进屏幕 2D 聚焦层
 	await enterPaperFocus(page);
+
+	// 工具面板展开/收起面布尺寸纹丝不动（聚焦机位完全静止，可精确比对）
+	const focusedCanvasBox = await canvas.boundingBox();
+	const focusedToggle = board.locator("[data-toolbar-toggle]");
+	await toolbarClick(focusedToggle);
+	expect(await canvas.boundingBox()).toEqual(focusedCanvasBox);
+	await toolbarClick(focusedToggle);
+	expect(await canvas.boundingBox()).toEqual(focusedCanvasBox);
 
 	// 接管断言：宿主在层内，CSS3D 场景由占位元素顶替
 	await expect(
