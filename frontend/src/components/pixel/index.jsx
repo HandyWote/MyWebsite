@@ -14,6 +14,7 @@ export { PixelCard } from "./ui/PixelCard";
 export { PixelChip } from "./ui/PixelChip";
 export { PixelAvatar } from "./ui/PixelAvatar";
 export { PixelInput } from "./ui/PixelInput";
+export { PixelDialog } from "./ui/PixelDialog";
 export { PixelTypography, CodeBlock, TerminalLine } from "./ui/PixelTypography";
 export { PixelContainer } from "./layout/PixelContainer";
 export { PixelSidebar } from "./layout/PixelSidebar";
