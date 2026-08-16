@@ -1,7 +1,7 @@
 # P2 子计划：评论账号化（登录门槛 + 登录提醒 + 草稿模式）
 
 - **日期**：2026-08-16
-- **状态**：需求已确认（头脑风暴收敛），等待批准后实施
+- **状态**：✅ 已完成（PR #7 合并，2026-08-16）
 - **范围**：`backend/routes/comment.go`（CreateComment 强制登录）、`frontend/src/components/pixel/`（新增集中式 PixelDialog）、`frontend/src/components/articles/CommentSection.jsx`（登录门槛交互 + 草稿模式）、前后端测试
 - **关联**：主计划《纸面绘图小游戏 P0 实现计划》（`2026-08-12-paper-drawing-game-p0.md`）任务队列 P2「评论账号化」；前置 P1 登录体系已合并（PR #5）；P1 §5.1「评论复用 GitHub 身份」已落地（后端 `d9d79b1`、前端 `7d13aa9`），本计划在其上收口「只有登录用户可评论」
 
@@ -94,16 +94,18 @@ if identity := commentSessionUser(c); identity == nil {
 
 ## 4. 任务拆分
 
-| ID | 任务 | 依赖 |
-|---|---|---|
-| C1 | 后端：CreateComment 强制登录 + admin 身份 + contract 测试更新（匿名 401、admin=ADMIN_USERNAME、github 覆盖保留） | — |
-| C2 | 前端：PixelDialog 组件 + 单测 + index 导出 | — |
-| C3 | 前端：CommentSection 改造（删昵称输入、双 provider 徽章、guest 拦截 + Dialog、草稿模式）+ 单测更新 | C2 |
-| C4 | 收尾：全量验证（`go test ./...` / vitest / lint / build；既有 e2e 不受影响） | C1, C3 |
+| ID | 任务 | 依赖 | 状态 |
+|---|---|---|---|
+| C1 | 后端：CreateComment 强制登录 + admin 身份 + contract 测试更新（匿名 401、admin=ADMIN_USERNAME、github 覆盖保留） | — | ✅ |
+| C2 | 前端：PixelDialog 组件 + 单测 + index 导出 | — | ✅ |
+| C3 | 前端：CommentSection 改造（删昵称输入、双 provider 徽章、guest 拦截 + Dialog、草稿模式）+ 单测更新 | C2 | ✅ |
+| C4 | 收尾：全量验证（`go test ./...` / vitest / lint / build；既有 e2e 不受影响） | C1, C3 | ✅ |
 
 实施顺序：C1 ‖ C2 → C3 → C4（C1/C2 文件互不重叠可并行）
 
 ## 5. 全局验收（完成定义）
+
+> ✅ 全部达成（C4 验证：`go test ./...` 全绿、vitest 485/485、lint 零告警、`npm run build` 成功、e2e 28 passed / 0 failed）
 
 1. 匿名 POST `/api/articles/:id/comments` → 401；前端 guest 点 submit → 弹 Dialog 且不发请求
 2. GitHub 登录：无昵称输入框、徽章+头像；发布后 author/头像为服务端身份（防伪造，现有测试保留）
@@ -118,3 +120,9 @@ if identity := commentSessionUser(c); identity == nil {
 - 401 竞态：已登录用户 token 过期 → useSession 已静默降级 guest，submit 走 Dialog 分支；极少数穿透由后端 401 + browserRequest 现有 clearAuth/回首页兜底
 - 草稿 key 命名空间 `comment:draft:` 与画板草稿 `game:drawing:draft` 同模式，互不冲突
 - 不做：评论列表展示层无改动；通知/成功文案保持现状（英文化列为后续可选）
+
+## 7. 实施补记（2026-08-16，已合并 PR #7）
+
+- **文案去提供商化**：Dialog 正文由 `comments require a GitHub sign-in. your draft is saved.` 改为 `comments require sign-in. your draft is saved.`；主按钮由 `sign in with GitHub` 改为 `sign in`——登录方式不限于 GitHub（`login -u` 密码登录为保留方式，GitHub 仅为默认），提示不写死提供商。§3 文案表以本补记为准。
+- **PixelDialog 标题水合修复**：`DialogTitle`（默认 h2）内嵌 `PixelTypography variant="h6"` 产生 h2 嵌套 h6 的非法 HTML 结构，触发 React 水合错误；标题改 `component="span"` 渲染（视觉样式不变，标题语义保留在 h2），并补回归断言。
+- **Dialog 正文可读性**：正文原用 `muted`（`#484f58`，在弹窗底色 `#161b22` 上对比度 ~2.2:1 不达标），改 `text.secondary`（`#8b949e`，~4.7:1，与 `// not signed in` 一致）；全局 `tokens.text.muted` 未动（影响 sidebar 等多处，避免误伤）。

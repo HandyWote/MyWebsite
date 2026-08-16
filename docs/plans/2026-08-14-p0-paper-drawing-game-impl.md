@@ -1,7 +1,7 @@
 # 纸面绘图游戏 P0 实施子计划（画板）
 
 - **日期**：2026-08-14
-- **状态**：需求已确认，等待批准后实施
+- **状态**：✅ 已完成（PR #6 合并，2026-08-15）
 - **范围**：`frontend/src/games/`（注册表、宿主契约、画板游戏）、`frontend/app/(public)/games/`（大厅与游戏页）、`frontend/src/components/public/PublicExperience.tsx`（路由驱动纸面挂载）
 - **关联**：主计划 [2026-08-12-paper-drawing-game-p0.md](./2026-08-12-paper-drawing-game-p0.md)（Task 1-7，本文档为其实施细化）；前置 P1 登录体系已合并（PR #5，main 分支）
 - **基线核对**（与总计划写作时的差异）：`#paper-screen-host` 容器已由 `PublicExperience` 常驻、`World` 已接管（`paperHost` 传入），集成点就绪；**`frontend/src/three/` 下不存在 GameCenter 预留接口与纸堆就绪信号**——总计划范围中的该部分收敛为本计划 G5（纯类型，放 `src/games/`），不再动 three 运行时
@@ -83,4 +83,4 @@
 ## 6. 环境与部署
 
 - 纯前端改动，无新环境变量、无迁移、无部署配置变更
-- 分支建议：`feat/p0-drawing-game`；完成后按 P1 流程 tea PR 合 main
+- 分支建议：`feat/p0-drawing-game`（✅ 已合并，PR #6，2026-08-15）

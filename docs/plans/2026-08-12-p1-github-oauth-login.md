@@ -1,8 +1,8 @@
 # P1 子计划：GitHub OAuth 登录 + login 命令体系
 
 - **日期**：2026-08-13
-- **状态**：需求已确认（头脑风暴收敛），按计划执行
-- **分支**：`feat/p1-github-login`（独立 worktree：`../MyWebsite-p1-login`）
+- **状态**：✅ 已完成（PR #5 合并，2026-08-14）
+- **分支**：`feat/p1-github-login`（独立 worktree：`../MyWebsite-p1-login`，已合并入 main）
 - **关联**：本计划是《纸面绘图小游戏 P0 实现计划》（`2026-08-12-paper-drawing-game-p0.md`）的 P1 阶段**登录部分**先行落地；公共画布与审核链仍留在 P1 后续/独立计划
 - **范围**：`backend/`（User 模型、GitHub OAuth、JWT 角色化、限流）、`frontend/`（终端命令状态机、/auth/callback、admin 登录页移除）
 
