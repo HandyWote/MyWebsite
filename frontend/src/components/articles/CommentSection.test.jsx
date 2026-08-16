@@ -133,11 +133,9 @@ describe("CommentSection sign-in gate", () => {
 
 		expect(screen.getByText("sign in required")).toBeInTheDocument();
 		expect(
-			screen.getByText(
-				"comments require a GitHub sign-in. your draft is saved.",
-			),
+			screen.getByText("comments require sign-in. your draft is saved."),
 		).toBeInTheDocument();
-		expect(screen.getByText("sign in with GitHub")).toBeInTheDocument();
+		expect(screen.getByText("sign in")).toBeInTheDocument();
 		expect(screen.getByText("not now")).toBeInTheDocument();
 		expect(apiPostMock).not.toHaveBeenCalled();
 	});
@@ -151,7 +149,7 @@ describe("CommentSection sign-in gate", () => {
 		renderSection();
 		typeMessage("hi");
 		fireEvent.click(screen.getByText("> submit"));
-		fireEvent.click(screen.getByText("sign in with GitHub"));
+		fireEvent.click(screen.getByText("sign in"));
 
 		expect(window.location.href).toBe(
 			"/api/auth/github/authorize?redirect_to=%2Farticles%2F7",

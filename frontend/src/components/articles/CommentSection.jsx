@@ -336,13 +336,19 @@ export default function CommentSection({ articleId, demoMode = false }) {
 							not now
 						</PixelButton>
 						<PixelButton variant="primary" onClick={handleSignIn}>
-							sign in with GitHub
+							sign in
 						</PixelButton>
 					</>
 				}
 			>
-				<PixelTypography variant="body2" muted code>
-					comments require a GitHub sign-in. your draft is saved.
+				{/* 登录方式不限于 GitHub（密码登录为保留方式），文案不写死提供商；
+				    不用 muted（#484f58 对比度仅 ~2.2:1），正文用 text.secondary 保证可读。 */}
+				<PixelTypography
+					variant="body2"
+					code
+					sx={{ color: "text.secondary" }}
+				>
+					comments require sign-in. your draft is saved.
 				</PixelTypography>
 			</PixelDialog>
 
