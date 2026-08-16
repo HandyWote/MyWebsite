@@ -113,29 +113,48 @@ func TestCreateCommentGithubIdentityFallsBackToUsername(t *testing.T) {
 	assert.Empty(t, data.AvatarURL)
 }
 
-func TestCreateCommentAnonymousKeepsManualAuthor(t *testing.T) {
+func TestCreateCommentRequiresLogin(t *testing.T) {
+	t.Setenv("JWT_SECRET_KEY", "test-jwt-secret")
+	t.Setenv("ADMIN_USERNAME", "test-admin")
 	t.Setenv("COMMENT_LIMIT_ENABLED", "false")
 	ensureCommentTable(t)
 
-	// 无 token / 无效 token / admin token 都不覆盖，匿名手填照旧。
+	// 无 token → 401，匿名评论不再被接受。
 	w := postComment(t, commentTestRouter(), `{"author":"anon","content":"hello"}`, "")
-	require.Equal(t, http.StatusOK, w.Code)
-	data := commentResponseData(t, w)
-	assert.Equal(t, "anon", data.Author)
-	assert.Empty(t, data.AvatarURL)
+	require.Equal(t, http.StatusUnauthorized, w.Code)
 
+	// 无效 token → 401。
 	w = postComment(t, commentTestRouter(), `{"author":"anon2","content":"hello"}`, "not-a-jwt")
-	require.Equal(t, http.StatusOK, w.Code)
-	data = commentResponseData(t, w)
-	assert.Equal(t, "anon2", data.Author)
-	assert.Empty(t, data.AvatarURL)
+	require.Equal(t, http.StatusUnauthorized, w.Code)
 
+	// admin token（provider=password）→ 200，author 恒为服务端管理员身份，手填被覆盖。
 	adminToken, err := middleware.GenerateToken("admin", "password", "test-jwt-secret", 3600)
 	require.NoError(t, err)
-	t.Setenv("JWT_SECRET_KEY", "test-jwt-secret")
 	w = postComment(t, commentTestRouter(), `{"author":"anon3","content":"hello"}`, adminToken)
 	require.Equal(t, http.StatusOK, w.Code)
-	data = commentResponseData(t, w)
-	assert.Equal(t, "anon3", data.Author)
+	data := commentResponseData(t, w)
+	assert.Equal(t, "test-admin", data.Author)
+	assert.Empty(t, data.AvatarURL)
+}
+
+func TestCreateCommentGithubIdentityWithoutUserRow(t *testing.T) {
+	t.Setenv("JWT_SECRET_KEY", "test-jwt-secret")
+	t.Setenv("COMMENT_LIMIT_ENABLED", "false")
+
+	oldLookup := meUserLookup
+	meUserLookup = func(_ context.Context, provider, username string) (*models.User, error) {
+		// users 表查不到 → 不拒绝，回退 claims.Username 作作者（与 Me handler 容错一致）。
+		return nil, nil
+	}
+	defer func() { meUserLookup = oldLookup }()
+
+	token, err := middleware.GenerateToken("octocat", "github", "test-jwt-secret", 3600)
+	require.NoError(t, err)
+
+	ensureCommentTable(t)
+	w := postComment(t, commentTestRouter(), `{"author":"fake","content":"hi"}`, token)
+	require.Equal(t, http.StatusOK, w.Code)
+	data := commentResponseData(t, w)
+	assert.Equal(t, "octocat", data.Author)
 	assert.Empty(t, data.AvatarURL)
 }
