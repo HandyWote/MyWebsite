@@ -27,6 +27,8 @@ describe('PixelDialog', () => {
     expect(screen.getByText('标题')).toBeInTheDocument();
     expect(screen.getByText('内容区')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '确定' })).toBeInTheDocument();
+    // 回归：标题以 span 渲染（DialogTitle 是 h2），不得再产生嵌套 h6 水合错误。
+    expect(screen.queryByRole('heading', { level: 6 })).not.toBeInTheDocument();
   });
 
   it('does not render title or actions when not provided', () => {

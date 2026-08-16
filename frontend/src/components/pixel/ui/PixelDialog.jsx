@@ -27,7 +27,9 @@ export function PixelDialog({ open, title, onClose, actions, children, ...props 
             pb: spacing.md,
           }}
         >
-          <PixelTypography variant="h6" code accent>
+          {/* component="span"：避免 DialogTitle(h2) 内嵌套 h6 造成水合错误；
+              视觉仍应用 h6 字号样式，标题语义保留在 h2。 */}
+          <PixelTypography component="span" variant="h6" code accent>
             {title}
           </PixelTypography>
         </DialogTitle>
