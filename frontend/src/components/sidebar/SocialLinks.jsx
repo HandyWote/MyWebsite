@@ -10,9 +10,9 @@ const iconMap = {
   other: LinkIcon,
 };
 
-/** 裸邮箱形态：无 scheme 且含 @（如 handy@handywote.top）。 */
+/** 裸邮箱形态：无 scheme 且含 @（如 handy@handywote.top）；域名不强制含点，user@localhost 等也算合法。 */
 const looksLikeEmail = (value) =>
-  typeof value === 'string' && !value.includes(':') && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value);
+  typeof value === 'string' && !value.includes(':') && /^[^@\s]+@[^@\s]+$/.test(value);
 
 /**
  * 地址归一化：后台配置可能把裸邮箱直接填进 href（issue #4），

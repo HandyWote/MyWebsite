@@ -3,6 +3,7 @@ import { Box } from "@mui/material";
 import type { ReactNode } from "react";
 import { getArticlePage } from "@/api/publicApi.server";
 import { ArticleDetailNav } from "./ArticleDetailNav";
+import { ScreenFrame } from "./ScreenFrame";
 import { TerminalCommandBar } from "./TerminalCommandBar";
 import {
 	navButtonSx,
@@ -10,11 +11,26 @@ import {
 	type ShellArticle,
 } from "./shellUtils";
 
+/**
+ * 各页语境的命令建议:cd 行从 SHELL_NAV_ITEMS 派生,
+ * 新增导航项只需在注册表排除表中声明,不再逐组硬编码。
+ */
+const buildSuggestions = (
+	exclude: readonly string[],
+	extras: string[] = [],
+): string[] => [
+	...SHELL_NAV_ITEMS.filter((item) => !exclude.includes(item.label)).map(
+		(item) => item.command,
+	),
+	...extras,
+	"help",
+];
+
 const SHELL_SUGGESTIONS = {
-	detail: ["open prev", "open next", "exit", "cd projects/", "help"],
-	list: ["open latest", "cd projects/", "cd about/", "help"],
-	projects: ["cd articles/", "cd about/", "help"],
-	default: ["cd articles/", "cd projects/", "cd games/", "help"],
+	detail: buildSuggestions(["articles"], ["open prev", "open next", "exit"]),
+	list: buildSuggestions(["articles"], ["open latest"]),
+	projects: buildSuggestions(["projects"]),
+	default: buildSuggestions([]),
 };
 
 const getShellState = (
@@ -65,18 +81,7 @@ export async function PublicShell({
 				: SHELL_SUGGESTIONS.default;
 
 	return (
-		<Box
-			className="screen-page"
-			sx={{
-				height: "var(--public-viewport-height)",
-				display: "grid",
-				gridTemplateRows: "minmax(0, 1fr) auto",
-				border: 1,
-				borderColor: "divider",
-				overflow: "hidden",
-				bgcolor: "background.default",
-			}}
-		>
+		<ScreenFrame>
 			<Box
 				sx={{
 					display: "grid",
@@ -182,6 +187,6 @@ export async function PublicShell({
 				articles={articles}
 				currentArticleId={currentArticleId}
 			/>
-		</Box>
+		</ScreenFrame>
 	);
 }

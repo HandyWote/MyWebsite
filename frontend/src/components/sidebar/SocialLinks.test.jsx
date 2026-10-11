@@ -62,4 +62,32 @@ describe('SocialLinks href normalization (issue #4)', () => {
     const link = screen.getByText('Blog');
     expect(link.getAttribute('href')).toBe('blog');
   });
+
+  it('normalizes bare email whose domain has no dot (user@localhost)', () => {
+    render(<SocialLinks links={[{ type: 'other', label: 'Email: user@localhost', href: 'user@localhost' }]} />);
+
+    const link = screen.getByText('Email: user@localhost');
+    expect(link.getAttribute('href')).toBe('mailto:user@localhost');
+  });
+
+  it('normalizes bare email with hyphenated intranet host (user@server-01)', () => {
+    render(<SocialLinks links={[{ type: 'other', label: 'Email: user@server-01', href: 'user@server-01' }]} />);
+
+    const link = screen.getByText('Email: user@server-01');
+    expect(link.getAttribute('href')).toBe('mailto:user@server-01');
+  });
+
+  it('keeps bare values with whitespace untouched (no mailto)', () => {
+    render(<SocialLinks links={[{ type: 'other', label: 'Broken: a b@c', href: 'a b@c' }]} />);
+
+    const link = screen.getByText('Broken: a b@c');
+    expect(link.getAttribute('href')).toBe('a b@c');
+  });
+
+  it('keeps bare values with two @ untouched (no mailto)', () => {
+    render(<SocialLinks links={[{ type: 'other', label: 'Broken: a@b@c', href: 'a@b@c' }]} />);
+
+    const link = screen.getByText('Broken: a@b@c');
+    expect(link.getAttribute('href')).toBe('a@b@c');
+  });
 });

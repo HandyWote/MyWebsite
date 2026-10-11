@@ -127,23 +127,20 @@ describe("TerminalCommandBar", () => {
 		expect(pushMock).toHaveBeenLastCalledWith("/");
 	});
 
-	it("navigates to the games arcade from SHELL_NAV_ITEMS", () => {
+	it("navigates to the games arcade", () => {
 		renderBar();
 		type("cd games/");
 		pressKey("Enter");
 		expect(pushMock).toHaveBeenLastCalledWith("/games");
 	});
 
-	it("derives cd lines in help from SHELL_NAV_ITEMS", () => {
+	it("lists cd routes in help output", () => {
 		renderBar();
 		type("help");
 		pressKey("Enter");
-		expect(
-			screen.getByText(/^cd games\/\s+open game arcade$/),
-		).toBeInTheDocument();
-		expect(
-			screen.getByText(/^cd articles\/\s+open article list$/),
-		).toBeInTheDocument();
+		// 显式断言帮助文本,与 SHELL_NAV_ITEMS 注册表解耦。
+		expect(screen.getByText(/^cd games\/\s+open game arcade$/)).toBeInTheDocument();
+		expect(screen.getByText(/^cd articles\/\s+open article list$/)).toBeInTheDocument();
 	});
 
 	it("opens the latest article", () => {

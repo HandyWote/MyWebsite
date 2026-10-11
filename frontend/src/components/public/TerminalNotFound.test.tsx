@@ -1,17 +1,14 @@
 import { Box } from "@mui/material";
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { SHELL_NAV_ITEMS } from "./shellUtils";
 import { TerminalNotFound } from "./TerminalNotFound";
 
 vi.mock("next/navigation", () => ({
 	usePathname: vi.fn(),
 }));
 
-vi.mock("@/components/public/PublicShell", () => ({
-	PublicShell: ({ children }: { children: React.ReactNode }) => (
-		<Box data-testid="public-shell-mock">{children}</Box>
-	),
+vi.mock("@/components/public/TerminalCommandBar", () => ({
+	TerminalCommandBar: () => <Box data-testid="terminal-command-bar-mock" />,
 }));
 
 import { usePathname } from "next/navigation";
@@ -57,10 +54,19 @@ describe("TerminalNotFound", () => {
 		).toBeInTheDocument();
 		expect(screen.getByText("did you mean:")).toBeInTheDocument();
 
-		for (const item of SHELL_NAV_ITEMS) {
-			expect(
-				screen.getByRole("link", { name: item.command }),
-			).toHaveAttribute("href", item.href);
-		}
+		// 显式硬断言用户可见导航,与 SHELL_NAV_ITEMS 注册表解耦:
+		// 注册表误删/改名时这些断言必须红,测试范围不随注册表缩小。
+		expect(
+			screen.getByRole("link", { name: "cd articles/" }),
+		).toHaveAttribute("href", "/articles");
+		expect(
+			screen.getByRole("link", { name: "cd projects/" }),
+		).toHaveAttribute("href", "/projects");
+		expect(
+			screen.getByRole("link", { name: "cd games/" }),
+		).toHaveAttribute("href", "/games");
+		expect(
+			screen.getByRole("link", { name: "cd about/" }),
+		).toHaveAttribute("href", "/");
 	});
 });
