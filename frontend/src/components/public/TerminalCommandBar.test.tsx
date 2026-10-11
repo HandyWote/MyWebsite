@@ -121,6 +121,29 @@ describe("TerminalCommandBar", () => {
 		type("cd about");
 		pressKey("Enter");
 		expect(pushMock).toHaveBeenLastCalledWith("/");
+
+		type("about");
+		pressKey("Enter");
+		expect(pushMock).toHaveBeenLastCalledWith("/");
+	});
+
+	it("navigates to the games arcade from SHELL_NAV_ITEMS", () => {
+		renderBar();
+		type("cd games/");
+		pressKey("Enter");
+		expect(pushMock).toHaveBeenLastCalledWith("/games");
+	});
+
+	it("derives cd lines in help from SHELL_NAV_ITEMS", () => {
+		renderBar();
+		type("help");
+		pressKey("Enter");
+		expect(
+			screen.getByText(/^cd games\/\s+open game arcade$/),
+		).toBeInTheDocument();
+		expect(
+			screen.getByText(/^cd articles\/\s+open article list$/),
+		).toBeInTheDocument();
 	});
 
 	it("opens the latest article", () => {

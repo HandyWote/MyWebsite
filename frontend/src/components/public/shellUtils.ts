@@ -2,6 +2,17 @@ import type { SxProps, Theme } from "@mui/material";
 
 export type ShellArticle = { id: number; title: string };
 
+/**
+ * 站内导航唯一事实源：左侧 explorer、终端 cd 命令、404 页建议
+ * 三处均从这里派生；新增页面只需在此追加一行。
+ */
+export const SHELL_NAV_ITEMS = [
+	{ label: "articles", command: "cd articles/", href: "/articles" },
+	{ label: "projects", command: "cd projects/", href: "/projects" },
+	{ label: "games", command: "cd games/", href: "/games" },
+	{ label: "about", command: "cd about/", href: "/" },
+] as const;
+
 export const uniqueCommands = (commands: string[]): string[] =>
 	Array.from(new Set(commands.filter(Boolean)));
 

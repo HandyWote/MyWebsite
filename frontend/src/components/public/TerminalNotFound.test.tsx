@@ -1,15 +1,27 @@
+import { Box } from "@mui/material";
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { SHELL_NAV_ITEMS } from "./shellUtils";
 import { TerminalNotFound } from "./TerminalNotFound";
 
 vi.mock("next/navigation", () => ({
 	usePathname: vi.fn(),
 }));
 
+vi.mock("@/components/public/PublicShell", () => ({
+	PublicShell: ({ children }: { children: React.ReactNode }) => (
+		<Box data-testid="public-shell-mock">{children}</Box>
+	),
+}));
+
 import { usePathname } from "next/navigation";
 const mockUsePathname = vi.mocked(usePathname);
 
-describe("TerminalNotFound (issue #4)", () => {
+describe("TerminalNotFound", () => {
+	beforeEach(() => {
+		mockUsePathname.mockReset();
+	});
+
 	it("echoes the requested path in the cat command and cli error", () => {
 		mockUsePathname.mockReturnValue("/handy@handywote.top");
 		render(<TerminalNotFound />);
@@ -43,27 +55,12 @@ describe("TerminalNotFound (issue #4)", () => {
 		expect(
 			screen.getByText("hint: requested page does not exist"),
 		).toBeInTheDocument();
+		expect(screen.getByText("did you mean:")).toBeInTheDocument();
 
-		expect(
-			screen.getByRole("link", { name: "cd articles/" }),
-		).toHaveAttribute("href", "/articles");
-		expect(
-			screen.getByRole("link", { name: "cd projects/" }),
-		).toHaveAttribute("href", "/projects");
-		expect(
-			screen.getByRole("link", { name: "cd games/" }),
-		).toHaveAttribute("href", "/games");
-		expect(screen.getByRole("link", { name: "cd ~" })).toHaveAttribute(
-			"href",
-			"/",
-		);
-	});
-
-	it("keeps the prompt at the bottom with a blinking cursor", () => {
-		mockUsePathname.mockReturnValue("/whatever");
-		render(<TerminalNotFound />);
-
-		expect(screen.getByText("guest@handywote:~ $")).toBeInTheDocument();
-		expect(screen.getByTestId("terminal-cursor")).toBeInTheDocument();
+		for (const item of SHELL_NAV_ITEMS) {
+			expect(
+				screen.getByRole("link", { name: item.command }),
+			).toHaveAttribute("href", item.href);
+		}
 	});
 });

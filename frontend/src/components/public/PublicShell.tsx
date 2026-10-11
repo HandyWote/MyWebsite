@@ -4,19 +4,17 @@ import type { ReactNode } from "react";
 import { getArticlePage } from "@/api/publicApi.server";
 import { ArticleDetailNav } from "./ArticleDetailNav";
 import { TerminalCommandBar } from "./TerminalCommandBar";
-import { navButtonSx, type ShellArticle } from "./shellUtils";
-
-const items = [
-	{ label: "articles", href: "/articles" },
-	{ label: "projects", href: "/projects" },
-	{ label: "about", href: "/" },
-];
+import {
+	navButtonSx,
+	SHELL_NAV_ITEMS,
+	type ShellArticle,
+} from "./shellUtils";
 
 const SHELL_SUGGESTIONS = {
 	detail: ["open prev", "open next", "exit", "cd projects/", "help"],
 	list: ["open latest", "cd projects/", "cd about/", "help"],
 	projects: ["cd articles/", "cd about/", "help"],
-	default: ["cd articles/", "cd projects/", "help"],
+	default: ["cd articles/", "cd projects/", "cd games/", "help"],
 };
 
 const getShellState = (
@@ -122,7 +120,7 @@ export async function PublicShell({
 									gap: 0.25,
 								}}
 							>
-								{items.map((item) => {
+								{SHELL_NAV_ITEMS.map((item) => {
 									const active =
 										item.href === "/"
 											? activePath === "/"

@@ -5,24 +5,41 @@ import { useRouter } from "next/navigation";
 import { useState, type KeyboardEvent } from "react";
 import { authApi } from "@/api/authApi";
 import { useSession } from "@/hooks/useSession";
-import { uniqueCommands, type ShellArticle } from "./shellUtils";
+import {
+	SHELL_NAV_ITEMS,
+	uniqueCommands,
+	type ShellArticle,
+} from "./shellUtils";
 
-const HELP_LINES = [
-	"Available commands:",
-	"  cd articles/      open article list",
-	"  cd projects/      open project list",
-	"  cd about/         return welcome page",
-	"  open latest       open latest article",
-	"  open <article>    open article by id/title",
-	"  open prev         open previous article",
-	"  open next         open next article",
-	"  exit              leave current article buffer",
-	"  clear             clear terminal output",
-	"  help              show this help",
-	"  login              sign in with GitHub",
-	"  logout             sign out",
-	"  whoami             show current user",
-];
+const stripTrailingSlash = (value: string) =>
+	value.length > 1 && value.endsWith("/") ? value.slice(0, -1) : value;
+
+/** help 输出由 SHELL_NAV_ITEMS 派生 cd 行，新增页面自动出现在帮助里。 */
+const getHelpLines = (): string[] => {
+	const lines = ["Available commands:"];
+	const labelByHref = new Map([
+		["/", "return welcome page"],
+		["/articles", "open article list"],
+		["/games", "open game arcade"],
+	]);
+	for (const item of SHELL_NAV_ITEMS) {
+		const label = labelByHref.get(item.href) ?? item.label;
+		lines.push(`  ${item.command.padEnd(18, " ")}${label}`);
+	}
+	lines.push(
+		"  open latest       open latest article",
+		"  open <article>    open article by id/title",
+		"  open prev         open previous article",
+		"  open next         open next article",
+		"  exit              leave current article buffer",
+		"  clear             clear terminal output",
+		"  help              show this help",
+		"  login              sign in with GitHub",
+		"  logout             sign out",
+		"  whoami             show current user",
+	);
+	return lines;
+};
 
 const normalizeCommand = (value: string) => value.trim().replace(/\s+/g, " ");
 
@@ -177,22 +194,23 @@ export function TerminalCommandBar({
 			return;
 		}
 
-		if (nextCommand === "cd articles/" || nextCommand === "cd articles") {
-			router.push("/articles");
-			return;
-		}
-
 		if (nextCommand === "cd projects/" || nextCommand === "cd projects") {
 			router.push("/projects");
 			return;
 		}
 
-		if (
-			nextCommand === "cd about/" ||
-			nextCommand === "cd about" ||
-			nextCommand === "home" ||
-			nextCommand === "about"
-		) {
+		const navMatch = SHELL_NAV_ITEMS.find(
+			(item) =>
+				stripTrailingSlash(nextCommand.toLowerCase()) ===
+				stripTrailingSlash(item.command),
+		);
+		if (navMatch) {
+			router.push(navMatch.href);
+			return;
+		}
+
+		// 保留历史短别名：home/about 与 'cd about' 同义。
+		if (nextCommand === "home" || nextCommand === "about") {
 			router.push("/");
 			return;
 		}
@@ -254,7 +272,7 @@ export function TerminalCommandBar({
 		}
 
 		if (nextCommand === "help") {
-			setOutputLines(HELP_LINES);
+			setOutputLines(getHelpLines());
 			return;
 		}
 

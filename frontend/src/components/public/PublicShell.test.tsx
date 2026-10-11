@@ -51,6 +51,13 @@ describe("PublicShell", () => {
 		expect(screen.queryByText("Next.js 数据流")).not.toBeInTheDocument();
 	});
 
+	it("renders the games link from the shared nav items in the explorer", async () => {
+		await renderShell("/articles");
+		const gamesLink = screen.getByRole("link", { name: "games" });
+		expect(gamesLink).toBeInTheDocument();
+		expect(gamesLink).toHaveAttribute("href", "/games");
+	});
+
 	it("swaps the sidebar for the article list on detail pages and highlights the current article", async () => {
 		await renderShell("/articles/7");
 		expect(screen.queryByText("explorer")).not.toBeInTheDocument();
