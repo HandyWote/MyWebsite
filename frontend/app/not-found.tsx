@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Box } from "@mui/material";
+import { ScreenFrame } from "@/components/public/ScreenFrame";
 import { TerminalCommandBar } from "@/components/public/TerminalCommandBar";
 import { TerminalNotFound } from "@/components/public/TerminalNotFound";
 
@@ -11,18 +12,7 @@ export const metadata: Metadata = {
 /** 与首页/文章页同款 screen-page 骨架：内容区 + 底部终端条，无 explorer。 */
 export default function NotFoundPage() {
 	return (
-		<Box
-			className="screen-page"
-			sx={{
-				height: "var(--public-viewport-height)",
-				display: "grid",
-				gridTemplateRows: "minmax(0, 1fr) auto",
-				border: 1,
-				borderColor: "divider",
-				overflow: "hidden",
-				bgcolor: "background.default",
-			}}
-		>
+		<ScreenFrame>
 			<Box
 				component="main"
 				sx={{ minWidth: 0, minHeight: 0, overflow: "auto" }}
@@ -35,6 +25,6 @@ export default function NotFoundPage() {
 				cwd="~/app"
 				commands={["cd articles/", "cd projects/", "cd games/", "help"]}
 			/>
-		</Box>
+		</ScreenFrame>
 	);
 }

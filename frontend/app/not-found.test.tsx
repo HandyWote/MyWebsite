@@ -1,15 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-
-const { getArticlePageMock } = vi.hoisted(() => ({
-	getArticlePageMock: vi.fn(),
-}));
-
-// 边界 mock:404 页是服务端渲染的静态壳,getArticlePage 只被 PublicShell
-// 这类服务端组件消费,客户端测试跑不到真实请求,返回空页即可。
-vi.mock("@/api/publicApi.server", () => ({
-	getArticlePage: getArticlePageMock,
-}));
+import { describe, expect, it, vi } from "vitest";
 
 // useSession 真实实现挂载即触发 authApi.me(),jsdom 下无后端,降级为 guest 边界。
 vi.mock("@/hooks/useSession", () => ({
@@ -32,10 +22,6 @@ vi.mock("next/navigation", () => ({
 import NotFoundPage from "./not-found";
 
 describe("not-found page", () => {
-	beforeEach(() => {
-		getArticlePageMock.mockReset();
-		getArticlePageMock.mockResolvedValue({ items: [] });
-	});
 
 	it("renders the 404 page with real terminal components", async () => {
 		const { container } = render(await NotFoundPage());

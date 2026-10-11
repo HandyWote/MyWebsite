@@ -1,14 +1,9 @@
-import { Box } from "@mui/material";
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TerminalNotFound } from "./TerminalNotFound";
 
 vi.mock("next/navigation", () => ({
 	usePathname: vi.fn(),
-}));
-
-vi.mock("@/components/public/TerminalCommandBar", () => ({
-	TerminalCommandBar: () => <Box data-testid="terminal-command-bar-mock" />,
 }));
 
 import { usePathname } from "next/navigation";

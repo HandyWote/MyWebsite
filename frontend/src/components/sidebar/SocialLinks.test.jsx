@@ -91,3 +91,16 @@ describe('SocialLinks href normalization (issue #4)', () => {
     expect(link.getAttribute('href')).toBe('a@b@c');
   });
 });
+
+describe('SocialLinks web paths must not be treated as email (review r2)', () => {
+  it.each([
+    ['//mastodon.social/@alice', '//mastodon.social/@alice'],
+    ['/@alice', '/@alice'],
+    ['/users/@alice/posts', '/users/@alice/posts'],
+  ])('keeps web path %s as-is (no mailto)', (href, expected) => {
+    render(<SocialLinks links={[{ type: 'other', label: 'Feed', href }]} />);
+
+    const link = screen.getByText('Feed');
+    expect(link.getAttribute('href')).toBe(expected);
+  });
+});
