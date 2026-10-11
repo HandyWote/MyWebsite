@@ -3,7 +3,7 @@
 import { Box, Typography } from "@mui/material";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { navButtonSx, SHELL_NAV_ITEMS } from "./shellUtils";
+import { SHELL_NAV_ITEMS } from "./shellUtils";
 
 // figlet standard 字体，404 / not found 两块堆叠（工具生成，勿手改字形）
 const FIGLET_404 = String.raw` _  _    ___  _  _   `;
@@ -29,8 +29,6 @@ export function TerminalNotFound() {
 		<Box
 			data-testid="terminal-not-found"
 			sx={{
-				width: "min(100%, 820px)",
-				mx: "auto",
 				fontFamily: "JetBrains Mono, monospace",
 			}}
 		>
@@ -38,6 +36,8 @@ export function TerminalNotFound() {
 				component="h1"
 				sx={{
 					position: "absolute",
+					left: 0,
+					top: 0,
 					width: 1,
 					height: 1,
 					margin: -1,
@@ -101,7 +101,7 @@ export function TerminalNotFound() {
 				<Box sx={{ color: "text.secondary" }}>
 					hint: requested page does not exist
 				</Box>
-				<Box sx={{ color: "text.secondary", mt: 1 }}>did you mean:</Box>
+				<Box sx={{ color: "text.secondary", mt: 3 }}>did you mean:</Box>
 				<Box sx={{ display: "grid", gap: 0.5, mt: 0.5, pl: 2 }}>
 					{SHELL_NAV_ITEMS.map((item) => (
 						<Box
@@ -109,17 +109,31 @@ export function TerminalNotFound() {
 							component={Link}
 							href={item.href}
 							sx={{
-								...navButtonSx(false),
-								width: "auto",
+								display: "flex",
+								alignItems: "center",
+								gap: 1,
+								width: "fit-content",
+								color: "text.secondary",
+								textDecoration: "none",
+								fontFamily: "JetBrains Mono, monospace",
 								fontSize: "0.875rem",
+								transition: "color 0.15s ease",
+								"&:hover": {
+									color: "primary.main",
+								},
+								"&:hover .not-found-caret": {
+									color: "primary.main",
+								},
 							}}
 						>
 							<Box
 								component="span"
 								aria-hidden="true"
+								className="not-found-caret"
 								sx={{
+									width: "12px",
 									color: "text.disabled",
-									"&:hover": { color: "primary.main" },
+									transition: "color 0.15s ease",
 								}}
 							>
 								▸
