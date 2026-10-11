@@ -72,7 +72,7 @@ export function TerminalNotFound() {
 					m: 0,
 					my: { xs: 2.5, sm: 3.5 },
 					fontFamily: "JetBrains Mono, monospace",
-					fontSize: "clamp(0.5rem, 2.6vw, 1.25rem)",
+					fontSize: "clamp(0.45rem, 2.2vw, 1.05rem)",
 					lineHeight: 0.85,
 					whiteSpace: "pre",
 					color: "text.primary",
