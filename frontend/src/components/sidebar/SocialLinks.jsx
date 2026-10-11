@@ -10,15 +10,34 @@ const iconMap = {
   other: LinkIcon,
 };
 
+/** 裸邮箱形态：无 scheme 且含 @（如 handy@handywote.top）；域名不强制含点，user@localhost 等也算合法。以 / 开头的是站内/协议相对路径（如 //host/@user、/@alice），不是邮箱。 */
+const looksLikeEmail = (value) =>
+  typeof value === 'string' &&
+  !value.includes(':') &&
+  !value.startsWith('/') &&
+  /^[^@\s]+@[^@\s]+$/.test(value);
+
+/**
+ * 地址归一化：后台配置可能把裸邮箱直接填进 href（issue #4），
+ * 无 scheme 时浏览器会当站内相对路径导致 404。
+ * 邮箱形态（含 @ 或 type=email）自动补 mailto:，http(s)/mailto/tel 原样。
+ */
 const buildHref = (item) => {
-  if (item?.href) {
-    return item.href;
+  const raw = item?.href || item?.value || '';
+  if (!raw) {
+    return '#';
   }
-  if (item?.type === 'email' && item?.value) {
-    return `mailto:${item.value}`;
+  if (item?.type === 'email' && !/^(https?|mailto|tel):/i.test(raw)) {
+    return `mailto:${raw}`;
   }
-  return item?.value || '#';
+  if (looksLikeEmail(raw)) {
+    return `mailto:${raw}`;
+  }
+  return raw;
 };
+
+/** 邮件/电话是协议动作不是网页，不该开新标签页。 */
+const isExternalWebLink = (href) => /^https?:/i.test(href);
 
 function SocialLinks({ links = [] }) {
   const list = links || [];
@@ -38,13 +57,14 @@ function SocialLinks({ links = [] }) {
         {list.map((social) => {
           const Icon = iconMap[social.type] || iconMap.other;
           const label = social.label || social.value || 'Link';
+          const href = buildHref(social);
           return (
           <Box
             component="a"
             key={`${social.type || 'other'}-${label}`}
-            href={buildHref(social)}
-            target="_blank"
-            rel="noopener noreferrer"
+            href={href}
+            target={isExternalWebLink(href) ? '_blank' : undefined}
+            rel={isExternalWebLink(href) ? 'noopener noreferrer' : undefined}
             sx={{
               display: 'flex',
               alignItems: 'center',

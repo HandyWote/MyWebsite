@@ -4,6 +4,7 @@ import { Box, Typography } from "@mui/material";
 import { getProfileForPage } from "@/seo/data.server";
 import { pageMetadata, SITE_DESCRIPTION, SITE_TITLE } from "@/seo/site";
 import { HomeEnterBoundary } from "@/components/public/HomeEnterBoundary";
+import { ScreenFrame } from "@/components/public/ScreenFrame";
 import { TerminalCommandBar } from "@/components/public/TerminalCommandBar";
 import Education from "@/components/sidebar/Education";
 import GitHubActivity from "@/components/sidebar/GitHubActivity";
@@ -35,18 +36,7 @@ export default async function HomePage() {
 	const githubUsername = normalizeGitHubUsername(home.github_calendar_url);
 	return (
 		<HomeEnterBoundary>
-			<Box
-				className="screen-page"
-				sx={{
-					height: "var(--public-viewport-height)",
-					display: "grid",
-					gridTemplateRows: "minmax(0, 1fr) auto",
-					border: 1,
-					borderColor: "divider",
-					overflow: "hidden",
-					bgcolor: "background.default",
-				}}
-			>
+			<ScreenFrame>
 				<Box
 					sx={{
 						overflow: "auto",
@@ -160,7 +150,7 @@ export default async function HomePage() {
 					cwd="~/app"
 					commands={["cd articles/", "cd projects/", "help"]}
 				/>
-			</Box>
+			</ScreenFrame>
 		</HomeEnterBoundary>
 	);
 }
