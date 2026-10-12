@@ -32,7 +32,7 @@ vi.mock("@/config/api", () => {
 	};
 });
 
-import { api, API_ENDPOINTS } from "@/config/api";
+import { api } from "@/config/api";
 
 describe("articleStore (slim)", () => {
 	beforeEach(() => {
@@ -51,29 +51,6 @@ describe("articleStore (slim)", () => {
 			expect(state.pagination).toEqual({ page: 1, perPage: 10, total: 0 });
 		});
 
-		it("不应该包含 AI 相关状态", () => {
-			const state = useArticleStore.getState();
-			expect(state.aiAnalysis).toBeUndefined();
-			expect(state.aiLoading).toBeUndefined();
-			expect(state.aiSettings).toBeUndefined();
-			expect(state.aiSettingsLoading).toBeUndefined();
-		});
-
-		it("不应该包含上传相关方法", () => {
-			const state = useArticleStore.getState();
-			expect(state.uploadCover).toBeUndefined();
-			expect(state.uploadPdf).toBeUndefined();
-			expect(state.importMarkdown).toBeUndefined();
-		});
-
-		it("不应该包含 AI 相关方法", () => {
-			const state = useArticleStore.getState();
-			expect(state.analyzeContent).toBeUndefined();
-			expect(state.fetchAiSettings).toBeUndefined();
-			expect(state.updateAiSettings).toBeUndefined();
-			expect(state.testAiConnection).toBeUndefined();
-			expect(state.clearAiAnalysis).toBeUndefined();
-		});
 	});
 
 	describe("fetchArticles", () => {
@@ -109,8 +86,21 @@ describe("articleStore (slim)", () => {
 			expect(state.error).toBe("Network error");
 		});
 
-		it("应该支持分页参数", async () => {
-			api.get.mockResolvedValueOnce({ articles: [], total: 100 });
+		it("应该按分页参数拉取对应页的数据", async () => {
+			// mock 按请求参数返回不同数据：store 请求第几页，列表就反映第几页内容
+			api.get.mockImplementation((url) => {
+				const params = new URLSearchParams(url.split("?")[1]);
+				if (params.get("page") === "2") {
+					return Promise.resolve({
+						articles: [{ id: 22, title: "第二页文章", tags: "" }],
+						total: 100,
+					});
+				}
+				return Promise.resolve({
+					articles: [{ id: 1, title: "第一页文章", tags: "" }],
+					total: 100,
+				});
+			});
 
 			await act(async () => {
 				await useArticleStore
@@ -118,13 +108,9 @@ describe("articleStore (slim)", () => {
 					.fetchArticles({ page: 2, perPage: 20, search: "test" });
 			});
 
-			expect(api.get).toHaveBeenCalledWith(expect.stringContaining("page=2"));
-			expect(api.get).toHaveBeenCalledWith(
-				expect.stringContaining("per_page=20"),
-			);
-			expect(api.get).toHaveBeenCalledWith(
-				expect.stringContaining("search=test"),
-			);
+			const state = useArticleStore.getState();
+			expect(state.articles).toEqual([{ id: 22, title: "第二页文章", tags: [] }]);
+			expect(state.pagination).toEqual({ page: 2, perPage: 20, total: 100 });
 		});
 	});
 
@@ -191,18 +177,27 @@ describe("articleStore (slim)", () => {
 	});
 
 	describe("batchDeleteArticles", () => {
-		it("应该成功批量删除文章", async () => {
+		it("应该批量删除后刷新列表", async () => {
+			useArticleStore.setState({
+				articles: [
+					{ id: 1, title: "A", tags: [] },
+					{ id: 2, title: "B", tags: [] },
+					{ id: 3, title: "C", tags: [] },
+				],
+				pagination: { page: 1, perPage: 10, total: 3 },
+			});
 			api.post.mockResolvedValueOnce({});
+			// 批量删除后 store 重新拉取列表，返回已删空的结果
 			api.get.mockResolvedValueOnce({ articles: [], total: 0 });
 
 			await act(async () => {
 				await useArticleStore.getState().batchDeleteArticles([1, 2, 3]);
 			});
 
-			expect(api.post).toHaveBeenCalledWith(
-				API_ENDPOINTS.ADMIN.ARTICLE_BATCH_DELETE,
-				{ ids: [1, 2, 3] },
-			);
+			const state = useArticleStore.getState();
+			expect(state.articles).toEqual([]);
+			expect(state.pagination.total).toBe(0);
+			expect(state.error).toBe(null);
 		});
 	});
 

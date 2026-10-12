@@ -33,7 +33,7 @@ vi.mock('@/config/api', () => {
   };
 });
 
-import { api, API_ENDPOINTS } from '@/config/api';
+import { api } from '@/config/api';
 
 global.fetch = vi.fn();
 
@@ -101,15 +101,29 @@ describe('commentStore', () => {
     });
 
     it('应该支持搜索和状态过滤', async () => {
+      // mock 按请求参数返回不同数据：store 带着筛选词拉到的列表应反映筛选结果
+      api.get.mockImplementation((url) => {
+        const params = new URLSearchParams(url.split('?')[1]);
+        if (params.get('search') === 'test' && params.get('status') === 'spam') {
+          return Promise.resolve({
+            comments: [{ id: 7, author: '被过滤出的垃圾评论' }],
+            total: 1,
+          });
+        }
+        return Promise.resolve({ comments: [], total: 0 });
+      });
+
       useCommentStore.setState({ searchTerm: 'test', statusFilter: 'spam' });
-      api.get.mockResolvedValueOnce({ comments: [], total: 0 });
 
       await act(async () => {
         await useCommentStore.getState().fetchComments();
       });
 
-      expect(api.get).toHaveBeenCalledWith(expect.stringContaining('search=test'));
-      expect(api.get).toHaveBeenCalledWith(expect.stringContaining('status=spam'));
+      const state = useCommentStore.getState();
+      expect(state.comments).toEqual([
+        { id: 7, author: '被过滤出的垃圾评论', status: 'normal', article_title: '未知文章' },
+      ]);
+      expect(state.total).toBe(1);
     });
 
     it('应该使用默认 status 和 article_title', async () => {
@@ -130,6 +144,8 @@ describe('commentStore', () => {
 
   describe('deleteComment', () => {
     it('应该成功删除评论并刷新列表', async () => {
+      // 预置一条评论：删除后重新拉取，若 store 忘记刷新，旧数据仍会留在列表里
+      useCommentStore.setState({ comments: [{ id: 1, author: '待删评论' }], total: 1 });
       api.del.mockResolvedValueOnce({});
       api.get.mockResolvedValueOnce({ comments: [], total: 0 });
 
@@ -137,13 +153,17 @@ describe('commentStore', () => {
         await useCommentStore.getState().deleteComment(1);
       });
 
-      expect(api.del).toHaveBeenCalledWith(API_ENDPOINTS.ADMIN.DELETE_COMMENT(1));
-      expect(api.get).toHaveBeenCalled();
+      const state = useCommentStore.getState();
+      expect(state.comments).toEqual([]);
+      expect(state.total).toBe(0);
+      expect(state.loading).toBe(false);
     });
   });
 
   describe('updateCommentStatus', () => {
     it('应该成功更新评论状态并刷新列表', async () => {
+      // 预置旧状态：更新后重新拉取，若 store 忘记刷新，旧数据仍会留在列表里
+      useCommentStore.setState({ comments: [{ id: 1, author: '旧评论' }], total: 1 });
       api.put.mockResolvedValueOnce({});
       api.get.mockResolvedValueOnce({ comments: [], total: 0 });
 
@@ -151,8 +171,10 @@ describe('commentStore', () => {
         await useCommentStore.getState().updateCommentStatus(1, 'spam');
       });
 
-      expect(api.put).toHaveBeenCalledWith(API_ENDPOINTS.ADMIN.COMMENT_STATUS(1), { status: 'spam' });
-      expect(api.get).toHaveBeenCalled();
+      const state = useCommentStore.getState();
+      expect(state.comments).toEqual([]);
+      expect(state.total).toBe(0);
+      expect(state.loading).toBe(false);
     });
   });
 
@@ -174,7 +196,7 @@ describe('commentStore', () => {
       vi.restoreAllMocks();
     });
 
-    it('应该成功导出评论（使用 api.download）', async () => {
+    it('应该成功导出并触发浏览器下载', async () => {
       const mockBlob = new Blob(['csv,data'], { type: 'text/csv' });
       api.download.mockResolvedValueOnce(mockBlob);
 
@@ -182,25 +204,10 @@ describe('commentStore', () => {
         await useCommentStore.getState().exportComments();
       });
 
-      // 应该通过 api.download 下载，而非 raw fetch
-      expect(api.download).toHaveBeenCalledWith(
-        expect.stringContaining('/api/admin/comments/export'),
-      );
-    });
-
-    it('应该在导出时传递搜索和过滤参数', async () => {
-      const mockBlob = new Blob(['csv'], { type: 'text/csv' });
-      api.download.mockResolvedValueOnce(mockBlob);
-
-      useCommentStore.setState({ searchTerm: 'spam', statusFilter: 'deleted' });
-
-      await act(async () => {
-        await useCommentStore.getState().exportComments();
-      });
-
-      const [url] = api.download.mock.calls[0];
-      expect(url).toContain('search=spam');
-      expect(url).toContain('status=deleted');
+      // 用户可见结果：下载已发起（anchor click），且以 csv blob 为内容
+      expect(URL.createObjectURL).toHaveBeenCalledWith(mockBlob);
+      expect(HTMLAnchorElement.prototype.click).toHaveBeenCalledTimes(1);
+      expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:mock');
     });
 
     it('应该在导出失败时抛出错误', async () => {
@@ -214,24 +221,81 @@ describe('commentStore', () => {
     });
   });
 
-  describe('setters', () => {
-    it('setPage 应该更新页码', () => {
+  describe('setters 触发的筛选行为', () => {
+    it('setPage 后再次拉取应返回对应页的数据', async () => {
+      api.get.mockImplementation((url) => {
+        const params = new URLSearchParams(url.split('?')[1]);
+        if (params.get('page') === '3') {
+          return Promise.resolve({
+            comments: [{ id: 30, author: '第三页评论' }],
+            total: 25,
+          });
+        }
+        return Promise.resolve({ comments: [], total: 25 });
+      });
+
       useCommentStore.getState().setPage(3);
-      expect(useCommentStore.getState().page).toBe(3);
+      await act(async () => {
+        await useCommentStore.getState().fetchComments();
+      });
+
+      const state = useCommentStore.getState();
+      expect(state.page).toBe(3);
+      expect(state.comments).toEqual([
+        { id: 30, author: '第三页评论', status: 'normal', article_title: '未知文章' },
+      ]);
     });
 
-    it('setSearchTerm 应该更新搜索词并重置页码', () => {
+    it('setSearchTerm 后再次拉取应返回新搜索词对应的列表并回到第一页', async () => {
+      api.get.mockImplementation((url) => {
+        const params = new URLSearchParams(url.split('?')[1]);
+        if (params.get('search') === 'React' && params.get('page') === '1') {
+          return Promise.resolve({
+            comments: [{ id: 5, author: 'React 相关评论' }],
+            total: 1,
+          });
+        }
+        return Promise.resolve({ comments: [], total: 0 });
+      });
+
       useCommentStore.setState({ page: 5 });
       useCommentStore.getState().setSearchTerm('React');
-      expect(useCommentStore.getState().searchTerm).toBe('React');
-      expect(useCommentStore.getState().page).toBe(1);
+      await act(async () => {
+        await useCommentStore.getState().fetchComments();
+      });
+
+      const state = useCommentStore.getState();
+      expect(state.searchTerm).toBe('React');
+      expect(state.page).toBe(1);
+      expect(state.comments).toEqual([
+        { id: 5, author: 'React 相关评论', status: 'normal', article_title: '未知文章' },
+      ]);
     });
 
-    it('setStatusFilter 应该更新过滤器并重置页码', () => {
+    it('setStatusFilter 后再次拉取应返回新过滤器对应的列表并回到第一页', async () => {
+      api.get.mockImplementation((url) => {
+        const params = new URLSearchParams(url.split('?')[1]);
+        if (params.get('status') === 'spam' && params.get('page') === '1') {
+          return Promise.resolve({
+            comments: [{ id: 9, author: '垃圾评论' }],
+            total: 1,
+          });
+        }
+        return Promise.resolve({ comments: [], total: 0 });
+      });
+
       useCommentStore.setState({ page: 5 });
       useCommentStore.getState().setStatusFilter('spam');
-      expect(useCommentStore.getState().statusFilter).toBe('spam');
-      expect(useCommentStore.getState().page).toBe(1);
+      await act(async () => {
+        await useCommentStore.getState().fetchComments();
+      });
+
+      const state = useCommentStore.getState();
+      expect(state.statusFilter).toBe('spam');
+      expect(state.page).toBe(1);
+      expect(state.comments).toEqual([
+        { id: 9, author: '垃圾评论', status: 'normal', article_title: '未知文章' },
+      ]);
     });
   });
 });

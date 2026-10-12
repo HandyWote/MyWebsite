@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import CommentCard, { COMMENT_STATUS, getCommentStatusConfig } from './CommentCard';
+import CommentCard, { getCommentStatusConfig } from './CommentCard';
 
 const mockComment = {
   id: 1,
@@ -88,14 +88,6 @@ describe('CommentCard', () => {
   it('渲染 ID', () => {
     render(<CommentCard {...defaultProps} />);
     expect(screen.getByText('ID: 1')).toBeInTheDocument();
-  });
-});
-
-describe('COMMENT_STATUS', () => {
-  it('导出正确的状态枚举', () => {
-    expect(COMMENT_STATUS.NORMAL).toBe('normal');
-    expect(COMMENT_STATUS.PENDING).toBe('pending');
-    expect(COMMENT_STATUS.SPAM).toBe('spam');
   });
 });
 

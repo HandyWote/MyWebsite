@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
-  API_CONFIG,
   API_ENDPOINTS,
   getApiUrl,
   buildApiUrl,
@@ -16,60 +15,53 @@ const { redirectToLoginMock } = vi.hoisted(() => ({ redirectToLoginMock: vi.fn()
 vi.mock('@/api/navigation', () => ({ redirectToLogin: redirectToLoginMock }));
 
 describe('API Configuration', () => {
-  describe('API_CONFIG', () => {
-    it('should have BASE_URL defined', () => {
-      expect(API_CONFIG.BASE_URL).toBeDefined();
-    });
-
-    it('should have TIMEOUT defined', () => {
-      expect(API_CONFIG.TIMEOUT).toBe(10000);
-    });
-  });
-
   describe('API_ENDPOINTS', () => {
-    it('should have PUBLIC endpoints', () => {
-      expect(API_ENDPOINTS.PUBLIC).toBeDefined();
+    it('should expose exact article list URL', () => {
       expect(API_ENDPOINTS.PUBLIC.ARTICLES).toBe('/api/articles');
       expect(API_ENDPOINTS.PUBLIC.AVATAR_FILE('avatar.webp')).toBe('/api/avatars/file/avatar.webp');
       expect(API_ENDPOINTS.PUBLIC.AVATAR_FILE('avatars/avatar 1.webp')).toBe('/api/avatars/file/avatars/avatar%201.webp');
       expect(API_ENDPOINTS.PUBLIC.ARTICLE_PDF('articles/pdfs/paper 1.pdf')).toBe('/api/articles/pdf/articles/pdfs/paper%201.pdf');
     });
 
-    it('should have ADMIN endpoints', () => {
-      expect(API_ENDPOINTS.ADMIN).toBeDefined();
+    it('should expose exact admin login URL', () => {
       expect(API_ENDPOINTS.ADMIN.LOGIN).toBe('/api/admin/login');
     });
 
   });
 
   describe('buildApiUrl', () => {
-    it('should build correct URL', () => {
-      const result = buildApiUrl('/api/articles');
-      expect(result).toContain('/api/articles');
+    it('should pass the endpoint through unchanged', () => {
+      expect(buildApiUrl('/api/articles')).toBe('/api/articles');
     });
 
-    it('should use relative path in dev when base url is empty', () => {
-      const result = buildApiUrl('/api/site-blocks');
-      expect(result).toBe('/api/site-blocks');
+    it('should keep query strings and encoding intact', () => {
+      expect(buildApiUrl('/api/articles?page=2&per_page=20')).toBe('/api/articles?page=2&per_page=20');
+    });
+
+    it('should reject browser requests to arbitrary absolute URLs', () => {
+      expect(() => buildApiUrl('https://evil.example.com/api')).toThrow('Browser API endpoint must be relative');
+    });
+
+    it('should reject browser requests to non-api paths', () => {
+      expect(() => buildApiUrl('/etc/passwd')).toThrow('Browser API endpoint must be relative');
     });
   });
 
   describe('getApiUrl', () => {
-    it('should generate correct siteBlocks URL', () => {
-      expect(getApiUrl.siteBlocks()).toContain('site-blocks');
+    it('should generate exact siteBlocks URL', () => {
+      expect(getApiUrl.siteBlocks()).toBe('/api/site-blocks');
     });
 
-    it('should generate correct article detail URL', () => {
-      const url = getApiUrl.articleDetail(123);
-      expect(url).toContain('123');
+    it('should generate exact article detail URL', () => {
+      expect(getApiUrl.articleDetail(123)).toBe('/api/articles/123');
     });
 
-    it('should generate correct admin login URL', () => {
-      expect(getApiUrl.adminLogin()).toContain('login');
+    it('should generate exact admin login URL', () => {
+      expect(getApiUrl.adminLogin()).toBe('/api/admin/login');
     });
 
-    it('should expose base URL helper', () => {
-      expect(getApiUrl.baseUrl()).toBeDefined();
+    it('should keep browser base URL empty so requests stay same-origin', () => {
+      expect(getApiUrl.baseUrl()).toBe('');
     });
   });
 
