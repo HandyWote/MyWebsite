@@ -153,3 +153,24 @@ export function renderDrawing(
 
 	ctx.globalCompositeOperation = "source-over";
 }
+
+/**
+ * 公共画布 + 本地未提交增量的合成渲染（P1）：先拼 Drawing（公共在下、
+ * 增量在上）再走一遍 renderDrawing。单次全量重绘：一次 clearRect，
+ * 空态/撤销归零不留残影；上层橡皮以 destination-out 擦除下层公共笔迹，
+ * 与后端点序级联合成一致。
+ */
+export function renderCanvasWithLocal(
+	ctx: CanvasRenderingContext2D,
+	base: Drawing | null,
+	local: Drawing,
+	size: { width: number; height: number },
+	dpr: number,
+): void {
+	renderDrawing(
+		ctx,
+		{ strokes: [...(base?.strokes ?? []), ...local.strokes] },
+		size,
+		dpr,
+	);
+}

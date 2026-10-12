@@ -1,4 +1,5 @@
 import { DrawingGame } from "./drawing/DrawingGame";
+import { DrawingCanvasView } from "./drawing/DrawingCanvasView";
 import type { GameDefinition } from "./types";
 
 /** 预览图：内联 SVG data URI，避免 P0 引入静态资源依赖。 */
@@ -15,6 +16,8 @@ const drawingGame: GameDefinition = {
 		"在桌面纸面上即兴涂鸦：笔刷、橡皮、撤销重做，匿名可画，草稿自动保存；登录后可提交到公共画布（P1）。",
 	preview: DRAWING_PREVIEW,
 	GameView: DrawingGame,
+	/** 非桌面 /games/drawing 页：静态公共画布只读视图（P1 F2）。 */
+	DetailView: DrawingCanvasView,
 	desktopOnly: true,
 	isDefault: true,
 };

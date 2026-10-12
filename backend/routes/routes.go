@@ -55,6 +55,10 @@ func SetupRoutes(r *gin.Engine, cfg *config.Config) error {
 		api.GET("/auth/github/authorize", GithubOAuthAuthorize)
 		api.GET("/auth/github/callback", GithubOAuthCallback)
 		api.POST("/auth/exchange", GithubOAuthExchange)
+
+		// 公共画布(Game Drawing):GET 公开读,POST 需登录(处理器内可选鉴权)
+		api.GET("/games/drawing/canvas", GetDrawingCanvas)
+		api.POST("/games/drawing/canvas", CreateDrawingCanvas)
 	}
 
 	// Admin API (JWT auth + admin-only: provider 必须为 password，GitHub OAuth 用户一律 403)
@@ -109,6 +113,11 @@ func SetupRoutes(r *gin.Engine, cfg *config.Config) error {
 		// Revalidation outbox
 		admin.GET("/revalidation/pending", AdminPendingRevalidation)
 		admin.POST("/revalidation/retry", AdminRetryRevalidation)
+
+		// 公共画布投稿审核
+		admin.GET("/drawing/submissions", AdminListDrawingSubmissions)
+		admin.POST("/drawing/submissions/:id/approve", AdminApproveDrawingSubmission)
+		admin.POST("/drawing/submissions/:id/reject", AdminRejectDrawingSubmission)
 	}
 	return nil
 }

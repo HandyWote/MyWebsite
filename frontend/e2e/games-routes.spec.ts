@@ -7,6 +7,9 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
  *   （无按钮 toast 告知，4s 自动消失且不拦截绘制）、撤销重做
  * - 纸面特写：悬停进入 paper 视角后宿主搬进屏幕 2D 聚焦层，
  *   原命中死区（中下部）可真实绘制；退出时宿主同步搬回 CSS3D
+ * - P1 提交链（mock-backend 画布契约）：guest 点提交出登录引导
+ *   toast 不发请求；authed 画一笔提交走 published 全链（版本推进、
+ *   增量清空）；非桌面 /games/drawing 渲染只读画布（按游戏分派）
  *
  * 相机注意事项（PaperPointerTracker / MonitorPointerTracker / Camera）：
  * - idle 关键帧持续正弦漂移 + desk 视角鼠标跟随视差 → 纸面投影永不稳定，
@@ -205,18 +208,46 @@ test("non-desktop hall navigates into the game page", async ({ page }, testInfo)
 	await expect(page.locator("[data-game-detail-view]")).toBeVisible();
 });
 
-test("non-desktop renders the detail-view placeholder and never mounts the board", async ({
+/** 桌面查看模式分派：有 DetailView 的游戏（drawing=DrawingCanvasView）断言
+ *  只读画布契约；无 DetailView 的游戏保持桌面限定占位文案。注册表目前
+ *  只有 drawing 一个游戏，新增游戏时在此补齐分支。 */
+function expectDetailView(
+	page: Page,
+	id: string,
+): Array<Promise<void>> {
+	if (id === "drawing") {
+		return [
+			expect(
+				page.locator("[data-game-detail-view] [data-canvas-view]"),
+			).toBeVisible(),
+			// mock 画布返回固定 2 笔（version 3）→ 非空态渲染静态笔画层
+			expect(
+				page.locator("[data-game-detail-view] [data-canvas-empty]"),
+			).toHaveCount(0),
+			expect(
+				page.locator("[data-game-detail-view] [data-canvas-view] canvas"),
+			).toBeVisible(),
+		];
+	}
+	return [
+		expect(page.locator("[data-game-detail-view]")).toContainText(
+			"需要桌面 3D 纸面体验",
+		),
+	];
+}
+
+test("non-desktop renders the detail-view per game and never mounts the board", async ({
 	page,
 }, testInfo) => {
 	test.skip(testInfo.project.name === "desktop-chrome");
 	await page.goto("/games/drawing");
 	await expect(page.locator('[data-public-experience="ordinary"]')).toBeVisible();
 
-	// 查看模式占位可见、说明块隐藏、纸面不挂载游戏
+	// 查看模式按游戏分派：drawing 渲染只读画布（mock 返回固定笔画，非空态）
 	await expect(page.locator("[data-game-detail-view]")).toBeVisible();
-	await expect(page.locator("[data-game-detail-view]")).toContainText(
-		"需要桌面 3D 纸面体验",
-	);
+	for (const assertion of expectDetailView(page, "drawing")) {
+		await assertion;
+	}
 	await expect(page.locator("[data-game-description]")).not.toBeVisible();
 	await expect(
 		page.locator('#paper-screen-host [data-game="drawing"]'),
@@ -234,6 +265,9 @@ test("desktop mounts the drawing board on the paper: draw, draft, reload, undo",
 	page,
 }, testInfo) => {
 	test.skip(testInfo.project.name !== "desktop-chrome");
+	// 两轮桌面就绪探测 + 两轮 desk 视角切换/settle + toast 4s 生命周期，
+	// 累计远超 30s 默认测试超时（同 paper-focus 用例的 90s 先例）
+	test.setTimeout(90_000);
 
 	await page.goto("/games/drawing");
 	const board = await waitForDesktopDrawingBoard(page);
@@ -249,7 +283,8 @@ test("desktop mounts the drawing board on the paper: draw, draft, reload, undo",
 	await expect(board.locator('[data-tool="color"][data-color="#264653"]')).toBeVisible();
 	await expect(board.locator('[data-tool="width"][data-width="0.02"]')).toBeVisible();
 	await expect(board.locator('[data-tool="eraser"]')).toBeVisible();
-	await expect(board.locator('[data-action="submit"]')).toBeDisabled();
+	// P1 后按钮不再按登录态禁用（guest 点击出登录引导，authed+有笔画才走提交链）
+	await expect(board.locator('[data-action="submit"]')).toBeEnabled();
 
 	// 切到 desk 视角（idle 视角纸面仅 ~26px，无法可靠交互）
 	await enterDeskView(page, canvas);
@@ -272,7 +307,7 @@ test("desktop mounts the drawing board on the paper: draw, draft, reload, undo",
 	await expect(boardAfterReload).toHaveAttribute("data-stroke-count", "1");
 
 	// 恢复 toast：出现、无按钮、pointerEvents 穿透（命中画布而非 toast）
-	const toast = boardAfterReload.locator('[data-draft-toast="restored"]');
+	const toast = boardAfterReload.locator('[data-toast="restored"]');
 	await expect(toast).toBeVisible();
 	await expect(toast).toContainText("saved on this device");
 	const hitAtToast = await toast.evaluate((element) => {
@@ -299,6 +334,70 @@ test("desktop mounts the drawing board on the paper: draw, draft, reload, undo",
 	await expect(boardAfterReload).toHaveAttribute("data-stroke-count", "1");
 	await toolbarClick(boardAfterReload.locator('[data-action="redo"]'));
 	await expect(boardAfterReload).toHaveAttribute("data-stroke-count", "2");
+});
+
+test("desktop guest: canvas contract loads and submit click shows sign-in toast", async ({
+	page,
+}, testInfo) => {
+	test.skip(testInfo.project.name !== "desktop-chrome");
+
+	// guest 点击提交不得发任何 POST（登录引导在前端拦截）
+	const canvasPosts: string[] = [];
+	page.on("request", (request) => {
+		if (
+			request.method() === "POST" &&
+			request.url().includes("/api/games/drawing/canvas")
+		) {
+			canvasPosts.push(request.url());
+		}
+	});
+
+	await page.goto("/games/drawing");
+	const board = await waitForDesktopDrawingBoard(page);
+
+	// mock 画布 GET 返回固定快照（version 3,两笔）→ 底层就位
+	await expect(board).toHaveAttribute("data-canvas-version", "3");
+	await expect(board).toHaveAttribute("data-session", "guest");
+
+	// 提交按钮可点击（P1 后不再按登录态禁用）；guest 点击出登录引导 toast
+	const toggle = board.locator("[data-toolbar-toggle]");
+	await toolbarClick(toggle);
+	await toolbarClick(board.locator('[data-action="submit"]'));
+	const toast = board.locator('[data-toast="sign-in"]');
+	await expect(toast).toBeVisible();
+	await expect(toast).toHaveText("sign in to submit — $ login");
+	await expect(board).toHaveAttribute("data-stroke-count", "0");
+	expect(canvasPosts).toEqual([]);
+});
+
+test("desktop authed: submit publishes the stroke to the canvas", async ({
+	page,
+}, testInfo) => {
+	test.skip(testInfo.project.name !== "desktop-chrome");
+
+	// mock GitHub token → me() authed;提交链默认 published（mock 默认模式）
+	await page.addInitScript(() => {
+		window.localStorage.setItem("token", "mock-github-token");
+	});
+	await page.goto("/games/drawing");
+	const board = await waitForDesktopDrawingBoard(page);
+	await expect(board).toHaveAttribute("data-session", "authed");
+
+	// 画一笔（desk 视角下真实指针交互,同 P0 用例）
+	const canvas = board.locator("canvas");
+	await enterDeskView(page, canvas);
+	await waitForPaperSettled(page, canvas);
+	await drawStrokeOnPaper(page, canvas);
+	await expect(board).toHaveAttribute("data-stroke-count", "1");
+
+	// 提交 → mock 200 published → 增量清空、版本推进 3→4
+	await toolbarClick(board.locator("[data-toolbar-toggle]"));
+	await toolbarClick(board.locator('[data-action="submit"]'));
+	const toast = board.locator('[data-toast="published"]');
+	await expect(toast).toBeVisible();
+	await expect(toast).toHaveText("published to the canvas");
+	await expect(board).toHaveAttribute("data-stroke-count", "0");
+	await expect(board).toHaveAttribute("data-canvas-version", "4");
 });
 
 test("desktop paper focus: host swaps into the 2D layer and the dead zone becomes drawable", async ({
