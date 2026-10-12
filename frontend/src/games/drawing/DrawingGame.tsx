@@ -477,11 +477,13 @@ export function DrawingGame({ host }: GameViewProps) {
 					showToast("conflict", TOAST_TEXT.conflict);
 					return;
 				}
-				// 冲突：重拉画布对齐 base（保留本地增量），自动重提一次；
-				// 重拉本身失败（网络/5xx）→ 通用失败文案（与契约网络分支
-				// 一致），本地笔画保留待手动重试
+				// 冲突：重拉画布对齐 base，并把重拉到的笔画同步进渲染底图
+				// （与挂载拉取同一状态通道）：画布推进的部分立刻可见，本地
+				// 增量仍叠加在其上。重拉本身失败（网络/5xx）→ 通用失败文案
+				//（与契约网络分支一致），本地笔画保留待手动重试。
 				try {
 					const state = await drawingApi.getCanvas();
+					setCanvasDrawing({ strokes: state.strokes });
 					setBaseVersion(state.version);
 					await submitStrokes(attempt + 1, state.version);
 				} catch {
