@@ -919,6 +919,83 @@ describe("DrawingGame public canvas (P1)", () => {
 		expect(board().getAttribute("data-canvas-version")).toBe("6");
 	});
 
+	it("renders the refetched public strokes after a 409 (canvas advances visibly)", async () => {
+		// 挂载拉 v3（笔画 A）；提交 409(current v4) → 重拉返回 v4（笔画 A+B）
+		// → 自动重提 200 published。画布底图必须随重拉更新：清增量后画布上
+		// 应立即看到 B（重拉返回的公共笔画），而非停留旧底图到刷新。
+		const strokeA: Stroke = {
+			id: "A",
+			color: "#e63946",
+			width: 0.02,
+			points: [
+				{ x: 0.1, y: 0.1, t: 1 },
+				{ x: 0.2, y: 0.1, t: 2 },
+			],
+		};
+		const strokeB: Stroke = {
+			id: "B",
+			color: "#2a9d8f",
+			width: 0.02,
+			points: [
+				{ x: 0.3, y: 0.3, t: 3 },
+				{ x: 0.4, y: 0.3, t: 4 },
+			],
+		};
+		const renderCalls: string[] = [];
+		const renderCtx = {
+			...mockCtx,
+			moveTo: vi.fn((...args: number[]) => {
+				renderCalls.push(`moveTo ${args.join(",")}`);
+			}),
+		};
+		vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(
+			renderCtx as unknown as CanvasRenderingContext2D,
+		);
+		let canvasGets = 0;
+		let postCount = 0;
+		vi.mocked(fetch).mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+			const url = String(input);
+			if (url === "/api/games/drawing/canvas" && init?.method === "POST") {
+				postCount += 1;
+				if (postCount === 1) {
+					return jsonResponse(409, { error: "version conflict", current_version: 4 });
+				}
+				return jsonResponse(200, { code: 0, data: { version: 5, status: "published" } });
+			}
+			if (url === "/api/games/drawing/canvas") {
+				canvasGets += 1;
+				if (canvasGets === 1) {
+					return jsonResponse(200, { code: 0, data: { version: 3, strokes: [strokeA], updated_at: "" } });
+				}
+				// 409 触发的重拉：画布已推进到 v4（A+B）
+				return jsonResponse(200, { code: 0, data: { version: 4, strokes: [strokeA, strokeB], updated_at: "" } });
+			}
+			if (url === "/api/auth/me") {
+				return jsonResponse(200, { code: 0, data: { username: "o", provider: "github" } });
+			}
+			return jsonResponse(200, { code: 0, data: { version: 0, strokes: [], updated_at: "" } });
+		});
+		window.localStorage.setItem("token", "jwt-token");
+
+		renderBoard();
+		// 挂载底图：v3 只含 A → 渲染出现 A 起点 (80,60)、无 B 起点 (240,180)
+		await waitFor(() => {
+			expect(renderCalls).toContain("moveTo 80,60");
+			expect(renderCalls).not.toContain("moveTo 240,180");
+		});
+		// 本地画一笔（未提交增量，叠在 v3 底图上）
+		drawStroke();
+
+		await clickSubmitAsAuthed();
+
+		// 自动重提成功后底图已换 v4：B 的笔画进入渲染（240,180 起）
+		expect(lastToast()?.textContent).toBe("published to the canvas");
+		await waitFor(() => {
+			expect(renderCalls).toContain("moveTo 240,180");
+		});
+		expect(board().getAttribute("data-canvas-version")).toBe("5");
+	});
+
 	it("on repeated 409s toasts the manual hint after the automatic retry is exhausted", async () => {
 		mockAuthedSession();
 		renderBoard();
