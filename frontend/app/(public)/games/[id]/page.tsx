@@ -2,20 +2,10 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Box, Typography } from "@mui/material";
 import { getGame } from "@/games/registry";
+import { GameDetailView } from "@/games/GameDetailView";
 import { DESKTOP_3D_MEDIA } from "@/games/media";
-import type { PaperGameHost } from "@/games/host";
 import { pageMetadata } from "@/seo/site";
 import { PublicShell } from "@/components/public/PublicShell";
-
-/**
- * P0 无真实宿主：非桌面查看模式（DetailView）只做静态展示，host 传
- * 空操作 stub；真实宿主由 PublicExperience 在桌面 3D 纸面上注入。
- */
-const STUB_HOST: PaperGameHost = {
-	mount() {},
-	unmount() {},
-	getSize: () => ({ width: 0, height: 0 }),
-};
 
 type GamePageProps = { params: Promise<{ id: string }> };
 
@@ -37,7 +27,6 @@ export default async function GamePage({ params }: GamePageProps) {
 	const game = getGame(id);
 	if (!game) notFound();
 
-	const DetailView = game.DetailView;
 	return (
 		<PublicShell activePath={`/games/${id}`}>
 			{/* 可见性切换的媒体查询与 src/games/media.ts 的 DESKTOP_3D_MEDIA
@@ -83,23 +72,11 @@ export default async function GamePage({ params }: GamePageProps) {
 						{game.description}
 					</Typography>
 				</Box>
-				{/* 查看模式块：非桌面端渲染（data-game-detail-view） */}
+				{/* 查看模式块：非桌面端渲染（data-game-detail-view）。
+				    组件引用（DetailView）不能跨 RSC 边界，由 client 分派
+				    组件从注册表解引用（工单 #9 T10a）。 */}
 				<Box component="section" data-game-detail-view>
-					{DetailView ? (
-						<DetailView host={STUB_HOST} />
-					) : (
-						<Typography
-							color="text.secondary"
-							sx={{
-								fontFamily: "JetBrains Mono, monospace",
-								fontSize: "0.875rem",
-								lineHeight: 1.7,
-							}}
-						>
-							此游戏（{game.name}）需要桌面 3D 纸面体验，请使用桌面端浏览器
-							打开本站，在纸面上游玩。
-						</Typography>
-					)}
+					<GameDetailView gameId={game.id} />
 				</Box>
 			</Box>
 		</PublicShell>

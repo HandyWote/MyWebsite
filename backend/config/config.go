@@ -54,6 +54,11 @@ type Config struct {
 	LoginRateLimitMax           int
 	LoginRateLimitWindowMinutes int
 
+	// 公共画布投稿审核限流(审核 LLM 成本防护):窗口内触发审核的提交达到
+	// 上限后 429,直到窗口过期。见 routes/drawing.go 的限流语义注释。
+	DrawingModerationRateLimitMax           int
+	DrawingModerationRateLimitWindowMinutes int
+
 	CommentLimitEnabled     bool
 	CommentLimitTimeWindow  int
 	CommentLimitMaxCount    int
@@ -108,6 +113,9 @@ func LoadConfig() *Config {
 
 		LoginRateLimitMax:           getEnvInt("LOGIN_RATE_LIMIT_MAX", 5),
 		LoginRateLimitWindowMinutes: getEnvInt("LOGIN_RATE_LIMIT_WINDOW_MINUTES", 15),
+
+		DrawingModerationRateLimitMax:           getEnvInt("DRAWING_MODERATION_RATELIMIT_MAX", 10),
+		DrawingModerationRateLimitWindowMinutes: getEnvInt("DRAWING_MODERATION_RATELIMIT_WINDOW_MINUTES", 60),
 
 		CommentLimitEnabled:     getEnv("COMMENT_LIMIT_ENABLED", "true") == "true",
 		CommentLimitTimeWindow:  getEnvInt("COMMENT_LIMIT_TIME_WINDOW", 24),

@@ -19,6 +19,7 @@ export const API_ENDPOINTS = {
     TAGS: '/api/tags',
     AVATAR_FILE: (filename: string) => `/api/avatars/file/${encodeMediaPath(filename)}`,
     ARTICLE_PDF: (filename: string) => `/api/articles/pdf/${encodeMediaPath(filename)}`,
+    DRAWING_CANVAS: '/api/games/drawing/canvas',
   },
   AUTH: {
     GITHUB_AUTHORIZE: '/api/auth/github/authorize',
@@ -49,6 +50,9 @@ export const API_ENDPOINTS = {
     COMMENT_STATUS: (id: string | number) => `/api/admin/comments/${id}/status`,
     COMMENT_EXPORT: () => '/api/admin/comments/export',
     COMMENT_LIMITS: '/api/admin/comments/limits',
+    DRAWING_SUBMISSIONS: '/api/admin/drawing/submissions',
+    DRAWING_SUBMISSION_APPROVE: (id: string | number) => `/api/admin/drawing/submissions/${id}/approve`,
+    DRAWING_SUBMISSION_REJECT: (id: string | number) => `/api/admin/drawing/submissions/${id}/reject`,
     EXPORT: '/api/admin/export',
     IMPORT: '/api/admin/import',
   },

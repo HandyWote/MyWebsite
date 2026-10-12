@@ -18,6 +18,7 @@ vi.mock('lucide-react', () => ({
   Database: () => <span>Database</span>,
   FileText: () => <span>FileText</span>,
   MessageSquare: () => <span>MessageSquare</span>,
+  PenTool: () => <span>PenTool</span>,
   Settings: () => <span>Settings</span>,
   LogOut: () => <span>LogOut</span>,
 }));

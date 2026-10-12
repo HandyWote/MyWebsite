@@ -139,3 +139,39 @@ type User struct {
 func (User) TableName() string {
 	return "users"
 }
+
+// DrawingVersion 公共画布的版本全量快照:每个版本一行,Strokes 存全量
+// JSON 笔画数组(首笔最旧)。读端恒取最大 version 行,写端事务内读旧拼新
+// 再追加,读端永远拿到一致快照,不存在部分更新;Version 唯一索引兜底并发写。
+type DrawingVersion struct {
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	Version   uint      `gorm:"not null;uniqueIndex" json:"version"`
+	Strokes   string    `gorm:"type:text" json:"strokes"` // 全量 strokes JSON 数组,首笔最旧
+	CreatedBy string    `gorm:"size:64" json:"created_by"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+func (DrawingVersion) TableName() string {
+	return "drawing_versions"
+}
+
+// DrawingSubmission 待审投稿:基于 BaseVersion 的增量笔画,审核通过才合并进
+// 画布。Status 取 pending|approved|rejected|superseded;Reason 记录转人工或
+// 拒绝原因(空|graphic|ocr|通道不确定原因,≤64 字符)。ReviewedAt 用指针:
+// pending 投稿尚无审核时间,不该落 0001-01-01 假时间。
+type DrawingSubmission struct {
+	ID          uint       `gorm:"primaryKey" json:"id"`
+	BaseVersion uint       `gorm:"not null" json:"base_version"`
+	Strokes     string     `gorm:"type:text" json:"strokes"` // 增量 strokes JSON 数组
+	Status      string     `gorm:"size:20;default:pending;index" json:"status"`
+	Reason      string     `gorm:"size:64" json:"reason"`
+	CreatedBy   string     `gorm:"size:64" json:"created_by"`
+	ReviewedBy  string     `gorm:"size:64" json:"reviewed_by"`
+	CreatedAt   time.Time  `json:"created_at"`
+	ReviewedAt  *time.Time `json:"reviewed_at"`
+}
+
+func (DrawingSubmission) TableName() string {
+	return "drawing_submissions"
+}
