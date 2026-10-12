@@ -112,6 +112,36 @@ describe("articleStore (slim)", () => {
 			expect(state.articles).toEqual([{ id: 22, title: "第二页文章", tags: [] }]);
 			expect(state.pagination).toEqual({ page: 2, perPage: 20, total: 100 });
 		});
+
+		it("应该按 perPage 和 search 拉取对应的数据", async () => {
+			// mock 按 page + per_page + search 三个参数同时分流：
+			// store 丢失 per_page 或 search 任一参数，都会落到默认分支，列表断言必红
+			api.get.mockImplementation((url) => {
+				const params = new URLSearchParams(url.split("?")[1]);
+				if (
+					params.get("page") === "2" &&
+					params.get("per_page") === "50" &&
+					params.get("search") === "react"
+				) {
+					return Promise.resolve({
+						articles: [{ id: 77, title: "筛选命中文章", tags: "" }],
+						total: 1,
+					});
+				}
+				return Promise.resolve({ articles: [], total: 0 });
+			});
+
+			useArticleStore.setState({ pagination: { page: 1, perPage: 50, total: 0 } });
+
+			await act(async () => {
+				await useArticleStore
+					.getState()
+					.fetchArticles({ page: 2, search: "react" });
+			});
+
+			const state = useArticleStore.getState();
+			expect(state.articles).toEqual([{ id: 77, title: "筛选命中文章", tags: [] }]);
+		});
 	});
 
 	describe("fetchArticleById", () => {

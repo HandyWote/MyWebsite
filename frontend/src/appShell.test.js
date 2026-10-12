@@ -2,6 +2,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import PublicLayout from "../app/(public)/layout";
+import { redirects } from "../next.config";
 
 describe("Next app shell", () => {
 	it("server-renders one persistent ordinary DOM ScreenHost in the public layout", () => {
@@ -20,5 +21,22 @@ describe("Next app shell", () => {
 		expect(hosts[0].parentElement?.getAttribute("data-screen-parking")).toBe(
 			"true",
 		);
+	});
+
+	it("keeps permanent redirects for legacy /app routes", async () => {
+		// 路由行为测试：调用 next.config 的 redirects()，断言配置模块的公开契约。
+		// 删除/改坏任一规则（source、destination、permanent）都会让本测试变红。
+		const rules = await redirects();
+
+		expect(rules).toContainEqual({
+			source: "/app/articles/:id",
+			destination: "/articles/:id",
+			permanent: true,
+		});
+		expect(rules).toContainEqual({
+			source: "/app/admin/:path*",
+			destination: "/admin/:path*",
+			permanent: true,
+		});
 	});
 });

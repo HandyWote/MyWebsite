@@ -210,6 +210,30 @@ describe('commentStore', () => {
       expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:mock');
     });
 
+    it('导出内容应随当前筛选条件变化（search/status 请求契约）', async () => {
+      // mock 按收到的 url 参数分流：store 把 searchTerm/statusFilter 传给 api.download，
+      // 导出的 blob 才会对应筛选条件；丢参数 → 落到默认分支 → 内容断言失败。
+      api.download.mockImplementation((url) => {
+        const params = new URLSearchParams(url.split('?')[1] || '');
+        const branch =
+          params.get('search') === 'react' && params.get('status') === 'spam'
+            ? 'filtered:spam'
+            : 'all';
+        return Promise.resolve(new Blob([branch], { type: 'text/csv' }));
+      });
+
+      useCommentStore.setState({ searchTerm: 'react', statusFilter: 'spam' });
+
+      let blob;
+      await act(async () => {
+        await useCommentStore.getState().exportComments();
+        [blob] = URL.createObjectURL.mock.calls.at(-1);
+      });
+
+      const content = await blob.text();
+      expect(content).toBe('filtered:spam');
+    });
+
     it('应该在导出失败时抛出错误', async () => {
       api.download.mockRejectedValueOnce(new Error('导出失败'));
 
