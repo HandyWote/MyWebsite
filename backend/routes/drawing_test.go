@@ -145,6 +145,32 @@ func installDrawingModerationStub(t *testing.T, verdict services.DrawingVerdict,
 	t.Cleanup(func() { servicesDrawingModeration = old })
 }
 
+// installDrawingModerationCaptureStub 替换审核链打桩并捕获每次收到的笔画
+// (工单 #9:审核输入必须是「存量+新增」整体快照),返回恢复函数。
+func installDrawingModerationCaptureStub(t *testing.T, verdict services.DrawingVerdict, reason string) *[][]services.DrawingStroke {
+	t.Helper()
+	old := servicesDrawingModeration
+	calls := &[][]services.DrawingStroke{}
+	servicesDrawingModeration = func(_ context.Context, strokes []services.DrawingStroke) (services.DrawingVerdict, string, error) {
+		*calls = append(*calls, strokes)
+		return verdict, reason, nil
+	}
+	t.Cleanup(func() { servicesDrawingModeration = old })
+	return calls
+}
+
+// drawingCapturedStrokeIDs 取捕获到的最后一次审核输入的笔画 id 列表。
+func drawingCapturedStrokeIDs(t *testing.T, calls *[][]services.DrawingStroke) []string {
+	t.Helper()
+	require.NotEmpty(t, *calls, "审核链应被调用过")
+	last := (*calls)[len(*calls)-1]
+	ids := make([]string, 0, len(last))
+	for _, stroke := range last {
+		ids = append(ids, stroke.ID)
+	}
+	return ids
+}
+
 // installDrawingLimiter 替换包级审核限流器(模式同 installLoginLimiter)。
 func installDrawingLimiter(t *testing.T, limiter *ratelimit.Limiter) {
 	t.Helper()
@@ -347,6 +373,37 @@ func TestCreateDrawingCanvasConflictArbitratedAtWrite(t *testing.T) {
 	assert.Equal(t, int64(5), drawingCountVersionRows(t), "冲突方不落新行")
 }
 
+// TestCreateDrawingCanvasModeratesExistingPlusNewStrokes 工单 #9:审核链收到的
+// 必须是「画布存量+本次新增」整体快照(发布内容 = 审核所见);只审增量的话,
+// 存量旧笔画从未被审核,与最终发布快照不一致。
+func TestCreateDrawingCanvasModeratesExistingPlusNewStrokes(t *testing.T) {
+	ensureDrawingTables(t)
+	resetDrawing(t)
+	t.Setenv("JWT_SECRET_KEY", "test-jwt-secret")
+	installGithubUserLookup(t)
+
+	// 画布先有一版存量笔画 A(首笔最旧)。
+	_, err := drawingRepoForTest(t).AppendStrokes(context.Background(), 0, `[`+strokeJSON("A")+`]`, "seed")
+	require.NoError(t, err)
+
+	// 本次提交只带新增 B,审核链应收到 [A, B]。
+	calls := installDrawingModerationCaptureStub(t, services.DrawingClean, "")
+
+	w := postDrawing(t, drawingTestRouter(), `{"base_version":1,"strokes":[`+strokeJSON("B")+`]}`, githubTokenForTest(t))
+	require.Equal(t, http.StatusOK, w.Code)
+
+	assert.Equal(t, []string{"A", "B"}, drawingCapturedStrokeIDs(t, calls),
+		"审核输入必须是存量+新增整体快照")
+
+	// 发布快照与审核输入一致:同时含 A 与 B。
+	current, err := drawingRepoForTest(t).CurrentVersion(context.Background())
+	require.NoError(t, err)
+	assert.Contains(t, current.Strokes, `"id":"A"`)
+	assert.Contains(t, current.Strokes, `"id":"B"`)
+}
+
+// TestCreateDrawingCanvasGraphicViolationNotPersisted 画布空时的审核输入就是
+// 本次新增(存量空数组),行为不变。
 func TestCreateDrawingCanvasGraphicViolationNotPersisted(t *testing.T) {
 	ensureDrawingTables(t)
 	resetDrawing(t)
