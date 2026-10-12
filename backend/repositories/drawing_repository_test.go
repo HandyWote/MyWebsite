@@ -209,6 +209,37 @@ func TestApproveSubmissionPublishesAtomically(t *testing.T) {
 	assert.Equal(t, "octocat", current.CreatedBy, "新版本作者取投稿创建者")
 }
 
+// TestApproveSubmissionMergesOntoCurrentCanvasSnapshot 工单 #9:审核通过发布的
+// 必须是「存量+投稿增量」整体快照,不能只含投稿笔画(旧实现 mergeStrokes("[]", …)
+// 会把公共画布历史笔画全部清空);逐版本追加,v1 历史行不动。
+func TestApproveSubmissionMergesOntoCurrentCanvasSnapshot(t *testing.T) {
+	db := drawingRepoTestDB(t)
+	repo := NewDrawingRepository(db)
+	ctx := context.Background()
+
+	// 画布已有 v1(存量笔画 base),投稿基于 v1、只带增量 sub1。
+	_, err := repo.AppendStrokes(ctx, 0, repoStrokeJSON("base"), "seed")
+	require.NoError(t, err)
+	submission := seedRepoSubmission(t, db, 1)
+
+	approved, err := repo.ApproveSubmission(ctx, submission.ID, 1, "admin")
+	require.NoError(t, err)
+	assert.Equal(t, "approved", approved.Status)
+
+	// 最新版本必须同时含存量与增量。
+	current, err := repo.CurrentVersion(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, uint(2), current.Version)
+	assert.Contains(t, current.Strokes, `"id":"base"`, "存量笔画不得丢失")
+	assert.Contains(t, current.Strokes, `"id":"sub1"`)
+
+	// v1 历史行未被改写:只含当时的存量,不含投稿增量。
+	var v1 models.DrawingVersion
+	require.NoError(t, db.Where("version = ?", 1).First(&v1).Error)
+	assert.Contains(t, v1.Strokes, `"id":"base"`)
+	assert.NotContains(t, v1.Strokes, `"id":"sub1"`)
+}
+
 // TestApproveSubmissionMarksSupersededWhenBaseBehind 画布已推进:投稿标
 // superseded(带审核人)并返回 ErrDrawingBaseSuperseded,画布不落新行。
 func TestApproveSubmissionMarksSupersededWhenBaseBehind(t *testing.T) {

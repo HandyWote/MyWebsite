@@ -9,6 +9,7 @@ package routes
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math"
 	"net/http"
 	"strconv"
@@ -147,6 +148,20 @@ type drawingSubmitInput struct {
 	Strokes     []services.DrawingStroke `json:"strokes"`
 }
 
+// mergeStrokesForModeration 把画布存量快照(currentJSON,空画布传 "[]")与
+// 本次新增合并为审核输入;routes 侧不得依赖 repositories 的内部合并实现,
+// 这里独立反序列化拼接。审核输入与 Clean 直发路径 AppendStrokes 产出的
+// merged(内部同语义合并)天然一致。
+func mergeStrokesForModeration(currentJSON string, incoming []services.DrawingStroke) ([]services.DrawingStroke, error) {
+	existing := []services.DrawingStroke{}
+	if strings.TrimSpace(currentJSON) != "" {
+		if err := json.Unmarshal([]byte(currentJSON), &existing); err != nil {
+			return nil, fmt.Errorf("parse existing strokes: %w", err)
+		}
+	}
+	return append(existing, incoming...), nil
+}
+
 // CreateDrawingCanvas 提交增量笔画。流程:登录→校验→限流→审核链→发布或
 // 转人工。版本冲突不预检:AppendStrokes 以 base_version 单语句条件插入原子
 // 仲裁,消除「先读再比」窗口内画布被并发推进导致的假通过;审核通过但画布已
@@ -156,6 +171,8 @@ type drawingSubmitInput struct {
 // RecordFailure,超限直接 429 不再调 LLM;词表/校验等纯本地步骤不计数;
 // 429 的请求不消耗额度(被拒在门口)。审核通过/转人工/拒绝都已真实消耗
 // LLM 或本应消耗,统一计一次;base 过期等写入失败不计数(没花审核成本)。
+// pending 路径投稿只存本次增量,契约(202 响应形状)不变;审核通过时由
+// ApproveSubmission 以画布现值整行为合并基线,与这里的审核输入同源一致。
 func CreateDrawingCanvas(c *gin.Context) {
 	// 会话鉴权在限流/校验/入库之前:未登录一律 401。
 	identity := drawingSessionUser(c)
@@ -185,7 +202,20 @@ func CreateDrawingCanvas(c *gin.Context) {
 		return
 	}
 
-	verdict, reason, err := servicesDrawingModeration(c.Request.Context(), input.Strokes)
+	// 审核输入 = 画布存量+本次新增的整体快照(工单 #9):发布内容等于审核
+	// 所见,存量旧笔画不再游离在审核链之外。空画布(version=0)存量即空数组。
+	current, err := drawingRepo.CurrentVersion(c.Request.Context())
+	if err != nil {
+		utils.ErrorInternal(c, "Failed to load canvas")
+		return
+	}
+	moderationStrokes, err := mergeStrokesForModeration(current.Strokes, input.Strokes)
+	if err != nil {
+		utils.ErrorInternal(c, "Failed to encode strokes")
+		return
+	}
+
+	verdict, reason, err := servicesDrawingModeration(c.Request.Context(), moderationStrokes)
 	if err != nil {
 		// 审核链内部错误(不该发生,链路自身吞错转 pending),按内部错误兜底。
 		utils.ErrorInternal(c, "Moderation failed")

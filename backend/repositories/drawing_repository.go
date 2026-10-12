@@ -165,7 +165,8 @@ func (r *DrawingRepository) UpdateSubmissionStatus(ctx context.Context, id uint,
 // ApproveSubmission 单事务原子通过投稿,消除"画布已发布但投稿仍 pending"的
 // 半发布态与并发重复发布:
 //  1. 校验投稿仍 pending(条件更新 RowsAffected 仲裁,不依赖 FOR UPDATE);
-//  2. 校验投稿 base_version 仍等于画布当前版本,落后则标 superseded 并提交、
+//  2. 校验投稿 base_version 仍等于画布当前版本(事务内读画布现值整行,
+//     base 仲裁与合并基线同源),落后则标 superseded 并提交、
 //     返回 ErrDrawingBaseSuperseded(gorm 事务遇错即回滚,故 superseded 改写
 //     随 nil 提交,哨兵在事务外转换);
 //  3. 与 AppendStrokes 同款单语句条件插入发布新版本;
@@ -187,11 +188,15 @@ func (r *DrawingRepository) ApproveSubmission(ctx context.Context, submissionID 
 			return ErrDrawingSubmissionNotPending
 		}
 
-		var currentMax int64
-		if err := tx.Raw(`SELECT COALESCE(MAX(version), 0) FROM drawing_versions`).Scan(&currentMax).Error; err != nil {
-			return err
+		var currentRow models.DrawingVersion
+		if err := tx.Order("version DESC").First(&currentRow).Error; err != nil {
+			if !errors.Is(err, gorm.ErrRecordNotFound) {
+				return err
+			}
+			// 空画布(无任何版本行):合并基线就是空数组。
+			currentRow = models.DrawingVersion{Version: 0, Strokes: "[]"}
 		}
-		base := uint(currentMax)
+		base := currentRow.Version
 		if submission.BaseVersion != base {
 			// base 落后:标记 superseded(随事务提交),投稿不合并。
 			res := tx.Model(&models.DrawingSubmission{}).
@@ -211,7 +216,10 @@ func (r *DrawingRepository) ApproveSubmission(ctx context.Context, submissionID 
 			return nil
 		}
 
-		merged, err := mergeStrokes("[]", submission.Strokes)
+		// 合并基线取事务内读到的画布现值整行(工单 #9):发布的是「存量+
+		// 投稿增量」整体快照,不能只含投稿笔画(那会把公共画布历史清空);
+		// base 匹配时该行就是被合并的存量,与路由侧审核输入同源一致。
+		merged, err := mergeStrokes(currentRow.Strokes, submission.Strokes)
 		if err != nil {
 			return err
 		}
