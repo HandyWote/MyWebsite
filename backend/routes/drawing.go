@@ -8,6 +8,7 @@ package routes
 
 import (
 	"encoding/json"
+	"errors"
 	"math"
 	"net/http"
 	"strconv"
@@ -23,6 +24,7 @@ import (
 	"github.com/handywote/website/repositories"
 	"github.com/handywote/website/services"
 	"github.com/handywote/website/utils"
+	"gorm.io/gorm"
 )
 
 // 画布投稿输入上限(与契约冻结一致,服务端独立校验函数 + 表驱动测试)。
@@ -145,13 +147,15 @@ type drawingSubmitInput struct {
 	Strokes     []services.DrawingStroke `json:"strokes"`
 }
 
-// CreateDrawingCanvas 提交增量笔画。流程:登录→校验→限流→版本冲突→审核链→
-// 发布或转人工。
+// CreateDrawingCanvas 提交增量笔画。流程:登录→校验→限流→审核链→发布或
+// 转人工。版本冲突不预检:AppendStrokes 以 base_version 单语句条件插入原子
+// 仲裁,消除「先读再比」窗口内画布被并发推进导致的假通过;审核通过但画布已
+// 推进 → 409,前端已有重拉重提逻辑。
 //
 // 限流语义(审核成本防护):每次「真实触发审核 LLM 调用」计一次
 // RecordFailure,超限直接 429 不再调 LLM;词表/校验等纯本地步骤不计数;
 // 429 的请求不消耗额度(被拒在门口)。审核通过/转人工/拒绝都已真实消耗
-// LLM 或本应消耗,统一计一次。写入/冲突失败不计数(没花审核成本)。
+// LLM 或本应消耗,统一计一次;base 过期等写入失败不计数(没花审核成本)。
 func CreateDrawingCanvas(c *gin.Context) {
 	// 会话鉴权在限流/校验/入库之前:未登录一律 401。
 	identity := drawingSessionUser(c)
@@ -171,17 +175,6 @@ func CreateDrawingCanvas(c *gin.Context) {
 	}
 	if !validateDrawingStrokes(input.Strokes) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid strokes"})
-		return
-	}
-
-	current, err := drawingRepo.CurrentVersion(c.Request.Context())
-	if err != nil {
-		utils.ErrorInternal(c, "Failed to load canvas")
-		return
-	}
-	// base_version 必须等于当前 version,否则 409 冲突,不落库不计数。
-	if input.BaseVersion != current.Version {
-		c.JSON(http.StatusConflict, gin.H{"error": "version conflict", "current_version": current.Version})
 		return
 	}
 
@@ -215,15 +208,26 @@ func CreateDrawingCanvas(c *gin.Context) {
 		// OCR 词表命中:422,不落库。
 		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "rejected", "reason": "ocr"})
 	case services.DrawingClean:
-		// 全清:发布,追加进画布新版本。
-		version, err := drawingRepo.AppendStrokes(c.Request.Context(), string(strokesJSON), createdBy)
+		// 全清:发布,追加进画布新版本。base_version 由写入原子仲裁:画布
+		// 已被并发推进 → 409 附 current_version 供前端重拉(读现值仅用于
+		// 提示,极小概率读时又变,可接受,契约字段仍在)。
+		version, err := drawingRepo.AppendStrokes(c.Request.Context(), input.BaseVersion, string(strokesJSON), createdBy)
 		if err != nil {
+			if errors.Is(err, repositories.ErrDrawingVersionConflict) {
+				currentVersion := uint(0)
+				if current, loadErr := drawingRepo.CurrentVersion(c.Request.Context()); loadErr == nil {
+					currentVersion = current.Version
+				}
+				c.JSON(http.StatusConflict, gin.H{"error": "version conflict", "current_version": currentVersion})
+				return
+			}
 			utils.ErrorInternal(c, "Failed to save canvas")
 			return
 		}
 		utils.Success(c, gin.H{"version": version.Version, "status": "published"})
 	default: // DrawingPending
 		// 任一通道不确定(含 LLM 未配置/响应不可解析):落 pending 人工审。
+		// base_version 只作记录:审核通过时由 ApproveSubmission 对画布现值仲裁。
 		submission := models.DrawingSubmission{
 			BaseVersion: input.BaseVersion,
 			Strokes:     string(strokesJSON),
@@ -255,9 +259,12 @@ func AdminListDrawingSubmissions(c *gin.Context) {
 	utils.Success(c, gin.H{"submissions": submissions, "total": total})
 }
 
-// AdminApproveDrawingSubmission 通过投稿:仅当 base_version 仍等于画布当前
-// 版本时合并进新版本;否则标记 superseded 并 409(投稿基于旧画布,合并会
-// 叠出错误结果,宁可让人重新画)。
+// AdminApproveDrawingSubmission 通过投稿:仓库层单事务原子完成 pending 校验、
+// base 版本仲裁、画布发布与状态推进,消除「画布已发布但投稿仍 pending」的
+// 半发布态与并发重复发布。错误映射(契约不变):
+//   - 投稿不存在 → 404;已审核/重复 approve → 400;
+//   - base 落后或写入仲裁时画布被并发推进 → 409(后者投稿保持 pending,
+//     重审时走正式 superseded 分支)。
 func AdminApproveDrawingSubmission(c *gin.Context) {
 	id, valid := ParseUintParam(c, "id")
 	if !valid {
@@ -265,6 +272,8 @@ func AdminApproveDrawingSubmission(c *gin.Context) {
 	}
 	reviewer := drawingAdminIdentity(c)
 
+	// 预读仅用于快速失败提示与取 base_version;真正的仲裁在事务内,被并发
+	// 抢先时事务仍会给出同样的 400/409。
 	submission, err := drawingAdminRepo.GetSubmission(c.Request.Context(), id)
 	if err != nil {
 		utils.ErrorNotFound(c, "Submission not found")
@@ -275,31 +284,23 @@ func AdminApproveDrawingSubmission(c *gin.Context) {
 		return
 	}
 
-	current, err := drawingAdminRepo.CurrentVersion(c.Request.Context())
-	if err != nil {
-		utils.ErrorInternal(c, "Failed to load canvas")
+	approved, err := drawingAdminRepo.ApproveSubmission(c.Request.Context(), id, submission.BaseVersion, reviewer)
+	switch {
+	case err == nil:
+	case errors.Is(err, gorm.ErrRecordNotFound):
+		utils.ErrorNotFound(c, "Submission not found")
 		return
-	}
-	now := time.Now()
-	if submission.BaseVersion != current.Version {
-		// base 落后:标记 superseded,推进不了画布。
-		if err := drawingAdminRepo.UpdateSubmissionStatus(c.Request.Context(), id, "superseded", reviewer, now); err != nil {
-			utils.ErrorInternal(c, "Failed to update submission")
-			return
-		}
+	case errors.Is(err, repositories.ErrDrawingSubmissionNotPending):
+		c.JSON(http.StatusBadRequest, gin.H{"error": "submission already reviewed"})
+		return
+	case errors.Is(err, repositories.ErrDrawingBaseSuperseded), errors.Is(err, repositories.ErrDrawingVersionConflict):
 		c.JSON(http.StatusConflict, gin.H{"error": "base version superseded", "data": gin.H{"status": "superseded"}})
 		return
-	}
-
-	if _, err := drawingAdminRepo.AppendStrokes(c.Request.Context(), submission.Strokes, submission.CreatedBy); err != nil {
-		utils.ErrorInternal(c, "Failed to save canvas")
+	default:
+		utils.ErrorInternal(c, "Failed to approve submission")
 		return
 	}
-	if err := drawingAdminRepo.UpdateSubmissionStatus(c.Request.Context(), id, "approved", reviewer, now); err != nil {
-		utils.ErrorInternal(c, "Failed to update submission")
-		return
-	}
-	utils.Success(c, gin.H{"id": submission.ID, "status": "approved"})
+	utils.Success(c, gin.H{"id": approved.ID, "status": approved.Status})
 }
 
 // AdminRejectDrawingSubmission 拒绝投稿:仅 pending 可拒,重复审核 400。

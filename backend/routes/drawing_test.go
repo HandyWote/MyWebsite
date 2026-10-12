@@ -11,6 +11,7 @@ package routes
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -317,6 +318,35 @@ func TestCreateDrawingCanvasVersionConflict(t *testing.T) {
 	assert.Equal(t, int64(1), drawingCountVersionRows(t), "冲突不落库")
 }
 
+// TestCreateDrawingCanvasConflictArbitratedAtWrite 审核放行后画布被并发推进
+// (模拟请求在窗口内被别人抢先):写入时仲裁 → 409 附 current_version,而不是
+// 旧实现的静默双写或 500;冲突方不落新行。base_version 离谱过期(0 vs 现 5)
+// 同样走写入仲裁,不再依赖请求入口的读-比对。
+func TestCreateDrawingCanvasConflictArbitratedAtWrite(t *testing.T) {
+	ensureDrawingTables(t)
+	resetDrawing(t)
+	t.Setenv("JWT_SECRET_KEY", "test-jwt-secret")
+	installGithubUserLookup(t)
+
+	// 画布先被推到 v5(模拟请求在途时他人连续发布);审核放行(计数 +1),
+	// 老视图(base=0)写入仲裁失败 → 409 + current_version=5。
+	calls := 0
+	installDrawingModerationStub(t, services.DrawingClean, "", &calls)
+	router := drawingTestRouter()
+
+	for i := 0; i < 5; i++ {
+		_, err := drawingRepoForTest(t).AppendStrokes(context.Background(), uint(i), `[`+strokeJSON(fmt.Sprintf("pre%d", i))+`]`, "seed")
+		require.NoError(t, err)
+	}
+
+	// 老视图(base=0)提交:审核放行(计数 +1),写入仲裁失败 → 409 + current_version=5。
+	w := postDrawing(t, router, `{"base_version":0,"strokes":[`+strokeJSON("late")+`]}`, githubTokenForTest(t))
+	require.Equal(t, http.StatusConflict, w.Code)
+	assert.JSONEq(t, `{"error":"version conflict","current_version":5}`, w.Body.String())
+	assert.Equal(t, 1, calls, "审核链真实放行后才仲裁")
+	assert.Equal(t, int64(5), drawingCountVersionRows(t), "冲突方不落新行")
+}
+
 func TestCreateDrawingCanvasGraphicViolationNotPersisted(t *testing.T) {
 	ensureDrawingTables(t)
 	resetDrawing(t)
@@ -526,7 +556,7 @@ func TestDrawingAdminApprovePublishesSubmission(t *testing.T) {
 	resetDrawing(t)
 
 	// 画布先有一版(投稿 base_version=1 与之一致)。
-	_, err := drawingRepoForTest(t).AppendStrokes(context.Background(), `[`+strokeJSON("base")+`]`, "seed")
+	_, err := drawingRepoForTest(t).AppendStrokes(context.Background(), 0, `[`+strokeJSON("base")+`]`, "seed")
 	require.NoError(t, err)
 	id := seedPendingSubmission(t, 1)
 
@@ -564,9 +594,9 @@ func TestDrawingAdminApproveSupersededWhenBaseBehind(t *testing.T) {
 
 	repo := drawingRepoForTest(t)
 	// 画布推两版,投稿基于 v1 → 已过期。
-	_, err := repo.AppendStrokes(context.Background(), `[`+strokeJSON("base")+`]`, "seed")
+	_, err := repo.AppendStrokes(context.Background(), 0, `[`+strokeJSON("base")+`]`, "seed")
 	require.NoError(t, err)
-	_, err = repo.AppendStrokes(context.Background(), `[`+strokeJSON("base2")+`]`, "seed")
+	_, err = repo.AppendStrokes(context.Background(), 1, `[`+strokeJSON("base2")+`]`, "seed")
 	require.NoError(t, err)
 	id := seedPendingSubmission(t, 1)
 
