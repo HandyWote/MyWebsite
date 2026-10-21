@@ -18,10 +18,14 @@ export type CameraKey =
 export const PAPER_CENTER = new THREE.Vector3(-2063.7, -444.6, 986.4);
 // Camera sits above the paper so it fills ~82% of the view height at fov 35°.
 export const PAPER_VIEW_DISTANCE = 1690;
-// A 1.1° horizontal tilt keeps lookAt well away from the degenerate case where
-// the view direction is parallel to the up vector (NaN otherwise); it is
-// visually indistinguishable from a perfectly perpendicular view.
-export const PAPER_VIEW_TILT = new THREE.Vector3(50, 0, 0);
+// The close-up view must look down the paper's exact normal: any off-axis
+// offset makes the projection a keystone + skew instead of a similarity, and
+// the perspective focus layer (PaperFocusLayer) can only reproduce
+// translate + uniform scale — a 1.7° offset here was worth 4.4px of corner
+// error, visible as a pop when the game host changes rendering pipeline.
+// Degenerate lookAt (view direction parallel to `up`) is avoided by giving the
+// paper frame an `up` perpendicular to the view (below and in
+// Camera.setPaperTarget), not by tilting the camera.
 
 export type CameraFrame = {
 	position: THREE.Vector3;
@@ -67,11 +71,12 @@ export function createCameraKeyframes(
 	};
 
 	const paper = frame(
-		PAPER_CENTER.clone()
-			.add(PAPER_VIEW_TILT)
-			.add(new THREE.Vector3(0, PAPER_VIEW_DISTANCE, 0)),
+		PAPER_CENTER.clone().add(new THREE.Vector3(0, PAPER_VIEW_DISTANCE, 0)),
 		PAPER_CENTER.clone(),
 	);
+	// Keep the baked default non-degenerate before Camera.setPaperTarget
+	// refines it: a straight-down view with world-up would make lookAt singular.
+	paper.up.set(0, 0, 1);
 
 	const idleOrigin = new THREE.Vector3(-20000, 12000, 20000);
 	const idle = frame(idleOrigin.clone(), new THREE.Vector3(0, -1000, 0));

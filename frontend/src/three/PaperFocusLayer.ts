@@ -1,6 +1,28 @@
 import type { PaperScreen } from "./PaperScreen";
 
 /**
+ * Unrounded layout size of the host, in CSS px. `offsetWidth`/`offsetHeight`
+ * round to whole pixels, which leaves a 0.4px scale error in the focus layer's
+ * reconstruction of the projection (the paper host is 623.888 x 874.652 CSS
+ * px) — visible as a corner pop when the host's rendering pipeline changes.
+ * Falls back to the rounded values when no inline size is set.
+ */
+function layoutSize(host: HTMLElement): { width: number; height: number } {
+	const styleWidth = Number.parseFloat(host.style.width);
+	const styleHeight = Number.parseFloat(host.style.height);
+	return {
+		width:
+			Number.isFinite(styleWidth) && styleWidth > 0
+				? styleWidth
+				: host.offsetWidth,
+		height:
+			Number.isFinite(styleHeight) && styleHeight > 0
+				? styleHeight
+				: host.offsetHeight,
+	};
+}
+
+/**
  * Screen-space 2D interaction layer for the paper close-up (focus) view.
  *
  * Chromium's hit-testing for CSS3D/preserve-3d elements disagrees with its
@@ -53,12 +75,12 @@ export class PaperFocusLayer {
 		const host = paperScreen.object.element;
 		if (!(host instanceof HTMLElement)) return;
 		const rect = host.getBoundingClientRect();
-		const height = host.offsetHeight;
+		const size = layoutSize(host);
 		if (
 			rect.width === 0 ||
 			rect.height === 0 ||
-			height === 0 ||
-			host.offsetWidth === 0
+			size.width === 0 ||
+			size.height === 0
 		) {
 			return;
 		}
@@ -73,8 +95,8 @@ export class PaperFocusLayer {
 		layer.style.top = "0px";
 		layer.style.left = "0px";
 		layer.style.transformOrigin = "0 0";
-		layer.style.width = `${host.offsetWidth}px`;
-		layer.style.height = `${height}px`;
+		layer.style.width = `${size.width}px`;
+		layer.style.height = `${size.height}px`;
 		layer.style.pointerEvents = "auto";
 		// The mount also holds the (unpositioned) CSS3D renderer root; any
 		// positive z keeps the layer above it within the mount's stacking
@@ -85,7 +107,7 @@ export class PaperFocusLayer {
 		this.paperScreen = paperScreen;
 		this.host = host;
 		this.hostParent = host.parentNode;
-		this.layoutHeight = height;
+		this.layoutHeight = size.height;
 
 		this.mount.appendChild(layer);
 		paperScreen.detachHost();

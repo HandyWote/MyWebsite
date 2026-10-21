@@ -41,7 +41,15 @@ function mockRect(element: Element, rect: Rect): void {
 	} as DOMRect);
 }
 
+// Mirrors what PaperScreen does in production: the host carries its exact
+// (fractional) size as an inline style, while offsetWidth/offsetHeight report
+// that size rounded to whole pixels. Both are mocked so the layer can pick the
+// precise one.
 function mockLayoutSize(element: Element, width: number, height: number): void {
+	if (element instanceof HTMLElement) {
+		element.style.width = `${width}px`;
+		element.style.height = `${height}px`;
+	}
 	Object.defineProperty(element, "offsetWidth", {
 		configurable: true,
 		value: width,
