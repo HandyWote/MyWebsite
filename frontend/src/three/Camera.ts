@@ -5,7 +5,6 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import {
 	createCameraKeyframes,
 	PAPER_VIEW_DISTANCE,
-	PAPER_VIEW_TILT,
 	type CameraKey,
 } from "./CameraKeyframes";
 import type { Mouse } from "./Mouse";
@@ -152,7 +151,6 @@ export class Camera {
 		frame.focalPoint.copy(center);
 		frame.position
 			.copy(center)
-			.add(PAPER_VIEW_TILT)
 			.add(new THREE.Vector3(0, PAPER_VIEW_DISTANCE, 0));
 
 		// up = contentUp projected onto the plane perpendicular to the view

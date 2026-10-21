@@ -40,6 +40,8 @@ func AutoMigrate() error {
 		&models.RevalidationOutbox{},
 		&models.MediaDeleteTask{},
 		&models.User{},
+		&models.DrawingVersion{},
+		&models.DrawingSubmission{},
 	)
 	if err != nil {
 		return fmt.Errorf("failed to migrate database: %w", err)

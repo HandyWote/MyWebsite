@@ -3,6 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
 import { ChevronLeft, ChevronRight, Eraser, Redo, Trash2, Undo } from "lucide-react";
+import { useSession } from "@/hooks/useSession";
+import { drawingApi } from "@/api/drawingApi";
+import { ApiError } from "@/api/browser";
 import type { Drawing, GameViewProps, Stroke } from "../types";
 import {
 	BRUSH_WIDTHS,
@@ -12,24 +15,33 @@ import {
 	createStroke,
 	pixelToLocal,
 	pointToLocal,
+	renderCanvasWithLocal,
 	renderDrawing,
 } from "./drawingCanvas";
-import { clearDraft, flushDraft, loadDraft, scheduleSave } from "./draftStore";
+import {
+	clearDraft,
+	flushDraft,
+	loadDraft,
+	scheduleSave,
+	type DrawingDraft,
+} from "./draftStore";
+import { containsBlockedWord } from "./wordFilter";
+import type { ModerationError } from "@/api/drawingApi";
 
 /**
- * 画板游戏本体（P0 计划 Task 5 / G4）。
+ * 画板游戏本体（P0 计划 Task 5 / G4；P1 提交链见工单 #9 T8）。
  * - 根 div 铺满宿主（#paper-screen-host），ResizeObserver 兜底尺寸
  *   （PaperScreen 接管前可能为 0，接管后 RO 触发重绘）。
  * - pointer 事件归一化为 0-1 相对坐标：优先 offsetX/offsetY（浏览器对
  *   transform 元素命中测试的精确逆投影，含透视/面内旋转）除以画布局
  *   尺寸；offset 不可用时回退 clientX/Y + getBoundingClientRect 线性
  *   映射。存储结构与 P1 上传契约一致。
- * - 工具面板：顶部居中悬浮半透明卡（原视觉），默认收起成小扁胶囊
- *   （卡里只剩开关钮），点击原地丝滑展开为单行面板（max-width/
- *   opacity/visibility 过渡）；画布铺满整纸、尺寸永不因面板变化。
- * - 笔刷/橡皮/撤销/重做/清空 + localStorage 草稿（挂载静默恢复，
- *   无按钮 toast 告知“存在本机、未上传”）；提交为禁用占位（P1）。
- * - 无任何网络请求。
+ * - 挂载时 GET 公共画布：只读公共底层 + 本地未提交增量合成渲染；
+ *   拉取失败/离线静默降级为纯本地。data-canvas-version 供测试。
+ * - 提交按钮接登录：guest 点击显示登录引导（无网络请求）；authed 走
+ *   TextDetector 粗筛 → POST 增量 → 200 发布/202 待审/409 自动重提
+ *   （最多 2 次）/429 与网络失败提示。提交中按钮禁用 + aria-busy。
+ * - 无按钮 toast 复用草稿 toast 基建（data-toast 区分类型）。
  */
 
 const ZERO_SIZE = { width: 0, height: 0 };
@@ -122,10 +134,10 @@ const toggleButtonStyle: CSSProperties = {
 	background: "rgba(255, 251, 240, 0.4)",
 };
 
-/** 草稿恢复 toast 的显示时长：出现后自动消失。 */
+/** toast 的显示时长：出现后自动消失。 */
 const DRAFT_TOAST_MS = 4000;
 
-/** 草稿恢复 toast：绝对定位悬于画布底部水平居中，pointerEvents:
+/** toast：绝对定位悬于画布底部水平居中，pointerEvents:
  *  none 绝不拦截绘制；自带底色/描边/投影，无任何按钮。 */
 const draftToastStyle: CSSProperties = {
 	position: "absolute",
@@ -146,6 +158,50 @@ const draftToastStyle: CSSProperties = {
 	color: "#264653",
 };
 
+/** 409 冲突自动重提上限（首次 + 1 次自动重试，仍冲突则提示手动重试）。 */
+const MAX_CONFLICT_RETRIES = 2;
+
+/** 提交链各分支的终端文案（面向访客统一英文小写）。 */
+const TOAST_TEXT = {
+	signIn: "sign in to submit — $ login",
+	blocked: "this doodle was blocked by the word filter",
+	published: "published to the canvas",
+	pending: "submitted for review",
+	rejectedOcr: "rejected: looks like text",
+	rejectedGraphic: "rejected: looks like symbols",
+	conflict: "canvas moved ahead — try again",
+	rateLimited: "slow down — try again later",
+	failed: "submission failed — try again",
+} as const;
+
+/** 一次挂载内递增，为 422/409 场景断言「最新 toast」提供稳定选择器。 */
+let toastSeq = 0;
+
+/**
+ * TextDetector 粗筛：增量笔画离屏渲染 → detect → 归一化词表匹配。
+ * 特性探测不满足/无识别结果时跳过（放行）。识别/渲染在任何环节抛错
+ * （jsdom 无 2D 实现、浏览器实现差异）一律放行——粗筛是尽力而为的
+ * 客户端预检，最终裁决在后端 OCR/图形成审核。
+ */
+async function detectInkText(strokes: Stroke[]): Promise<string | null> {
+	if (typeof window === "undefined" || !("TextDetector" in window)) return null;
+	try {
+		const offscreen = document.createElement("canvas");
+		offscreen.width = 320;
+		offscreen.height = 240;
+		const ctx = offscreen.getContext("2d");
+		if (!ctx) return null;
+		renderDrawing(ctx, { strokes }, { width: 320, height: 240 }, 1);
+		const detector = new (window as unknown as {
+			TextDetector: new () => { detect(source: CanvasImageSource): Promise<Array<{ rawValue: string }>> };
+		}).TextDetector();
+		const results = await detector.detect(offscreen);
+		return results.map((item) => item.rawValue).join(" ");
+	} catch {
+		return null;
+	}
+}
+
 export function DrawingGame({ host }: GameViewProps) {
 	const rootRef = useRef<HTMLDivElement>(null);
 	const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -165,13 +221,19 @@ export function DrawingGame({ host }: GameViewProps) {
 	 *  有笔画则静默恢复——直接载入立即可继续画，不置 touchedRef
 	 *  （不主动写盘，用户动笔后照常防抖保存），只弹一条无按钮 toast
 	 *  告知“存在本机、未上传”。用惰性初始化而非 effect，避免级联渲染。 */
-	const [restoredDraft] = useState<Drawing | null>(() => {
+	const [restoredDraft] = useState<DrawingDraft | null>(() => {
 		const draft = loadDraft();
 		return draft !== null && draft.strokes.length > 0 ? draft : null;
 	});
 	const [strokes, setStrokes] = useState<Stroke[]>(
 		() => restoredDraft?.strokes ?? [],
 	);
+	/** 提交成功时的画布版本（undefined = 未对齐，提交前先拉 canvas）。 */
+	const [baseVersion, setBaseVersion] = useState<number | undefined>(
+		() => restoredDraft?.base_version,
+	);
+	/** 公共画布快照：只读底层，与本地增量合成渲染。拉取失败保持 null。 */
+	const [canvasDrawing, setCanvasDrawing] = useState<Drawing | null>(null);
 	const [current, setCurrent] = useState<Stroke | null>(null);
 	/** 历史快照栈：past = 可撤销的历史，future = 可重做的未来。 */
 	const [past, setPast] = useState<Stroke[][]>([]);
@@ -179,10 +241,13 @@ export function DrawingGame({ host }: GameViewProps) {
 	const [color, setColor] = useState<string>(PALETTE[0]);
 	const [width, setWidth] = useState<number>(DEFAULT_WIDTH);
 	const [erasing, setErasing] = useState(false);
-	/** 草稿恢复 toast：出现 DRAFT_TOAST_MS 后自动消失。 */
-	const [draftToastVisible, setDraftToastVisible] = useState(
-		restoredDraft !== null,
+	/** 无按钮 toast（草稿恢复/提交链各分支共用基建）：
+	 *  data-toast 区分类型供测试，出现 DRAFT_TOAST_MS 后自动消失。 */
+	const [toast, setToast] = useState<{ kind: string; text: string } | null>(
+		restoredDraft !== null ? { kind: "restored", text: "" } : null,
 	);
+	/** 提交进行中：按钮禁用 + aria-busy。 */
+	const [submitting, setSubmitting] = useState(false);
 	/** 工具栏（页眉条）默认收起：纸面只见右上角开关钮，点击展开。 */
 	const [toolsOpen, setToolsOpen] = useState(false);
 
@@ -200,11 +265,14 @@ export function DrawingGame({ host }: GameViewProps) {
 		return () => observer.disconnect();
 	}, [host]);
 
-	// —— 草稿：strokes 变化时防抖保存（用户动过笔才落盘）——
+	// —— 草稿：strokes/baseVersion 变化时防抖保存（用户动过笔才落盘）——
+	// 提交中暂缓落盘：清增量与 setBaseVersion 成对变更，中途落盘会把
+	// 不一致的快照（旧增量+新 base / 新增量+旧 base）写入 storage。
 	useEffect(() => {
+		if (submitting) return;
 		if (!touchedRef.current) return;
-		scheduleSave({ strokes });
-	}, [strokes]);
+		scheduleSave({ strokes, base_version: baseVersion });
+	}, [strokes, baseVersion, submitting]);
 
 	// —— 草稿：卸载/路由切换时立即写入未决保存 ——
 	useEffect(() => {
@@ -213,17 +281,34 @@ export function DrawingGame({ host }: GameViewProps) {
 		};
 	}, []);
 
-	// —— 草稿 toast：出现后计时自动消失（卸载/隐藏时清理定时器）——
+	// —— 公共画布：挂载拉取，只读底层（失败/离线静默降级为纯本地）——
 	useEffect(() => {
-		if (!draftToastVisible) return;
-		const timer = setTimeout(
-			() => setDraftToastVisible(false),
-			DRAFT_TOAST_MS,
-		);
-		return () => clearTimeout(timer);
-	}, [draftToastVisible]);
+		let cancelled = false;
+		drawingApi
+			.getCanvas()
+			.then((state) => {
+				if (cancelled) return;
+				setCanvasDrawing({ strokes: state.strokes });
+				// 同步对齐 base_version：提交时以挂载拉到的画布版本为基准
+				// （旧草稿/新画都由挂载拉取对齐，无需提交时再拉）。
+				setBaseVersion(state.version);
+			})
+			.catch(() => {
+				// 静默降级：保持纯本地渲染，base 留待提交时重拉
+			});
+		return () => {
+			cancelled = true;
+		};
+	}, []);
 
-	// —— 绘制：strokes + 进行中笔画 + 尺寸变化时全量重绘 ——
+	// —— toast：出现后计时自动消失（卸载/隐藏时清理定时器）——
+	useEffect(() => {
+		if (!toast) return;
+		const timer = setTimeout(() => setToast(null), DRAFT_TOAST_MS);
+		return () => clearTimeout(timer);
+	}, [toast]);
+
+	// —— 绘制：公共底层 + 本地增量 + 进行中笔画 + 尺寸变化时全量重绘 ——
 	useEffect(() => {
 		const canvas = canvasRef.current;
 		if (!canvas || size.width <= 0 || size.height <= 0) return;
@@ -234,17 +319,17 @@ export function DrawingGame({ host }: GameViewProps) {
 		if (canvas.height !== deviceHeight) canvas.height = deviceHeight;
 		const ctx = canvas.getContext("2d");
 		if (!ctx) return;
-		const drawing: Drawing = current
+		const localDrawing: Drawing = current
 			? { strokes: [...strokes, current] }
 			: { strokes };
-		renderDrawing(ctx, drawing, size, dpr);
-	}, [strokes, current, size]);
+		renderCanvasWithLocal(ctx, canvasDrawing, localDrawing, size, dpr);
+	}, [strokes, current, size, canvasDrawing]);
 
 	const localPoint = (e: ReactPointerEvent): { x: number; y: number } | null => {
 		const target = canvasRef.current;
 		if (!target) return null;
 		const { offsetX, offsetY } = e.nativeEvent;
-		// 主路径：offset 是浏览器对 transform 元素（含 CSS3D 透视/面内旋转）
+		// 主路径：offset 是浏览器命中测试对 transform 元素（含 CSS3D 透视/面内旋转）
 		// 命中测试的精确逆投影，本身就是画布局部坐标；除以未变换的布局
 		// 尺寸即得相对坐标。布局尺寸拿不到（未布局/无布局引擎环境）时退
 		// 回 rect 尺寸。offset 非有限数值（旧环境/合成事件）时回退 client
@@ -331,15 +416,127 @@ export function DrawingGame({ host }: GameViewProps) {
 		clearDraft();
 	};
 
+	/** toast 一次（同轮渲染覆盖旧 toast，递增序号供测试取最新）。 */
+	const showToast = (kind: string, text: string) => {
+		toastSeq += 1;
+		setToast({ kind, text });
+	};
+
 	const handleColorSelect = (next: string) => {
 		setColor(next);
 		setErasing(false);
 	};
 
+	const session = useSession();
+
+	/**
+	 * 提交链核心：POST 增量，按契约状态码分支；409 重拉画布对齐后自动
+	 * 重提（attempt 为已尝试次数，上限 2 次）。base 显式传递：set 后重试
+	 * 读到的是本闭包里的旧 state，不能依赖 state 时效。
+	 */
+	const submitStrokes = async (attempt: number, baseOverride?: number) => {
+		if (attempt >= MAX_CONFLICT_RETRIES) {
+			showToast("conflict", TOAST_TEXT.conflict);
+			return;
+		}
+		setSubmitting(true);
+		try {
+			let base = baseOverride;
+			if (base === undefined) {
+				base = baseVersion;
+				if (base === undefined) {
+					// 未对齐（旧草稿/新画）：先拉画布取当前版本作 base。
+					base = (await drawingApi.getCanvas()).version;
+					setBaseVersion(base);
+				}
+			}
+			// 粗筛：TextDetector 可用且识别出词表命中 → 拦截不上传
+			const raw = await detectInkText(strokes);
+			if (raw !== null && containsBlockedWord(raw)) {
+				showToast("blocked", TOAST_TEXT.blocked);
+				return;
+			}
+			const result = await drawingApi.submitStrokes(base, strokes);
+			const published = result.status === "published";
+			if (published) {
+				setBaseVersion(result.version);
+			}
+			// 原子清增量：先清掉未决防抖写，避免提交窗口内的旧状态（含刚
+			// 提交的笔画）在落盘窗口期复活；待审同样清增量（已在服务端队
+			// 列，重画重提是安全默认）；之后用户继续画才再写盘。
+			clearDraft();
+			setStrokes([]);
+			touchedRef.current = false;
+			showToast(
+				published ? "published" : "pending",
+				published ? TOAST_TEXT.published : TOAST_TEXT.pending,
+			);
+		} catch (error) {
+			if (error instanceof ApiError && error.status === 409) {
+				if (attempt + 1 >= MAX_CONFLICT_RETRIES) {
+					showToast("conflict", TOAST_TEXT.conflict);
+					return;
+				}
+				// 冲突：重拉画布对齐 base，并把重拉到的笔画同步进渲染底图
+				// （与挂载拉取同一状态通道）：画布推进的部分立刻可见，本地
+				// 增量仍叠加在其上。重拉本身失败（网络/5xx）→ 通用失败文案
+				//（与契约网络分支一致），本地笔画保留待手动重试。
+				try {
+					const state = await drawingApi.getCanvas();
+					setCanvasDrawing({ strokes: state.strokes });
+					setBaseVersion(state.version);
+					await submitStrokes(attempt + 1, state.version);
+				} catch {
+					showToast("failed", TOAST_TEXT.failed);
+				}
+				return;
+			}
+			if (error instanceof ApiError) {
+				if (error.status === 422) {
+					const reason = (error as ModerationError).reason;
+					showToast(
+						"rejected",
+						reason === "ocr" ? TOAST_TEXT.rejectedOcr : TOAST_TEXT.rejectedGraphic,
+					);
+				} else if (error.status === 429) {
+					showToast("rate-limited", TOAST_TEXT.rateLimited);
+				} else if (error.status === 401) {
+					showToast("sign-in", TOAST_TEXT.signIn);
+				} else {
+					showToast("failed", TOAST_TEXT.failed);
+				}
+			} else {
+				showToast("failed", TOAST_TEXT.failed);
+			}
+		} finally {
+			setSubmitting(false);
+		}
+	};
+
+	const handleSubmit = async () => {
+		if (submitting) return;
+		if (session.status !== "authed") {
+			showToast("sign-in", TOAST_TEXT.signIn);
+			return;
+		}
+		if (strokes.length === 0) {
+			// 空增量不发请求（契约里空 POST 无意义）；按钮本就禁用兜底。
+			return;
+		}
+		await submitStrokes(0);
+	};
+
 	const strokeCount = strokes.length;
 
 	return (
-		<div ref={rootRef} data-game="drawing" data-stroke-count={strokeCount} style={rootStyle}>
+		<div
+			ref={rootRef}
+			data-game="drawing"
+			data-stroke-count={strokeCount}
+			data-canvas-version={baseVersion ?? ""}
+			data-session={session.status}
+			style={rootStyle}
+		>
 			<canvas
 				ref={canvasRef}
 				style={canvasStyle}
@@ -487,16 +684,17 @@ export function DrawingGame({ host }: GameViewProps) {
 				<button
 					type="button"
 					data-action="submit"
-					aria-label="Submit drawing (coming in P1)"
-					title="提交将在 P1 开放：登录后可上传到公共画布"
-					disabled
+					aria-label="Submit drawing"
+					disabled={submitting}
+					aria-busy={submitting}
+					onClick={handleSubmit}
 					style={{
 						...toolButtonStyle,
 						width: "auto",
 						padding: "0 10px",
 						fontSize: 12,
-						opacity: 0.45,
-						cursor: "default",
+						opacity: submitting ? 0.45 : 1,
+						cursor: submitting ? "default" : "pointer",
 					}}
 				>
 					Submit
@@ -522,16 +720,23 @@ export function DrawingGame({ host }: GameViewProps) {
 				</button>
 			</div>
 
-			{/* 草稿恢复 toast：无按钮、不拦截绘制（pointerEvents: none），
-			    出现 4s 后自动消失 */}
-			{draftToastVisible && (
+			{/* 无按钮 toast：复用草稿 toast 基建，data-toast 区分类型；
+			    pointerEvents: none 不拦截绘制，出现 4s 后自动消失 */}
+			{toast && (
 				<div
-					data-draft-toast="restored"
+					data-toast={toast.kind}
+					data-toast-seq={toastSeq}
 					role="status"
 					aria-live="polite"
 					style={draftToastStyle}
 				>
-					Restored your last doodle — saved on this device
+					{toast.kind === "restored" ? (
+						<span>
+							Restored your last doodle — saved on this device
+						</span>
+					) : (
+						toast.text
+					)}
 				</div>
 			)}
 		</div>

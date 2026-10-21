@@ -49,5 +49,9 @@ func configureServices(cfg *config.Config) error {
 	avatarService = services.NewAvatarService(repositories.NewAvatarRepository(), configuredMedia)
 	revalidationAdmin = services.NewRevalidationAdminService(nil, cfg.RevalidationToken)
 	loginLimiter = ratelimit.New(cfg.LoginRateLimitMax, time.Duration(cfg.LoginRateLimitWindowMinutes)*time.Minute, nil)
+	// 审核限流器:语义是审核 LLM 成本防护(每次真实触发审核计一次),
+	// 与 loginLimiter 同模式,测试可整体替换注入可控时钟。
+	drawingModerationLimiter = ratelimit.New(cfg.DrawingModerationRateLimitMax,
+		time.Duration(cfg.DrawingModerationRateLimitWindowMinutes)*time.Minute, nil)
 	return nil
 }

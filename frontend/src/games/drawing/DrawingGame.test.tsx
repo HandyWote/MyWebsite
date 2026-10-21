@@ -5,10 +5,11 @@ import {
 	fireEvent,
 	render,
 	screen,
+	waitFor,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PaperGameHost } from "../host";
-import type { Drawing } from "../types";
+import type { Drawing, Stroke } from "../types";
 import { clearDraft as resetDraftModule, DRAFT_KEY } from "./draftStore";
 import { DrawingGame } from "./DrawingGame";
 
@@ -90,6 +91,15 @@ beforeEach(() => {
 		HTMLCanvasElement.prototype,
 		"getBoundingClientRect",
 	).mockReturnValue(CANVAS_RECT);
+	// P1：挂载会拉公共画布，fetch 一律 mock（默认空画布 v0）
+	vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+		ok: true,
+		status: 200,
+		json: async () => ({
+			code: 0,
+			data: { version: 0, strokes: [], updated_at: "" },
+		}),
+	}));
 	window.localStorage.clear();
 });
 
@@ -170,6 +180,114 @@ function tap(point = { x: 100, y: 50 }) {
 	fireEvent.pointerUp(node, pointerInit({ clientX: point.x, clientY: point.y }));
 }
 
+/** 最新 toast（提交链各分支共用容器，按递增序号取最新一条）。 */
+function lastToast(): HTMLElement | null {
+	const nodes = document.querySelectorAll("[data-toast]");
+	if (nodes.length === 0) return null;
+	return nodes[nodes.length - 1] as HTMLElement;
+}
+
+function submitButton(): HTMLButtonElement {
+	const node = document.querySelector(
+		'[data-action="submit"]',
+	) as HTMLButtonElement;
+	if (!node) throw new Error("submit button not found");
+	return node;
+}
+
+/** guest 点击：不等待会话（guest 分支与会话状态无关）。 */
+async function clickSubmitAsGuest() {
+	openTools();
+	fireEvent.click(submitButton());
+	await waitFor(() => {
+		expect(
+			document.querySelector('[data-toast="sign-in"]'),
+		).not.toBeNull();
+	});
+}
+
+/** authed 点击：等会话链 settle（me 返回 authed）再点，等提交链 settle。 */
+async function clickSubmitAsAuthed() {
+	openTools();
+	// 会话状态由微任务链 settle（token → me()）：必须等 authed 再点，
+	// 否则 guest 早退弹 sign-in 引导而非走提交链。恢复 toast 属正常态。
+	await waitFor(() => {
+		expect(board().getAttribute("data-session")).toBe("authed");
+	});
+	fireEvent.click(submitButton());
+	await waitFor(() => {
+		expect(submitButton().getAttribute("aria-busy")).toBe("false");
+		expect(submitButton().disabled).toBe(false);
+	});
+}
+
+/** 预置 authed 会话：localStorage 带 token，/api/auth/me 返回用户。 */
+function mockAuthedSession() {
+	window.localStorage.setItem("token", "jwt-token");
+	vi.mocked(fetch).mockImplementation(async (input: RequestInfo | URL) => {
+		const url = String(input);
+		if (url === "/api/auth/me") {
+			return {
+				ok: true,
+				status: 200,
+				json: async () => ({
+					code: 0,
+					data: { username: "octocat", provider: "github" },
+				}),
+			} as Response;
+		}
+		return {
+			ok: true,
+			status: 200,
+			json: async () => ({
+				code: 0,
+				data: { version: 0, strokes: [], updated_at: "" },
+			}),
+		} as Response;
+	});
+}
+
+function jsonResponse(status: number, body: unknown): Response {
+	return {
+		ok: status >= 200 && status < 300,
+		status,
+		json: async () => body,
+	} as Response;
+}
+
+/** POST /api/games/drawing/canvas 的响应 mock（保留画布拉取默认值）。 */
+function mockSubmitResponse(status: number, body: unknown): void {
+	vi.mocked(fetch).mockImplementation(async (input: RequestInfo | URL) => {
+		const url = String(input);
+		if (url === "/api/games/drawing/canvas") {
+			return jsonResponse(status, body);
+		}
+		if (url === "/api/auth/me") {
+			return jsonResponse(200, {
+				code: 0,
+				data: { username: "octocat", provider: "github" },
+			});
+		}
+		return jsonResponse(200, {
+			code: 0,
+			data: { version: 0, strokes: [], updated_at: "" },
+		});
+	});
+}
+
+/** 最近一次 POST canvas 的请求体。 */
+function lastSubmitBody(): { base_version: number | undefined; strokes: Stroke[] } {
+	const postCalls = vi
+		.mocked(fetch)
+		.mock.calls.filter(
+			([input, init]) =>
+				String(input) === "/api/games/drawing/canvas" &&
+				(init as RequestInit | undefined)?.method === "POST",
+		);
+	const init = postCalls[postCalls.length - 1]?.[1] as RequestInit;
+	return JSON.parse(String(init.body));
+}
+
 const sampleDraft: Drawing = {
 	strokes: [
 		{
@@ -217,11 +335,20 @@ describe("DrawingGame", () => {
 		expect(
 			document.querySelector('[data-action="clear"]') as HTMLButtonElement,
 		).toBeDisabled();
-		const submit = document.querySelector(
-			'[data-action="submit"]',
-		) as HTMLButtonElement;
-		expect(submit.disabled).toBe(true);
-		expect(submit.title).toContain("P1");
+
+		// P1 红灯基线（行为变化）：提交按钮不再是 disabled 占位；
+		// guest 点击显示登录引导 toast，且不发出任何网络请求。
+		const submit = submitButton();
+		expect(submit.disabled).toBe(false);
+		fireEvent.click(submit);
+		expect(
+			document.querySelector('[data-toast="sign-in"]')?.textContent,
+		).toBe("sign in to submit — $ login");
+		// guest 不发任何请求：fetch 调用次数在点击前后不变（挂载的画布
+		// GET 已在渲染时发出，与点击无关）
+		const callsBefore = vi.mocked(fetch).mock.calls.length;
+		fireEvent.click(submit);
+		expect(vi.mocked(fetch).mock.calls.length).toBe(callsBefore);
 	});
 
 	it("collapses the toolbar by default and toggles it via the corner switch", () => {
@@ -445,7 +572,7 @@ describe("DrawingGame", () => {
 
 			// 静默恢复：挂载即载入草稿笔画，立即可继续画
 			expect(strokeCount()).toBe(sampleDraft.strokes.length);
-			const toast = document.querySelector('[data-draft-toast="restored"]');
+			const toast = document.querySelector('[data-toast="restored"]');
 			expect(toast).not.toBeNull();
 			expect(toast?.getAttribute("role")).toBe("status");
 			expect(toast?.getAttribute("aria-live")).toBe("polite");
@@ -463,9 +590,7 @@ describe("DrawingGame", () => {
 			act(() => {
 				vi.advanceTimersByTime(4000);
 			});
-			expect(
-				document.querySelector('[data-draft-toast="restored"]'),
-			).toBeNull();
+			expect(document.querySelector('[data-toast="restored"]')).toBeNull();
 		} finally {
 			vi.useRealTimers();
 		}
@@ -473,13 +598,13 @@ describe("DrawingGame", () => {
 
 	it("does not show the toast without a draft or for an empty draft", () => {
 		renderBoard();
-		expect(document.querySelector('[data-draft-toast="restored"]')).toBeNull();
+		expect(document.querySelector('[data-toast="restored"]')).toBeNull();
 		expect(strokeCount()).toBe(0);
 		cleanup();
 
 		window.localStorage.setItem(DRAFT_KEY, JSON.stringify({ strokes: [] }));
 		renderBoard();
-		expect(document.querySelector('[data-draft-toast="restored"]')).toBeNull();
+		expect(document.querySelector('[data-toast="restored"]')).toBeNull();
 		expect(strokeCount()).toBe(0);
 	});
 
@@ -530,5 +655,498 @@ describe("DrawingGame", () => {
 		expect(canvas().width).toBe(400);
 		expect(canvas().height).toBe(300);
 		expect(mockCtx.clearRect).toHaveBeenCalledWith(0, 0, 400, 300);
+	});
+});
+
+describe("DrawingGame public canvas (P1)", () => {
+	it("fetches the public canvas on mount and renders it under the local strokes", async () => {
+		vi.mocked(fetch).mockImplementation(async (input: RequestInfo | URL) => {
+			if (String(input) === "/api/games/drawing/canvas") {
+				return jsonResponse(200, {
+					code: 0,
+					data: {
+						version: 3,
+						strokes: [
+							{
+								id: "pub1",
+								color: "#e63946",
+								width: 0.02,
+								points: [
+									{ x: 0.05, y: 0.05, t: 1 },
+									{ x: 0.15, y: 0.05, t: 2 },
+								],
+							},
+						],
+						updated_at: "2026-01-01T00:00:00Z",
+					},
+				});
+			}
+			return jsonResponse(200, {
+				code: 0,
+				data: { username: "octocat", provider: "github" },
+			});
+		});
+		window.localStorage.setItem("token", "jwt-token");
+
+		renderBoard();
+		// 公共底层落位：base 笔画出现在渲染调用里（(0.05×800, 0.05×600)）
+		await waitFor(() => {
+			expect(calls).toContain("moveTo 40,30");
+		});
+		// data-canvas-version 随快照渲染更新（DOM 属性是最终真相）
+		await waitFor(() => {
+			expect(board().getAttribute("data-canvas-version")).toBe("3");
+		});
+		// 公共画布不占本地增量计数
+		expect(strokeCount()).toBe(0);
+	});
+
+	it("degrades to a purely local render when the canvas fetch fails", () => {
+		vi.mocked(fetch).mockRejectedValue(new Error("offline"));
+		renderBoard();
+		// 拉取失败不崩、不弹错，纯本地渲染照常
+		drawStroke();
+		expect(strokeCount()).toBe(1);
+		expect(calls).toContain("moveTo 100,50");
+		expect(board().getAttribute("data-canvas-version")).toBe("");
+	});
+
+	it("keeps a legacy P0 draft (no base_version) and posts it with the fetched base", async () => {
+		// 旧 P0 草稿：无 base_version 字段；画布当前版本 5
+		window.localStorage.setItem(DRAFT_KEY, JSON.stringify(sampleDraft));
+		window.localStorage.setItem("token", "jwt-token");
+		const originalFetch = vi.mocked(fetch).getMockImplementation();
+		vi.mocked(fetch).mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+			const url = String(input);
+			if (url === "/api/games/drawing/canvas" && init?.method === "POST") {
+				return jsonResponse(200, { code: 0, data: { version: 6, status: "published" } });
+			}
+			if (url === "/api/games/drawing/canvas") {
+				return jsonResponse(200, { code: 0, data: { version: 5, strokes: [], updated_at: "" } });
+			}
+			if (url === "/api/auth/me") {
+				return jsonResponse(200, { code: 0, data: { username: "o", provider: "github" } });
+			}
+			return originalFetch?.(input, init) as Promise<Response>;
+		});
+
+		renderBoard();
+		// 旧草稿完整恢复，笔画不丢
+		expect(strokeCount()).toBe(1);
+		await clickSubmitAsAuthed();
+
+		// 提交体：base 取拉到的画布版本 5，增量是整幅旧草稿
+		expect(lastSubmitBody()).toEqual({
+			base_version: 5,
+			strokes: sampleDraft.strokes,
+		});
+		// published：清增量、base 对齐新版本
+		expect(lastToast()?.textContent).toBe("published to the canvas");
+		expect(strokeCount()).toBe(0);
+		expect(window.localStorage.getItem(DRAFT_KEY)).toBeNull();
+		expect(board().getAttribute("data-canvas-version")).toBe("6");
+	});
+
+	it("keeps the stored base_version when the canvas fetch fails (offline resubmit)", async () => {
+		// 已提交过（增量已保存带 base_version=3）的草稿 + 画布拉取失败：
+		// 提交时用存储的 base_version，不再因拉取失败而丢提交机会
+		window.localStorage.setItem(
+			DRAFT_KEY,
+			JSON.stringify({ base_version: 3, strokes: sampleDraft.strokes }),
+		);
+		window.localStorage.setItem("token", "jwt-token");
+		let canvasGets = 0;
+		vi.mocked(fetch).mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+			const url = String(input);
+			if (url === "/api/games/drawing/canvas" && init?.method === "POST") {
+				return jsonResponse(200, { code: 0, data: { version: 4, status: "published" } });
+			}
+			if (url === "/api/games/drawing/canvas") {
+				canvasGets += 1;
+				if (canvasGets === 1) {
+					// 挂载拉取失败（getCanvas 对 5xx 自动重试一次）
+					return jsonResponse(500, { message: "down" });
+				}
+				return jsonResponse(500, { message: "down" });
+			}
+			if (url === "/api/auth/me") {
+				return jsonResponse(200, { code: 0, data: { username: "o", provider: "github" } });
+			}
+			return jsonResponse(200, { code: 0, data: { version: 0, strokes: [], updated_at: "" } });
+		});
+
+		renderBoard();
+		// 草稿恢复，纯本地渲染（拉取失败降级）
+		expect(strokeCount()).toBe(1);
+		await clickSubmitAsAuthed();
+
+		// 提交体用的是存储的 base_version=3（未因拉取失败而放弃对齐）
+		expect(lastSubmitBody()).toEqual({
+			base_version: 3,
+			strokes: sampleDraft.strokes,
+		});
+		expect(lastToast()?.textContent).toBe("published to the canvas");
+	});
+
+	it("guest submit shows the sign-in hint and fires no network request", async () => {
+		renderBoard();
+		drawStroke();
+		const callsBefore = vi.mocked(fetch).mock.calls.length;
+		await clickSubmitAsGuest();
+
+		expect(lastToast()?.textContent).toBe("sign in to submit — $ login");
+		expect(lastToast()?.getAttribute("data-toast")).toBe("sign-in");
+		// 点击未新增任何 fetch 调用（挂载的画布 GET 在点击前已发出）
+		expect(vi.mocked(fetch).mock.calls.length).toBe(callsBefore);
+	});
+
+	it("authed submit with 200 publishes, clears the local increment and aligns base_version", async () => {
+		mockAuthedSession();
+		renderBoard();
+		drawStroke();
+		mockSubmitResponse(200, { code: 0, data: { version: 4, status: "published" } });
+		await clickSubmitAsAuthed();
+
+		// base 取挂载时拉到的 0；published 后增量清空、base 对齐 4
+		expect(lastSubmitBody()).toEqual({
+			base_version: 0,
+			strokes: expect.any(Array) as unknown as Stroke[],
+		});
+		expect(lastToast()?.textContent).toBe("published to the canvas");
+		expect(lastToast()?.getAttribute("data-toast")).toBe("published");
+		expect(strokeCount()).toBe(0);
+		expect(window.localStorage.getItem(DRAFT_KEY)).toBeNull();
+		await waitFor(() => {
+			expect(board().getAttribute("data-canvas-version")).toBe("4");
+		});
+	});
+
+	it("authed submit with 202 keeps strokes cleared and toasts submitted for review", async () => {
+		mockAuthedSession();
+		renderBoard();
+		drawStroke();
+		mockSubmitResponse(202, {
+			code: 0,
+			data: { status: "pending", submission_id: 12 },
+		});
+		await clickSubmitAsAuthed();
+
+		expect(lastToast()?.textContent).toBe("submitted for review");
+		expect(lastToast()?.getAttribute("data-toast")).toBe("pending");
+		expect(strokeCount()).toBe(0);
+		expect(window.localStorage.getItem(DRAFT_KEY)).toBeNull();
+	});
+
+	it("authed submit with 422 ocr/graphic reasons shows the matching rejection copy", async () => {
+		mockAuthedSession();
+		renderBoard();
+		drawStroke();
+		mockSubmitResponse(422, { error: "rejected", reason: "ocr" });
+		await clickSubmitAsAuthed();
+		expect(lastToast()?.textContent).toBe("rejected: looks like text");
+		expect(lastToast()?.getAttribute("data-toast")).toBe("rejected");
+		// 拒绝不误清本地笔画；再画一笔（重置到稳定态）后验证 graphic 分支
+		expect(strokeCount()).toBe(1);
+		cleanup();
+
+		window.localStorage.setItem(DRAFT_KEY, JSON.stringify(sampleDraft));
+		mockSubmitResponse(422, { error: "rejected", reason: "graphic" });
+		renderBoard();
+		await clickSubmitAsAuthed();
+		expect(lastToast()?.textContent).toBe("rejected: looks like symbols");
+		expect(strokeCount()).toBe(1);
+	});
+
+	it("authed submit with 429 toasts slow down", async () => {
+		mockAuthedSession();
+		renderBoard();
+		drawStroke();
+		mockSubmitResponse(429, { error: "提交过于频繁,请稍后再试" });
+		await clickSubmitAsAuthed();
+		expect(lastToast()?.textContent).toBe("slow down — try again later");
+		expect(lastToast()?.getAttribute("data-toast")).toBe("rate-limited");
+		// 限流不误清本地笔画
+		expect(strokeCount()).toBe(1);
+	});
+
+	it("network failure toasts submission failed and keeps strokes", async () => {
+		mockAuthedSession();
+		renderBoard();
+		drawStroke();
+		vi.mocked(fetch).mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+			if (init?.method === "POST") throw new Error("network down");
+			if (String(input) === "/api/auth/me") {
+				return jsonResponse(200, { code: 0, data: { username: "o", provider: "github" } });
+			}
+			return jsonResponse(200, { code: 0, data: { version: 0, strokes: [], updated_at: "" } });
+		});
+		await clickSubmitAsAuthed();
+		expect(lastToast()?.textContent).toBe("submission failed — try again");
+		expect(strokeCount()).toBe(1);
+	});
+
+	it("on 409 refetches the canvas and auto-resubmits once with the new base", async () => {
+		mockAuthedSession();
+		renderBoard();
+		drawStroke();
+		let postCount = 0;
+		vi.mocked(fetch).mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+			const url = String(input);
+			if (url === "/api/games/drawing/canvas" && init?.method === "POST") {
+				postCount += 1;
+				if (postCount === 1) {
+					return jsonResponse(409, { error: "version conflict", current_version: 5 });
+				}
+				return jsonResponse(200, { code: 0, data: { version: 6, status: "published" } });
+			}
+			if (url === "/api/games/drawing/canvas") {
+				return jsonResponse(200, { code: 0, data: { version: 5, strokes: [], updated_at: "" } });
+			}
+			if (url === "/api/auth/me") {
+				return jsonResponse(200, { code: 0, data: { username: "o", provider: "github" } });
+			}
+			return jsonResponse(200, { code: 0, data: { version: 0, strokes: [], updated_at: "" } });
+		});
+		await clickSubmitAsAuthed();
+
+		expect(postCount).toBe(2);
+		// 重提用的 base 是重拉到的 5
+		expect(lastSubmitBody()).toEqual({
+			base_version: 5,
+			strokes: expect.any(Array) as unknown as Stroke[],
+		});
+		expect(lastToast()?.textContent).toBe("published to the canvas");
+		expect(board().getAttribute("data-canvas-version")).toBe("6");
+	});
+
+	it("renders the refetched public strokes after a 409 (canvas advances visibly)", async () => {
+		// 挂载拉 v3（笔画 A）；提交 409(current v4) → 重拉返回 v4（笔画 A+B）
+		// → 自动重提 200 published。画布底图必须随重拉更新：清增量后画布上
+		// 应立即看到 B（重拉返回的公共笔画），而非停留旧底图到刷新。
+		const strokeA: Stroke = {
+			id: "A",
+			color: "#e63946",
+			width: 0.02,
+			points: [
+				{ x: 0.1, y: 0.1, t: 1 },
+				{ x: 0.2, y: 0.1, t: 2 },
+			],
+		};
+		const strokeB: Stroke = {
+			id: "B",
+			color: "#2a9d8f",
+			width: 0.02,
+			points: [
+				{ x: 0.3, y: 0.3, t: 3 },
+				{ x: 0.4, y: 0.3, t: 4 },
+			],
+		};
+		const renderCalls: string[] = [];
+		const renderCtx = {
+			...mockCtx,
+			moveTo: vi.fn((...args: number[]) => {
+				renderCalls.push(`moveTo ${args.join(",")}`);
+			}),
+		};
+		vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(
+			renderCtx as unknown as CanvasRenderingContext2D,
+		);
+		let canvasGets = 0;
+		let postCount = 0;
+		vi.mocked(fetch).mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+			const url = String(input);
+			if (url === "/api/games/drawing/canvas" && init?.method === "POST") {
+				postCount += 1;
+				if (postCount === 1) {
+					return jsonResponse(409, { error: "version conflict", current_version: 4 });
+				}
+				return jsonResponse(200, { code: 0, data: { version: 5, status: "published" } });
+			}
+			if (url === "/api/games/drawing/canvas") {
+				canvasGets += 1;
+				if (canvasGets === 1) {
+					return jsonResponse(200, { code: 0, data: { version: 3, strokes: [strokeA], updated_at: "" } });
+				}
+				// 409 触发的重拉：画布已推进到 v4（A+B）
+				return jsonResponse(200, { code: 0, data: { version: 4, strokes: [strokeA, strokeB], updated_at: "" } });
+			}
+			if (url === "/api/auth/me") {
+				return jsonResponse(200, { code: 0, data: { username: "o", provider: "github" } });
+			}
+			return jsonResponse(200, { code: 0, data: { version: 0, strokes: [], updated_at: "" } });
+		});
+		window.localStorage.setItem("token", "jwt-token");
+
+		renderBoard();
+		// 挂载底图：v3 只含 A → 渲染出现 A 起点 (80,60)、无 B 起点 (240,180)
+		await waitFor(() => {
+			expect(renderCalls).toContain("moveTo 80,60");
+			expect(renderCalls).not.toContain("moveTo 240,180");
+		});
+		// 本地画一笔（未提交增量，叠在 v3 底图上）
+		drawStroke();
+
+		await clickSubmitAsAuthed();
+
+		// 自动重提成功后底图已换 v4：B 的笔画进入渲染（240,180 起）
+		expect(lastToast()?.textContent).toBe("published to the canvas");
+		await waitFor(() => {
+			expect(renderCalls).toContain("moveTo 240,180");
+		});
+		expect(board().getAttribute("data-canvas-version")).toBe("5");
+	});
+
+	it("on repeated 409s toasts the manual hint after the automatic retry is exhausted", async () => {
+		mockAuthedSession();
+		renderBoard();
+		drawStroke();
+		let postCount = 0;
+		vi.mocked(fetch).mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+			const url = String(input);
+			if (url === "/api/games/drawing/canvas" && init?.method === "POST") {
+				postCount += 1;
+				return jsonResponse(409, { error: "version conflict", current_version: 7 });
+			}
+			if (url === "/api/games/drawing/canvas") {
+				return jsonResponse(200, { code: 0, data: { version: 5, strokes: [], updated_at: "" } });
+			}
+			if (url === "/api/auth/me") {
+				return jsonResponse(200, { code: 0, data: { username: "o", provider: "github" } });
+			}
+			return jsonResponse(200, { code: 0, data: { version: 0, strokes: [], updated_at: "" } });
+		});
+		await clickSubmitAsAuthed();
+
+		// 最多 2 次提交尝试，仍冲突 → 手动提示，保留本地笔画
+		expect(postCount).toBe(2);
+		expect(lastToast()?.textContent).toBe("canvas moved ahead — try again");
+		expect(strokeCount()).toBe(1);
+	});
+
+	it("skips the TextDetector pre-filter when the API is unavailable (jsdom default)", async () => {
+		// jsdom 没有 TextDetector：不注入 → 粗筛跳过，直接提交
+		mockAuthedSession();
+		renderBoard();
+		drawStroke();
+		mockSubmitResponse(200, { code: 0, data: { version: 1, status: "published" } });
+		await clickSubmitAsAuthed();
+		expect(lastToast()?.textContent).toBe("published to the canvas");
+	});
+
+	it("blocks the submission without any network request when TextDetector hits the word filter", async () => {
+		// 注入 TextDetector：离屏渲染的笔画被 mock 判定为 "fuck"
+		class FakeTextDetector {
+			async detect() {
+				return [{ rawValue: "fuck" }];
+			}
+		}
+		(window as unknown as { TextDetector?: unknown }).TextDetector = FakeTextDetector;
+		mockAuthedSession();
+		renderBoard();
+		drawStroke();
+		await clickSubmitAsAuthed();
+
+		expect(lastToast()?.textContent).toBe(
+			"this doodle was blocked by the word filter",
+		);
+		const postCalls = vi.mocked(fetch).mock.calls.filter(
+			([, init]) => (init as RequestInit | undefined)?.method === "POST",
+		);
+		expect(postCalls).toHaveLength(0);
+		// 拦截不误清本地笔画
+		expect(strokeCount()).toBe(1);
+		delete (window as unknown as { TextDetector?: unknown }).TextDetector;
+	});
+
+	it("submits normally when TextDetector is available but detects nothing", async () => {
+		class FakeTextDetector {
+			async detect() {
+				return [];
+			}
+		}
+		(window as unknown as { TextDetector?: unknown }).TextDetector = FakeTextDetector;
+		mockAuthedSession();
+		renderBoard();
+		drawStroke();
+		mockSubmitResponse(200, { code: 0, data: { version: 1, status: "published" } });
+		await clickSubmitAsAuthed();
+		expect(lastToast()?.textContent).toBe("published to the canvas");
+		delete (window as unknown as { TextDetector?: unknown }).TextDetector;
+	});
+
+	it("disables the submit button with aria-busy while a submission is in flight", async () => {
+		mockAuthedSession();
+		renderBoard();
+		drawStroke();
+		// 挂起 POST：手动 resolve 前提交链不结束
+		let releasePost: (value: Response) => void = () => {};
+		vi.mocked(fetch).mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+			const url = String(input);
+			if (url === "/api/games/drawing/canvas" && init?.method === "POST") {
+				await new Promise<Response>((resolve) => {
+					releasePost = resolve;
+				});
+				return jsonResponse(200, { code: 0, data: { version: 2, status: "published" } });
+			}
+			if (url === "/api/auth/me") {
+				return jsonResponse(200, { code: 0, data: { username: "o", provider: "github" } });
+			}
+			return jsonResponse(200, { code: 0, data: { version: 0, strokes: [], updated_at: "" } });
+		});
+
+		openTools();
+		await waitFor(() => {
+			const toastKind = lastToast()?.getAttribute("data-toast");
+			expect(toastKind === "sign-in" || toastKind === undefined).toBe(true);
+		});
+		fireEvent.click(submitButton());
+		await waitFor(() => {
+			expect(submitButton().disabled).toBe(true);
+		});
+		expect(submitButton().getAttribute("aria-busy")).toBe("true");
+		// 提交中再点无效（按钮禁用 + handler 早退）
+		fireEvent.click(submitButton());
+		act(() => {
+			releasePost(jsonResponse(200, { code: 0, data: { version: 2, status: "published" } }));
+		});
+		await waitFor(() => {
+			expect(submitButton().disabled).toBe(false);
+		});
+		expect(lastToast()?.textContent).toBe("published to the canvas");
+		// 只发出一次 POST
+		const postCalls = vi.mocked(fetch).mock.calls.filter(
+			([, init]) => (init as RequestInit | undefined)?.method === "POST",
+		);
+		expect(postCalls).toHaveLength(1);
+	});
+
+	it("aborts with the failure hint when the 409 refetch itself fails", async () => {
+		let canvasGets = 0;
+		vi.mocked(fetch).mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+			const url = String(input);
+			if (url === "/api/games/drawing/canvas" && init?.method === "POST") {
+				return jsonResponse(409, { error: "version conflict", current_version: 5 });
+			}
+			if (url === "/api/games/drawing/canvas") {
+				canvasGets += 1;
+				if (canvasGets === 1) {
+					// 挂载拉取成功（base 对齐 v5）；之后 409 触发的重拉失败
+					//（drawingApi 对 5xx 自动重试一次，两次都 500 才向上抛）
+					return jsonResponse(200, { code: 0, data: { version: 5, strokes: [], updated_at: "" } });
+				}
+				return jsonResponse(500, { message: "down" });
+			}
+			if (url === "/api/auth/me") {
+				return jsonResponse(200, { code: 0, data: { username: "o", provider: "github" } });
+			}
+			return jsonResponse(200, { code: 0, data: { version: 0, strokes: [], updated_at: "" } });
+		});
+		window.localStorage.setItem("token", "jwt-token");
+		renderBoard();
+		drawStroke();
+		await clickSubmitAsAuthed();
+		// 重拉画布失败 → 通用失败文案；保留本地笔画待手动重试
+		expect(lastToast()?.textContent).toBe("submission failed — try again");
+		expect(strokeCount()).toBe(1);
 	});
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { Drawing } from "../types";
+import type { Drawing, Stroke } from "../types";
 import {
 	BRUSH_WIDTHS,
 	ERASER_COLOR,
@@ -7,6 +7,7 @@ import {
 	createStroke,
 	pixelToLocal,
 	pointToLocal,
+	renderCanvasWithLocal,
 	renderDrawing,
 } from "./drawingCanvas";
 
@@ -241,5 +242,124 @@ describe("renderDrawing", () => {
 					call.startsWith("arc"),
 			),
 		).toEqual([]);
+	});
+});
+
+describe("renderCanvasWithLocal", () => {
+	it("layers the public base before the local increment in one full redraw", () => {
+		const { ctx, calls } = createMockContext();
+		const baseStroke: Stroke = {
+			id: "base1",
+			color: "#e63946",
+			width: 0.02,
+			points: [
+				{ x: 0.1, y: 0.1, t: 1 },
+				{ x: 0.2, y: 0.1, t: 2 },
+			],
+		};
+		const localStroke: Stroke = {
+			id: "local1",
+			color: "#264653",
+			width: 0.02,
+			points: [
+				{ x: 0.3, y: 0.3, t: 3 },
+				{ x: 0.4, y: 0.3, t: 4 },
+			],
+		};
+		renderCanvasWithLocal(
+			ctx,
+			{ strokes: [baseStroke] },
+			{ strokes: [localStroke] },
+			{ width: 200, height: 100 },
+			1,
+		);
+		// 单次全量重绘：一次清屏，公共底层先画、本地增量后画
+		expect(calls.filter((c) => c.startsWith("clearRect"))).toHaveLength(1);
+		expect(calls).toContain("moveTo 20,10");
+		expect(calls).toContain("moveTo 60,30");
+		// 层序：公共 (20,10) 在增量 (60,30) 之前
+		expect(calls.indexOf("moveTo 20,10")).toBeLessThan(
+			calls.indexOf("moveTo 60,30"),
+		);
+		expect(calls.filter((c) => c === "stroke")).toHaveLength(2);
+	});
+
+	it("treats a null base as an empty public canvas and still clears once", () => {
+		const { ctx, calls } = createMockContext();
+		const localStroke: Stroke = {
+			id: "local1",
+			color: "#264653",
+			width: 0.02,
+			points: [
+				{ x: 0, y: 0, t: 0 },
+				{ x: 1, y: 1, t: 1 },
+			],
+		};
+		renderCanvasWithLocal(
+			ctx,
+			null,
+			{ strokes: [localStroke] },
+			{ width: 100, height: 100 },
+			1,
+		);
+		// 离线降级：无 base 也走同一遍全量重绘（不残影）
+		expect(calls.filter((c) => c.startsWith("clearRect"))).toHaveLength(1);
+		expect(calls).toContain("stroke");
+	});
+
+	it("clears the canvas when both base and local are empty (undo to zero leaves no ghost)", () => {
+		const { ctx, calls } = createMockContext();
+		renderCanvasWithLocal(
+			ctx,
+			{ strokes: [] },
+			{ strokes: [] },
+			{ width: 100, height: 100 },
+			1,
+		);
+		// 撤销归零/空画布仍清屏一次，不留上一帧残影
+		expect(calls).toContain("clearRect 0,0,100,100");
+		expect(calls).not.toContain("stroke");
+		expect(calls).not.toContain("fill");
+	});
+
+	it("lets the local eraser punch through the base layer via destination-out", () => {
+		const { ctx, composites } = createMockContext();
+		renderCanvasWithLocal(
+			ctx,
+			{
+				strokes: [
+					{
+						id: "base1",
+						color: "#e63946",
+						width: 0.02,
+						points: [
+							{ x: 0.1, y: 0.1, t: 1 },
+							{ x: 0.9, y: 0.9, t: 2 },
+						],
+					},
+				],
+			},
+			{
+				strokes: [
+					{
+						id: "rubber",
+						color: ERASER_COLOR,
+						width: 0.02,
+						points: [
+							{ x: 0.4, y: 0.4, t: 3 },
+							{ x: 0.5, y: 0.5, t: 4 },
+						],
+					},
+				],
+			},
+			{ width: 100, height: 100 },
+			1,
+			// 合成后本地橡皮以 destination-out 擦除其前方的公共笔迹，结束复位
+		);
+		expect(composites).toEqual([
+			"source-over",
+			"destination-out",
+			"source-over",
+		]);
 	});
 });
