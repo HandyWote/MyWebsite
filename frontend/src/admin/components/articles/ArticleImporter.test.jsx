@@ -2,6 +2,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import ArticleImporter from './ArticleImporter';
+import MarkdownUploadPreview from './MarkdownUploadPreview';
 
 describe('ArticleImporter', () => {
   const defaultProps = {
@@ -53,5 +54,22 @@ describe('ArticleImporter', () => {
     render(<ArticleImporter {...defaultProps} open={true} />);
     const input = screen.getByLabelText(/选择文件/);
     expect(input).toHaveAttribute('accept', expect.stringContaining('.pdf'));
+  });
+});
+
+describe('MarkdownUploadPreview 冒烟', () => {
+  it('渲染 markdown 上传入口', () => {
+    render(
+      <MarkdownUploadPreview
+        content={'# Title\n\n```js\nconsole.log(1)\n```'}
+        onContentChange={() => {}}
+        onError={() => {}}
+      />,
+    );
+
+    expect(screen.getByText('Markdown 文件')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: '选择 Markdown 文件' }),
+    ).toBeInTheDocument();
   });
 });
