@@ -3,7 +3,13 @@ import { clearAuth } from "../../utils/auth";
 
 export { clearAuth };
 
-export const verifyToken = async () => {
+/** verifyToken 的结果：valid=false 时带游客可读的原因（RequireAuth 直接展示）。 */
+export interface VerifyTokenResult {
+	valid: boolean;
+	error?: string;
+}
+
+export const verifyToken = async (): Promise<VerifyTokenResult> => {
 	const token = localStorage.getItem("token");
 
 	if (!token) {

@@ -1,17 +1,31 @@
 'use client';
 
 // AdminLayout组件 - Terminal Aesthetics 风格
-import { useEffect } from 'react';
+//
+// 只负责渲染壳（导航/登出/全局通知）：登录校验由 RequireAuth 唯一把关，
+// 这里不再重复验票、不再做未授权跳转（旧实现的 5 分钟轮询已删）。
+// 也不直读 useNotificationStore：展示字段统一由 useNotification() 给出，
+// 本文件不再出现 setTimeout/setInterval（壳里没有任何定时器）。
+import type { ReactNode, SyntheticEvent } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { Box, AppBar, Toolbar, Typography, Tabs, Tab, Button, useMediaQuery, Divider } from '@mui/material';
+import { Box, AppBar, Toolbar, Typography, Tabs, Tab, useMediaQuery, Divider } from '@mui/material';
+import type { TabsProps } from '@mui/material';
 import { Database, FileText, MessageSquare, PenTool, Settings, LogOut } from 'lucide-react';
-import { verifyToken, clearAuth } from '../utils/auth';
-import { api, API_ENDPOINTS } from '../../config/api';
+import type { LucideIcon } from 'lucide-react';
+import { clearAuth } from '../utils/auth';
+import { PixelButton } from './pixelProps';
+import { authApi } from '../../api/authApi';
 import { colors, typography } from '../../components/pixel/tokens';
 import NotificationSnackbar from '../../components/NotificationSnackbar';
-import { useNotificationStore } from '@/stores/notificationStore';
+import useNotification from '../../hooks/useNotification';
 
-const tabList = [
+interface AdminTab {
+  label: string;
+  path: string;
+  icon: LucideIcon;
+}
+
+const tabList: AdminTab[] = [
   { label: 'Sidebar', path: '/admin/sidebar', icon: Settings },
   { label: 'Articles', path: '/admin/articles', icon: FileText },
   { label: 'Comments', path: '/admin/comments', icon: MessageSquare },
@@ -19,36 +33,28 @@ const tabList = [
   { label: 'Data', path: '/admin/data', icon: Database },
 ];
 
-export default function AdminLayout({ children }) {
+type TabOrientation = NonNullable<TabsProps['orientation']>;
+
+interface AdminLayoutProps {
+  children?: ReactNode;
+}
+
+export default function AdminLayout({ children }: AdminLayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
   const isMobile = useMediaQuery('(max-width:900px)');
   const tabValue = tabList.findIndex(tab => pathname === tab.path);
 
-  // 全局通知
-  const { open, message, severity, hide } = useNotificationStore();
+  // 全局通知（同一份 Zustand 状态：子页面 show，这里只负责展示）
+  const notify = useNotification();
 
-  useEffect(() => {
-    const checkTokenPeriodically = async () => {
-      const result = await verifyToken();
-      if (!result.valid) {
-        clearAuth();
-        router.replace('/?message=' + encodeURIComponent('登录已过期，请重新登录'));
-      }
-    };
-
-    checkTokenPeriodically();
-    const interval = setInterval(checkTokenPeriodically, 5 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, [pathname, router]);
-
-  const handleTabChange = (_event, idx) => {
+  const handleTabChange = (_event: SyntheticEvent, idx: number) => {
     router.push(tabList[idx].path);
   };
 
   const handleLogout = async () => {
     try {
-      await api.post(API_ENDPOINTS.ADMIN.LOGOUT);
+      await authApi.logout();
     } catch {
       // 即使后端登出失败，前端也清除认证
     }
@@ -56,7 +62,7 @@ export default function AdminLayout({ children }) {
     router.replace('/');
   };
 
-  const renderTabs = (orientation = 'vertical') => (
+  const renderTabs = (orientation: TabOrientation = 'vertical') => (
     <Tabs
       orientation={orientation}
       value={tabValue === -1 ? 0 : tabValue}
@@ -124,7 +130,8 @@ export default function AdminLayout({ children }) {
             </Typography>
           </Box>
           <Box sx={{ flexGrow: 1 }} />
-          <Button
+          <PixelButton
+            variant="ghost"
             color="inherit"
             onClick={handleLogout}
             startIcon={<LogOut size={16} />}
@@ -133,12 +140,14 @@ export default function AdminLayout({ children }) {
               fontSize: typography.fontSize.sm,
               color: colors.text.secondary,
               '&:hover': {
-                color: colors.accent.red,
+                // tokens 的 accent 只有蓝系（无 red）：此处历史取值一直是 undefined，
+                // 即悬停不变色。为不改变既有视觉，保留空值；要变红需另走视觉工单。
+                color: undefined,
               },
             }}
           >
             Logout
-          </Button>
+          </PixelButton>
         </Toolbar>
       </AppBar>
 
@@ -204,10 +213,10 @@ export default function AdminLayout({ children }) {
 
       {/* 全局通知 */}
       <NotificationSnackbar
-        open={open}
-        onClose={hide}
-        message={message}
-        severity={severity}
+        open={notify.open}
+        onClose={notify.hide}
+        message={notify.message}
+        severity={notify.severity}
       />
     </Box>
   );

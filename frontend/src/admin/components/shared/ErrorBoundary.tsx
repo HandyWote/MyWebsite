@@ -1,22 +1,32 @@
-import { Component } from 'react';
-import { Box, Typography, Button } from '@mui/material';
+import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { Box, Typography } from '@mui/material';
+import { PixelButton } from '../pixelProps';
 import { colors, typography, borders, spacing } from '../../../components/pixel/tokens';
+
+interface ErrorBoundaryProps {
+  children?: ReactNode;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
 
 /**
  * ErrorBoundary - 捕获子组件渲染错误的防御层
  * React 要求 error boundary 必须是 class 组件
  */
-class ErrorBoundary extends Component {
-  constructor(props) {
+class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = { hasError: false, error: null };
   }
 
-  static getDerivedStateFromError(error) {
+  static getDerivedStateFromError(error: Error): Partial<ErrorBoundaryState> {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error, errorInfo) {
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('[ErrorBoundary] Caught render error:', error, errorInfo);
   }
 
@@ -80,14 +90,12 @@ class ErrorBoundary extends Component {
               Something went wrong. Please try again or contact the administrator.
             </Typography>
 
-            <Button
-              variant="outlined"
+            <PixelButton
+              variant="outline"
               onClick={this.handleRetry}
               sx={{
-                fontFamily: typography.fontFamily.mono,
                 color: colors.accent.blue,
                 borderColor: colors.border.accent,
-                borderRadius: 0,
                 '&:hover': {
                   borderColor: colors.accent.blue,
                   bgcolor: colors.interactive.hover,
@@ -95,7 +103,7 @@ class ErrorBoundary extends Component {
               }}
             >
               Retry
-            </Button>
+            </PixelButton>
           </Box>
         </Box>
       );

@@ -54,7 +54,7 @@ func TestEncodeSiteBlockContentReturnsContextualMarshalError(t *testing.T) {
 	assert.Contains(t, err.Error(), "encode site block content")
 }
 
-func TestAvatarServiceUsesStorageKeysAndMaintainsSingleCurrentAvatar(t *testing.T) {
+func TestAvatarServiceUploadReplacesSingleAvatarAndKeepsReplacedMedia(t *testing.T) {
 	db := profileTestDB(t)
 	driver := storage.NewLocalStorage(t.TempDir(), "https://media.example")
 	media := NewMediaStorageService(driver, repositories.NewMediaDeleteRepository(db), 1024, []string{"png"})
@@ -71,20 +71,41 @@ func TestAvatarServiceUsesStorageKeysAndMaintainsSingleCurrentAvatar(t *testing.
 
 	avatars, err := service.List(ctx)
 	require.NoError(t, err)
-	require.Len(t, avatars, 2)
-	currentCount := 0
-	for _, avatar := range avatars {
-		if avatar.IsCurrent {
-			currentCount++
-		}
-	}
-	assert.Equal(t, 1, currentCount)
+	require.Len(t, avatars, 1, "上传即替换：任何时候只保留一张头像")
+	assert.Equal(t, second.ID, avatars[0].ID)
+	assert.True(t, avatars[0].IsCurrent)
+
 	current, err := service.Current(ctx)
 	require.NoError(t, err)
 	assert.Equal(t, second.ID, current.ID)
 
-	require.NoError(t, service.SetCurrent(ctx, first.ID))
-	current, err = service.Current(ctx)
+	// 旧文件故意保留：前台头像 URL 会被 Next 的 profile 缓存命中，revalidate 之前
+	// 页面里仍是旧 URL；删文件会让那段时间变成坏图。旧文件由媒体孤儿清理统一回收。
+	_, err = driver.Head(ctx, first.Filename)
+	require.NoError(t, err, "被替换的旧头像媒体仍需可访问（防止缓存页面出现坏图）")
+	_, err = driver.Head(ctx, second.Filename)
+	require.NoError(t, err, "新头像媒体必须保留")
+}
+
+func TestAvatarServiceDeleteRemovesRecordButKeepsMediaFile(t *testing.T) {
+	db := profileTestDB(t)
+	driver := storage.NewLocalStorage(t.TempDir(), "https://media.example")
+	media := NewMediaStorageService(driver, repositories.NewMediaDeleteRepository(db), 1024, []string{"png"})
+	service := NewAvatarService(repositories.NewAvatarRepository(db), media)
+	ctx := context.Background()
+	png := []byte{0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n', 0, 0, 0, 0}
+
+	avatar, err := service.Upload(ctx, "only.png", bytes.NewReader(png), int64(len(png)))
 	require.NoError(t, err)
-	assert.Equal(t, first.ID, current.ID)
+
+	require.NoError(t, service.Delete(ctx, avatar.ID))
+
+	_, err = service.Current(ctx)
+	assert.ErrorIs(t, err, ErrAvatarNotFound, "记录删除后不再有当前头像")
+
+	// 和上传替换同一条理由：profile 缓存窗口期内页面里仍是旧 URL，删文件就是坏图。
+	_, err = driver.Head(ctx, avatar.Filename)
+	require.NoError(t, err, "删除头像记录不删媒体文件，孤立对象交给媒体孤儿清理")
+
+	assert.ErrorIs(t, service.Delete(ctx, avatar.ID), ErrAvatarNotFound, "重复删除返回 not found")
 }

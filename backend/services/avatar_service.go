@@ -45,17 +45,6 @@ func (s *AvatarService) Current(ctx context.Context) (models.Avatar, error) {
 	return avatar, err
 }
 
-func (s *AvatarService) SetCurrent(ctx context.Context, id uint) error {
-	return s.repository.Transaction(ctx, func(uow *repositories.UnitOfWork) error {
-		if err := uow.Avatars.SetCurrent(ctx, id); errors.Is(err, gorm.ErrRecordNotFound) {
-			return ErrAvatarNotFound
-		} else if err != nil {
-			return err
-		}
-		return enqueueOutbox(ctx, uow.Outbox, RevalidationEvent{Entity: "avatar", Action: "update", IDs: []uint{id}}, s.now())
-	})
-}
-
 func (s *AvatarService) Upload(ctx context.Context, filename string, body io.Reader, size int64) (models.Avatar, error) {
 	saved, err := s.media.Save(ctx, MediaAvatar, filename, body, size)
 	if err != nil {
@@ -69,6 +58,15 @@ func (s *AvatarService) Upload(ctx context.Context, filename string, body io.Rea
 		if err := uow.Avatars.ClearOtherCurrent(ctx, avatar.ID); err != nil {
 			return err
 		}
+		// 单头像：数据库只留这一张。
+		//
+		// 注意：旧文件**故意不删**。前台头像 URL 会被 Next 的 publicDataPolicy
+		// （CACHE_TAGS.profile）缓存，revalidate 之前页面里仍是旧 URL；如果连文件
+		// 一起删，这段时间线上就是坏图（本地实测复现过）。旧文件因此留成孤立对象，
+		// 由后续媒体孤儿清理任务统一回收，而不是在替换路径上追求即时删除。
+		if err := uow.Avatars.DeleteOthers(ctx, avatar.ID); err != nil {
+			return err
+		}
 		return enqueueOutbox(ctx, uow.Outbox, RevalidationEvent{Entity: "avatar", Action: "update", IDs: []uint{avatar.ID}}, s.now())
 	})
 	if err != nil {
@@ -78,24 +76,21 @@ func (s *AvatarService) Upload(ctx context.Context, filename string, body io.Rea
 	return avatar, nil
 }
 
+// Delete 删除头像记录。
+//
+// 与 Upload 同一策略：**媒体对象保留**。头像 URL 会被 Next 的 publicDataPolicy
+// （CACHE_TAGS.profile）缓存，revalidate 真正生效前页面里仍是旧 URL；此刻删文件
+// 就是坏图。孤立对象由媒体孤儿清理任务统一回收，不在删除路径上追求即时释放。
 func (s *AvatarService) Delete(ctx context.Context, id uint) error {
-	var key string
-	err := s.repository.Transaction(ctx, func(uow *repositories.UnitOfWork) error {
-		avatar, err := uow.Avatars.FindByID(ctx, id)
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+	return s.repository.Transaction(ctx, func(uow *repositories.UnitOfWork) error {
+		if _, err := uow.Avatars.FindByID(ctx, id); errors.Is(err, gorm.ErrRecordNotFound) {
 			return ErrAvatarNotFound
-		}
-		if err != nil {
+		} else if err != nil {
 			return err
 		}
-		key = avatar.Filename
 		if err := uow.Avatars.Delete(ctx, id); err != nil {
 			return err
 		}
 		return enqueueOutbox(ctx, uow.Outbox, RevalidationEvent{Entity: "avatar", Action: "delete", IDs: []uint{id}}, s.now())
 	})
-	if err != nil {
-		return err
-	}
-	return s.media.Delete(ctx, key)
 }

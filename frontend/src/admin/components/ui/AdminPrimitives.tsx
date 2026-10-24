@@ -1,24 +1,30 @@
-import {
-  Box,
-  FormControl,
-  Grid,
-  InputLabel,
-  MenuItem,
-  Paper,
-  Select,
-  Stack,
-  TextField,
-  Typography,
-} from '@mui/material';
-import { colors, spacing, typography } from '@/components/pixel';
+// 后台布局壳：只提供页面骨架与栅格。表单控件一律用 @/components/pixel（PixelInput /
+// PixelButton / PixelDialog），本文件不得再出现任何控件实现。
+import type { ReactNode } from 'react';
+import { Box, Grid, Paper, Stack, Typography } from '@mui/material';
+import type { GridProps, StackProps } from '@mui/material';
+import type { SxProps, Theme } from '@mui/material/styles';
+import { colors, typography } from '@/components/pixel';
 
-const resolveAdminPageMaxWidth = (maxWidth) => {
+/** 页宽档位：lg（默认 1200）/ md（900）/ false（不限宽）。 */
+export type AdminPageMaxWidth = 'lg' | 'md' | false;
+
+const resolveAdminPageMaxWidth = (maxWidth: AdminPageMaxWidth) => {
   if (maxWidth === false) return 'none';
   if (maxWidth === 'md') return 900;
   return 1200;
 };
 
-export function AdminPage({ title, subtitle, actions, children, maxWidth = 'lg', sx }) {
+export interface AdminPageProps {
+  title?: ReactNode;
+  subtitle?: ReactNode;
+  actions?: ReactNode;
+  children?: ReactNode;
+  maxWidth?: AdminPageMaxWidth;
+  sx?: SxProps<Theme>;
+}
+
+export function AdminPage({ title, subtitle, actions, children, maxWidth = 'lg', sx }: AdminPageProps) {
   return (
     <Box
       sx={{
@@ -58,7 +64,18 @@ export function AdminPage({ title, subtitle, actions, children, maxWidth = 'lg',
   );
 }
 
-export function AdminSection({ icon, title, subtitle, actions, children, spacing: gap = 2.5, sx }) {
+export interface AdminSectionProps {
+  icon?: ReactNode;
+  title?: ReactNode;
+  subtitle?: ReactNode;
+  actions?: ReactNode;
+  children?: ReactNode;
+  /** 内部纵向间距（Paper 的 flex gap）。 */
+  spacing?: StackProps['spacing'];
+  sx?: SxProps<Theme>;
+}
+
+export function AdminSection({ icon, title, subtitle, actions, children, spacing: gap = 2.5, sx }: AdminSectionProps) {
   return (
     <Paper
       variant="outlined"
@@ -99,7 +116,13 @@ export function AdminSection({ icon, title, subtitle, actions, children, spacing
   );
 }
 
-export function AdminFormStack({ children, spacing: gap = 2.5, sx }) {
+export interface AdminFormStackProps {
+  children?: ReactNode;
+  spacing?: StackProps['spacing'];
+  sx?: SxProps<Theme>;
+}
+
+export function AdminFormStack({ children, spacing: gap = 2.5, sx }: AdminFormStackProps) {
   return (
     <Stack spacing={gap} sx={sx}>
       {children}
@@ -107,7 +130,13 @@ export function AdminFormStack({ children, spacing: gap = 2.5, sx }) {
   );
 }
 
-export function AdminFieldGrid({ children, spacing: gap = 2.5, sx }) {
+export interface AdminFieldGridProps {
+  children?: ReactNode;
+  spacing?: GridProps['spacing'];
+  sx?: SxProps<Theme>;
+}
+
+export function AdminFieldGrid({ children, spacing: gap = 2.5, sx }: AdminFieldGridProps) {
   return (
     <Grid container spacing={gap} sx={sx}>
       {children}
@@ -115,7 +144,14 @@ export function AdminFieldGrid({ children, spacing: gap = 2.5, sx }) {
   );
 }
 
-export function AdminFieldGridItem({ children, size = { xs: 12 }, sx }) {
+export interface AdminFieldGridItemProps {
+  children?: ReactNode;
+  /** 栅格尺寸，默认整行（xs: 12）。 */
+  size?: GridProps['size'];
+  sx?: SxProps<Theme>;
+}
+
+export function AdminFieldGridItem({ children, size = { xs: 12 }, sx }: AdminFieldGridItemProps) {
   return (
     <Grid size={size} sx={sx}>
       {children}
@@ -123,59 +159,13 @@ export function AdminFieldGridItem({ children, size = { xs: 12 }, sx }) {
   );
 }
 
-const mergeSlotProps = (slotProps, slot, value) => ({
-  ...slotProps,
-  [slot]: {
-    ...value,
-    ...(slotProps?.[slot] || {}),
-    sx: {
-      ...(value?.sx || {}),
-      ...(slotProps?.[slot]?.sx || {}),
-    },
-  },
-});
-
-export function AdminTextField({ slotProps, fullWidth = true, ...props }) {
-  const mergedSlotProps = mergeSlotProps(slotProps, 'formHelperText', {
-    sx: {
-      mt: 0.75,
-      ml: 0,
-      minHeight: props.helperText ? '1.25em' : 0,
-    },
-  });
-
-  return (
-    <TextField
-      fullWidth={fullWidth}
-      variant="outlined"
-      slotProps={mergedSlotProps}
-      {...props}
-    />
-  );
+export interface AdminStatsGridProps {
+  children?: ReactNode;
+  spacing?: GridProps['spacing'];
+  sx?: SxProps<Theme>;
 }
 
-export function AdminSelect({
-  label,
-  value,
-  onChange,
-  children,
-  fullWidth = true,
-  formControlProps,
-  selectProps,
-}) {
-  return (
-    <FormControl fullWidth={fullWidth} {...formControlProps}>
-      {label && <InputLabel>{label}</InputLabel>}
-      <Select value={value} label={label} onChange={onChange} {...selectProps}>
-        {children}
-      </Select>
-    </FormControl>
-  );
-}
-
-AdminSelect.Item = MenuItem;
-
-export function AdminStatsGrid({ children, spacing: gap = 2, sx }) {
+export function AdminStatsGrid({ children, spacing: gap = 2, sx }: AdminStatsGridProps) {
   return (
     <Grid container spacing={gap} sx={sx}>
       {children}
@@ -183,7 +173,14 @@ export function AdminStatsGrid({ children, spacing: gap = 2, sx }) {
   );
 }
 
-export function AdminEmptyState({ title = '暂无数据', description, children, sx }) {
+export interface AdminEmptyStateProps {
+  title?: ReactNode;
+  description?: ReactNode;
+  children?: ReactNode;
+  sx?: SxProps<Theme>;
+}
+
+export function AdminEmptyState({ title = '暂无数据', description, children, sx }: AdminEmptyStateProps) {
   return (
     <Paper
       variant="outlined"
@@ -207,12 +204,18 @@ export function AdminEmptyState({ title = '暂无数据', description, children,
   );
 }
 
-export function AdminDialogSection({ icon, title, subtitle, children, sx }) {
+export interface AdminDialogSectionProps {
+  icon?: ReactNode;
+  title?: ReactNode;
+  subtitle?: ReactNode;
+  children?: ReactNode;
+  sx?: SxProps<Theme>;
+}
+
+export function AdminDialogSection({ icon, title, subtitle, children, sx }: AdminDialogSectionProps) {
   return (
     <AdminSection icon={icon} title={title} subtitle={subtitle} spacing={2.5} sx={sx}>
       {children}
     </AdminSection>
   );
 }
-
-export const adminUiSpacing = spacing;

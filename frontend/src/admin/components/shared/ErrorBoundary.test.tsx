@@ -1,11 +1,15 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import React from 'react';
 
 import ErrorBoundary from './ErrorBoundary';
 
+interface ThrowOnRenderProps {
+  message?: string;
+}
+
 // A component that throws during render
-function ThrowOnRender({ message = 'test error' }) {
+function ThrowOnRender({ message = 'test error' }: ThrowOnRenderProps): React.JSX.Element {
   throw new Error(message);
 }
 
@@ -81,11 +85,11 @@ describe('ErrorBoundary', () => {
     );
 
     // Our componentDidCatch should have logged with [ErrorBoundary] prefix and an Error object
-    const calls = console.error.mock.calls;
+    const calls = vi.mocked(console.error).mock.calls;
     const boundaryCall = calls.find(
       (args) => typeof args[0] === 'string' && args[0].includes('ErrorBoundary') && args[1] instanceof Error
     );
     expect(boundaryCall).toBeDefined();
-    expect(boundaryCall[1].message).toContain('logged error');
+    expect((boundaryCall?.[1] as Error).message).toContain('logged error');
   });
 });

@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import DrawingReviewManager from './DrawingReviewManager';
+import type { DrawingSubmission } from '@/api/drawingApi';
 
 const notifyMethods = vi.hoisted(() => ({
   success: vi.fn(),
@@ -9,34 +10,30 @@ const notifyMethods = vi.hoisted(() => ({
   warning: vi.fn(),
 }));
 
-const apiMocks = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn() }));
-
-// Mock 统一 api 模块（组件只用到 API_ENDPOINTS / ApiError / api）
-vi.mock('@/config/api', () => ({
-  API_ENDPOINTS: {
-    ADMIN: {
-      DRAWING_SUBMISSIONS: '/api/admin/drawing/submissions',
-      DRAWING_SUBMISSION_APPROVE: (id) => `/api/admin/drawing/submissions/${id}/approve`,
-      DRAWING_SUBMISSION_REJECT: (id) => `/api/admin/drawing/submissions/${id}/reject`,
-    },
-  },
-  ApiError: class ApiError extends Error {
-    constructor(status, message) {
-      super(message);
-      this.status = status;
-      this.name = 'ApiError';
-    }
-  },
-  api: apiMocks,
+const drawingApiMocks = vi.hoisted(() => ({
+  listSubmissions: vi.fn(),
+  approve: vi.fn(),
+  reject: vi.fn(),
 }));
 
-// Mock useNotification（notify 需稳定标识，避免依赖变化触发反复拉取）
-vi.mock('@/hooks/useNotification', () => {
-  const notify = () => notifyMethods;
-  return { default: () => ({ notify }) };
-});
+// Mock 域层（组件只用到 drawingApi 三个函数；ApiError 用真实的）
+vi.mock('@/api/drawingApi', () => ({ drawingApi: drawingApiMocks }));
 
-import { ApiError, api } from '@/config/api';
+// Mock useNotification（动作函数需稳定标识，避免依赖变化触发反复拉取）
+vi.mock('@/hooks/useNotification', () => ({
+  default: () => ({
+    open: false,
+    message: '',
+    severity: 'info',
+    success: notifyMethods.success,
+    error: notifyMethods.error,
+    info: notifyMethods.info,
+    warning: notifyMethods.warning,
+    show: vi.fn(),
+    hide: vi.fn(),
+  }),
+}));
+import { ApiError } from '@/api/browser';
 
 const makeStrokes = () =>
   JSON.stringify([
@@ -51,7 +48,7 @@ const makeStrokes = () =>
     },
   ]);
 
-const makeSubmission = (overrides = {}) => ({
+const makeSubmission = (overrides: Partial<DrawingSubmission> = {}): DrawingSubmission => ({
   id: 1,
   base_version: 3,
   strokes: makeStrokes(),
@@ -64,7 +61,7 @@ const makeSubmission = (overrides = {}) => ({
 
 /** 让动作后的刷新永不返回：乐观移除必须由组件自己完成，刷新掩盖不了它。 */
 function pendingAfterAction() {
-  api.get.mockImplementation(() => new Promise(() => {}));
+  drawingApiMocks.listSubmissions.mockImplementation(() => new Promise(() => {}));
 }
 
 beforeEach(() => {
@@ -80,7 +77,7 @@ beforeEach(() => {
     arc: vi.fn(),
     stroke: vi.fn(),
     fill: vi.fn(),
-  });
+  } as unknown as CanvasRenderingContext2D);
 });
 
 afterEach(() => {
@@ -90,7 +87,7 @@ afterEach(() => {
 
 describe('DrawingReviewManager', () => {
   it('渲染待审队列：条目数、作者、版本、原因、时间', async () => {
-    api.get.mockResolvedValue({
+    drawingApiMocks.listSubmissions.mockResolvedValue({
       submissions: [
         makeSubmission({ id: 11, reason: 'graphic', created_by: 'alice' }),
         makeSubmission({ id: 22, base_version: 5, created_by: 'bob' }),
@@ -112,8 +109,8 @@ describe('DrawingReviewManager', () => {
   });
 
   it('点击通过后条目立即移除（乐观移除，不依赖刷新结果）', async () => {
-    api.get.mockResolvedValueOnce({ submissions: [makeSubmission({ id: 7 })], total: 1 });
-    api.post.mockResolvedValue({ id: 7, status: 'approved' });
+    drawingApiMocks.listSubmissions.mockResolvedValueOnce({ submissions: [makeSubmission({ id: 7 })], total: 1 });
+    drawingApiMocks.approve.mockResolvedValue({ id: 7, status: 'approved' });
 
     render(<DrawingReviewManager />);
     expect(await screen.findByText('提交 #7')).toBeInTheDocument();
@@ -129,8 +126,8 @@ describe('DrawingReviewManager', () => {
   });
 
   it('点击拒绝后条目立即移除（乐观移除，不依赖刷新结果）', async () => {
-    api.get.mockResolvedValueOnce({ submissions: [makeSubmission({ id: 9 })], total: 1 });
-    api.post.mockResolvedValue({ id: 9, status: 'rejected' });
+    drawingApiMocks.listSubmissions.mockResolvedValueOnce({ submissions: [makeSubmission({ id: 9 })], total: 1 });
+    drawingApiMocks.reject.mockResolvedValue({ id: 9, status: 'rejected' });
 
     render(<DrawingReviewManager />);
     expect(await screen.findByText('提交 #9')).toBeInTheDocument();
@@ -144,8 +141,8 @@ describe('DrawingReviewManager', () => {
   });
 
   it('通过时 409（base 落后）→ 提示过时并移除条目', async () => {
-    api.get.mockResolvedValue({ submissions: [makeSubmission({ id: 4 })], total: 1 });
-    api.post.mockRejectedValue(new ApiError(409, 'base version superseded'));
+    drawingApiMocks.listSubmissions.mockResolvedValue({ submissions: [makeSubmission({ id: 4 })], total: 1 });
+    drawingApiMocks.approve.mockRejectedValue(new ApiError(409, 'base version superseded'));
 
     render(<DrawingReviewManager />);
     expect(await screen.findByText('提交 #4')).toBeInTheDocument();
@@ -161,7 +158,7 @@ describe('DrawingReviewManager', () => {
   });
 
   it('队列为空时显示空态', async () => {
-    api.get.mockResolvedValue({ submissions: [], total: 0 });
+    drawingApiMocks.listSubmissions.mockResolvedValue({ submissions: [], total: 0 });
 
     render(<DrawingReviewManager />);
 
@@ -170,7 +167,7 @@ describe('DrawingReviewManager', () => {
   });
 
   it('加载失败时展示错误提示', async () => {
-    api.get.mockRejectedValue(new Error('network down'));
+    drawingApiMocks.listSubmissions.mockRejectedValue(new Error('network down'));
 
     render(<DrawingReviewManager />);
 

@@ -2,7 +2,12 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import AdminLayout from './AdminLayout';
 
-const { pushMock, replaceMock } = vi.hoisted(() => ({ pushMock: vi.fn(), replaceMock: vi.fn() }));
+const { pushMock, replaceMock, logoutMock, hideMock } = vi.hoisted(() => ({
+  pushMock: vi.fn(),
+  replaceMock: vi.fn(),
+  logoutMock: vi.fn().mockResolvedValue(null),
+  hideMock: vi.fn(),
+}));
 
 vi.mock('next/navigation', () => ({
   usePathname: () => '/admin/sidebar',
@@ -24,17 +29,25 @@ vi.mock('lucide-react', () => ({
 }));
 
 vi.mock('../utils/auth', () => ({
-  verifyToken: vi.fn(async () => ({ valid: true })),
   clearAuth: vi.fn(),
 }));
 
-vi.mock('../../config/api', () => ({
-  API_ENDPOINTS: { ADMIN: { LOGOUT: '/api/admin/logout' } },
-  api: { post: vi.fn().mockResolvedValue(null) },
+vi.mock('../../api/authApi', () => ({
+  authApi: { logout: logoutMock },
 }));
 
-vi.mock('@/stores/notificationStore', () => ({
-  useNotificationStore: () => ({ open: false, message: '', severity: 'info', hide: vi.fn() }),
+vi.mock('../../hooks/useNotification', () => ({
+  default: () => ({
+    open: false,
+    message: '',
+    severity: 'info',
+    success: vi.fn(),
+    error: vi.fn(),
+    info: vi.fn(),
+    warning: vi.fn(),
+    show: vi.fn(),
+    hide: hideMock,
+  }),
 }));
 
 describe('AdminLayout', () => {
@@ -54,5 +67,14 @@ describe('AdminLayout', () => {
     render(<AdminLayout><div>content</div></AdminLayout>);
     fireEvent.click(screen.getByRole('tab', { name: /Data/ }));
     expect(pushMock).toHaveBeenCalledWith('/admin/data');
+  });
+
+  it('登出走 authApi.logout 并回首页（壳不再自行验票）', async () => {
+    render(<AdminLayout><div>content</div></AdminLayout>);
+    fireEvent.click(screen.getByRole('button', { name: /Logout/ }));
+
+    expect(await screen.findByRole('button', { name: /Logout/ })).toBeInTheDocument();
+    expect(logoutMock).toHaveBeenCalledTimes(1);
+    expect(replaceMock).toHaveBeenCalledWith('/');
   });
 });

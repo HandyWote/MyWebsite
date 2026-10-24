@@ -14,11 +14,6 @@ func AdminCreateAvatar(c *gin.Context) {
 	UploadAvatar(c)
 }
 
-// AdminUpdateAvatar 更新头像（管理）
-func AdminUpdateAvatar(c *gin.Context) {
-	SetCurrentAvatar(c)
-}
-
 // AdminDeleteAvatar 删除头像（管理）
 func AdminDeleteAvatar(c *gin.Context) {
 	DeleteAvatar(c)
