@@ -1,8 +1,9 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import { useSyncExternalStore } from 'react';
 import { Box } from '@mui/material';
-import { GitHubCalendar } from 'react-github-calendar';
+import { GitHubCalendar, type Activity } from 'react-github-calendar';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
 
@@ -10,18 +11,25 @@ const RECENT_WEEKS = 18;
 const TABLET_WEEKS = 30;
 const FULL_YEAR_WEEKS = 53;
 
+export interface GitHubActivityProps {
+  /** GitHub 用户名（已由 normalizeGitHubUsername 归一化）。 */
+  username?: string;
+  /** 紧凑模式（侧边栏）：固定展示最近 18 周并允许横向滚动。 */
+  compact?: boolean;
+}
+
 const subscribe = () => () => {};
 const getClientSnapshot = () => true;
 const getServerSnapshot = () => false;
 
-function GitHubActivity({ username = 'HandyWote', compact = true }) {
+function GitHubActivity({ username = 'HandyWote', compact = true }: GitHubActivityProps) {
   const mounted = useSyncExternalStore(subscribe, getClientSnapshot, getServerSnapshot);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
   const weeks = (compact || isMobile) ? RECENT_WEEKS : isTablet ? TABLET_WEEKS : FULL_YEAR_WEEKS;
   const visibleDays = weeks * 7;
-  const transformData = (data) => data.slice(-visibleDays);
+  const transformData = (data: Activity[]): Activity[] => data.slice(-visibleDays);
   const calendarMinWidth = (compact || isMobile) ? '214px' : isTablet ? '360px' : '720px';
 
   return (
@@ -74,7 +82,7 @@ function GitHubActivity({ username = 'HandyWote', compact = true }) {
   );
 }
 
-function SectionTitle({ children }) {
+function SectionTitle({ children }: { children: ReactNode }) {
   return (
     <Box
       component="div"

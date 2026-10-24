@@ -1,41 +1,38 @@
-// frontend/src/stores/commentStore.test.js
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+// frontend/src/stores/commentStore.test.ts
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { act } from '@testing-library/react';
 import useCommentStore from './commentStore';
 
-vi.mock('@/config/api', () => {
-  const adminEndpoints = {
-    ADMIN_COMMENTS: '/api/admin/comments',
-    DELETE_COMMENT: (id) => `/api/admin/comments/${id}`,
-    COMMENT_STATUS: (id) => `/api/admin/comments/${id}/status`,
-    COMMENT_EXPORT: () => '/api/admin/comments/export',
-  };
-  return {
-    api: {
-      get: vi.fn(),
-      post: vi.fn(),
-      put: vi.fn(),
-      del: vi.fn(),
-      upload: vi.fn(),
-      download: vi.fn(),
-    },
-    uploadFile: vi.fn(),
-    API_ENDPOINTS: {
-      PUBLIC: {},
-      ADMIN: adminEndpoints,
-    },
-    default: {
-      API_ENDPOINTS: {
-        PUBLIC: {},
-        ADMIN: adminEndpoints,
-      },
-    },
-  };
-});
+/** 传输层 mock：评论域 API 只依赖 browserApi，所有断言都从这组 vi.fn() 读取。 */
+const apiMock = vi.hoisted(() => ({
+  get: vi.fn(),
+  post: vi.fn(),
+  put: vi.fn(),
+  del: vi.fn(),
+  upload: vi.fn(),
+  uploadFiles: vi.fn(),
+  download: vi.fn(),
+}));
 
-import { api } from '@/config/api';
+vi.mock('@/api/browser', () => ({
+  browserApi: apiMock,
+  unwrapApiPayload: (r?: { data?: unknown }) => r?.data ?? r,
+  getApiMessage: (r?: { msg?: string; message?: string }, fallback = '') =>
+    r?.msg || r?.message || fallback,
+  ApiError: class ApiError extends Error {
+    status: number;
+    constructor(status: number, message: string) {
+      super(message);
+      this.status = status;
+      this.name = 'ApiError';
+    }
+  },
+}));
 
-global.fetch = vi.fn();
+/** 与线上模块同名，断言读起来与实现一致。 */
+const api = apiMock;
+
+vi.stubGlobal('fetch', vi.fn());
 
 describe('commentStore', () => {
   beforeEach(() => {
@@ -102,7 +99,7 @@ describe('commentStore', () => {
 
     it('应该支持搜索和状态过滤', async () => {
       // mock 按请求参数返回不同数据：store 带着筛选词拉到的列表应反映筛选结果
-      api.get.mockImplementation((url) => {
+      api.get.mockImplementation((url: string) => {
         const params = new URLSearchParams(url.split('?')[1]);
         if (params.get('search') === 'test' && params.get('status') === 'spam') {
           return Promise.resolve({
@@ -145,7 +142,10 @@ describe('commentStore', () => {
   describe('deleteComment', () => {
     it('应该成功删除评论并刷新列表', async () => {
       // 预置一条评论：删除后重新拉取，若 store 忘记刷新，旧数据仍会留在列表里
-      useCommentStore.setState({ comments: [{ id: 1, author: '待删评论' }], total: 1 });
+      useCommentStore.setState({
+        comments: [{ id: 1, author: '待删评论', content: '' }],
+        total: 1,
+      });
       api.del.mockResolvedValueOnce({});
       api.get.mockResolvedValueOnce({ comments: [], total: 0 });
 
@@ -163,7 +163,10 @@ describe('commentStore', () => {
   describe('updateCommentStatus', () => {
     it('应该成功更新评论状态并刷新列表', async () => {
       // 预置旧状态：更新后重新拉取，若 store 忘记刷新，旧数据仍会留在列表里
-      useCommentStore.setState({ comments: [{ id: 1, author: '旧评论' }], total: 1 });
+      useCommentStore.setState({
+        comments: [{ id: 1, author: '旧评论', content: '' }],
+        total: 1,
+      });
       api.put.mockResolvedValueOnce({});
       api.get.mockResolvedValueOnce({ comments: [], total: 0 });
 
@@ -213,7 +216,7 @@ describe('commentStore', () => {
     it('导出内容应随当前筛选条件变化（search/status 请求契约）', async () => {
       // mock 按收到的 url 参数分流：store 把 searchTerm/statusFilter 传给 api.download，
       // 导出的 blob 才会对应筛选条件；丢参数 → 落到默认分支 → 内容断言失败。
-      api.download.mockImplementation((url) => {
+      api.download.mockImplementation((url: string) => {
         const params = new URLSearchParams(url.split('?')[1] || '');
         const branch =
           params.get('search') === 'react' && params.get('status') === 'spam'
@@ -224,13 +227,13 @@ describe('commentStore', () => {
 
       useCommentStore.setState({ searchTerm: 'react', statusFilter: 'spam' });
 
-      let blob;
       await act(async () => {
         await useCommentStore.getState().exportComments();
-        [blob] = URL.createObjectURL.mock.calls.at(-1);
       });
 
-      const content = await blob.text();
+      // 下载内容取自 createObjectURL 收到的 blob（store 传进去的那一个）
+      const exported = vi.mocked(URL.createObjectURL).mock.calls.at(-1)?.[0];
+      const content = exported instanceof Blob ? await exported.text() : '';
       expect(content).toBe('filtered:spam');
     });
 
@@ -247,7 +250,7 @@ describe('commentStore', () => {
 
   describe('setters 触发的筛选行为', () => {
     it('setPage 后再次拉取应返回对应页的数据', async () => {
-      api.get.mockImplementation((url) => {
+      api.get.mockImplementation((url: string) => {
         const params = new URLSearchParams(url.split('?')[1]);
         if (params.get('page') === '3') {
           return Promise.resolve({
@@ -271,7 +274,7 @@ describe('commentStore', () => {
     });
 
     it('setSearchTerm 后再次拉取应返回新搜索词对应的列表并回到第一页', async () => {
-      api.get.mockImplementation((url) => {
+      api.get.mockImplementation((url: string) => {
         const params = new URLSearchParams(url.split('?')[1]);
         if (params.get('search') === 'React' && params.get('page') === '1') {
           return Promise.resolve({
@@ -297,7 +300,7 @@ describe('commentStore', () => {
     });
 
     it('setStatusFilter 后再次拉取应返回新过滤器对应的列表并回到第一页', async () => {
-      api.get.mockImplementation((url) => {
+      api.get.mockImplementation((url: string) => {
         const params = new URLSearchParams(url.split('?')[1]);
         if (params.get('status') === 'spam' && params.get('page') === '1') {
           return Promise.resolve({

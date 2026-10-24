@@ -1,7 +1,7 @@
 import { useCallback, useEffect } from 'react';
 import type { ChangeEvent } from 'react';
 import { Alert, MenuItem, Stack } from '@mui/material';
-import { PixelButton, PixelInput } from './pixelProps';
+import { PixelButton, PixelInput } from '@/components/pixel';
 import useSiteBlockStore from '@/stores/siteBlockStore';
 import useNotification from '../../hooks/useNotification';
 import AvatarsManager from './AvatarsManager';
@@ -15,7 +15,7 @@ import type {
   SidebarContent,
   SiteBlockForm,
   SocialLinkType,
-} from './ui/types';
+} from '@/api/types';
 
 /**
  * 社交图标类型选项：必须与前台 `components/sidebar/SocialLinks.jsx` 的 iconMap 完全对齐，
@@ -31,31 +31,15 @@ const SOCIAL_LINK_TYPE_OPTIONS: Array<{ value: SocialLinkType; label: string }> 
 ];
 
 /**
- * siteBlockStore 边界形状（store 仍是 JS zustand，无类型导出）。
- *
- * 只声明本页读写的部分：form 用 ui/types.ts 的具体形状（不退化成 any），
- * 方法签名与 store 里的同名 action 对齐（返回值本页不使用，故为 unknown）。
+ * siteBlockStore 是已类型化的 zustand store：form/actions 直接用 store 导出的 SiteBlockState，
+ * 本页不再声明边界 slice，也不做任何 cast。
  */
-type FormUpdater = (prev: SiteBlockForm) => SiteBlockForm;
-
-interface SiteBlockStoreSlice {
-  form: SiteBlockForm;
-  loading: boolean;
-  saving: boolean;
-  error: string | null;
-  loaded: boolean;
-  fetchBlocks: () => Promise<unknown>;
-  updateForm: (updater: SiteBlockForm | FormUpdater) => void;
-  saveBlocks: () => Promise<unknown>;
-}
-
-const useSiteBlockFormStore = useSiteBlockStore as unknown as () => SiteBlockStoreSlice;
 
 /** 侧边栏可增删改排的数组字段（数组下标即前台渲染顺序）。 */
 type SidebarArrayKey = keyof SidebarContent;
 
-/** 取某个数组字段的元素类型，让字段名/取值在调用点仍是具体类型。 */
-type SidebarItem<K extends SidebarArrayKey> = SidebarContent[K][number];
+/** 取某个数组字段的元素类型，让字段名/取值在调用点仍是具体类型（数组字段可缺省）。 */
+type SidebarItem<K extends SidebarArrayKey> = NonNullable<SidebarContent[K]>[number];
 
 /**
  * 写回某个数组字段。泛型 + 计算键（`[arrayKey]`）在类型层无法自我证明，
@@ -181,7 +165,7 @@ export default function FrontendConfigManager() {
     fetchBlocks,
     updateForm,
     saveBlocks,
-  } = useSiteBlockFormStore();
+  } = useSiteBlockStore();
 
   const notify = useNotification();
 

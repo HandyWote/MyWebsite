@@ -14,7 +14,7 @@ import {
   ZoomOut as ZoomOutIcon,
   OpenInNew as OpenInNewIcon
 } from '@mui/icons-material';
-import { getApiUrl } from '../config/api';
+import { API_ENDPOINTS } from '@/api/endpoints';
 import { normalizeBrowserPdfUrl } from '../utils/pdfUrl';
 
 // 配置PDF.js worker - 使用本地worker文件（ES模块版本）
@@ -24,24 +24,45 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   import.meta.url,
 ).toString();
 
-const PdfViewerOnCanvas = ({ filename, url }) => {
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [numPages, setNumPages] = useState(null);
-  const [scale, setScale] = useState(1.0);
-  const [pdfUrl, setPdfUrl] = useState(null);
+export interface PdfViewerOnCanvasProps {
+  /** PDF 文件名，url 缺省时用于反推站内 PDF 地址。 */
+  filename?: string;
+  /** 显式 PDF 地址（可为外链/站内相对地址），优先于 filename。 */
+  url?: string;
+}
 
-  const resolvePdfUrl = useCallback(() => {
+/** 把 unknown 收窄成可读属性的对象（catch 到的值不保证是 Error）。 */
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+/** 判断是否因组件卸载 abort 掉 fetch：DOMException/Error 都按 name 识别。 */
+function isAbortError(err: unknown): boolean {
+  return isRecord(err) && err.name === 'AbortError';
+}
+
+function errorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
+const PdfViewerOnCanvas = ({ filename, url }: PdfViewerOnCanvasProps) => {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [numPages, setNumPages] = useState<number | null>(null);
+  const [scale, setScale] = useState(1.0);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+
+  const resolvePdfUrl = useCallback((): string => {
     if (url) return normalizeBrowserPdfUrl(url) || '';
     if (!filename) return '';
 
     const normalized = normalizeBrowserPdfUrl(filename);
-    return normalized || getApiUrl.articlePdf(filename);
+    return normalized || API_ENDPOINTS.PUBLIC.ARTICLE_PDF(filename);
   }, [url, filename]);
 
   useEffect(() => {
     let isMounted = true;
-    let objectUrl = null;
+    let objectUrl: string | null = null;
     const controller = new AbortController();
 
     const loadPdf = async () => {
@@ -84,12 +105,12 @@ const PdfViewerOnCanvas = ({ filename, url }) => {
         setPdfUrl(objectUrl);
         setLoading(false);
       } catch (err) {
-        if (err.name === 'AbortError') {
+        if (isAbortError(err)) {
           return;
         }
         console.error('PDF加载错误:', err);
         if (isMounted) {
-          setError(`PDF加载失败(可能被第三方下载器拦截): ${err.message}`);
+          setError(`PDF加载失败(可能被第三方下载器拦截): ${errorMessage(err)}`);
           setLoading(false);
         }
       }
@@ -107,12 +128,12 @@ const PdfViewerOnCanvas = ({ filename, url }) => {
   }, [resolvePdfUrl, filename, url]);
 
   // PDF加载成功回调
-  const onDocumentLoadSuccess = ({ numPages }) => {
-    setNumPages(numPages);
+  const onDocumentLoadSuccess = (document: { numPages: number }) => {
+    setNumPages(document.numPages);
   };
 
   // PDF加载失败回调
-  const onDocumentLoadError = (error) => {
+  const onDocumentLoadError = (error: Error) => {
     console.error('PDF文档加载失败:', error);
     setError('PDF文档加载失败，请检查文件格式');
     setLoading(false);
@@ -239,7 +260,9 @@ const PdfViewerOnCanvas = ({ filename, url }) => {
             <Alert severity="error">PDF加载失败，请检查文件是否存在或格式是否正确</Alert>
           }
         >
-          {Array.from({ length: numPages }, (el, index) => (
+          {/* react-pdf v10 的 Page 只把事件 props 落到 DOM，原 `style={{ marginBottom }}`
+              从来不生效（页间无间距就是现状）；转 TS 时不再传无效的 style。 */}
+          {Array.from({ length: numPages ?? 0 }, (_, index) => (
             <Page
               key={`page_${index + 1}`}
               pageNumber={index + 1}
@@ -251,9 +274,6 @@ const PdfViewerOnCanvas = ({ filename, url }) => {
                   <CircularProgress />
                 </Box>
               }
-              style={{
-                marginBottom: index < numPages - 1 ? '20px' : '0'
-              }}
             />
           ))}
         </Document>

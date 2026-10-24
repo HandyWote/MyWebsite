@@ -1,37 +1,36 @@
-// frontend/src/stores/aiStore.test.js
+// frontend/src/stores/aiStore.test.ts
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { act } from "@testing-library/react";
 import useAiStore from "./aiStore";
 
-vi.mock("@/config/api", () => {
-	const adminEndpoints = {
-		ARTICLE_AI_ANALYZE: "/api/admin/articles/ai-analyze",
-		AI_SETTINGS: "/api/admin/ai-settings",
-		AI_SETTINGS_TEST: "/api/admin/ai-settings/test",
-	};
-	return {
-		api: {
-			get: vi.fn(),
-			post: vi.fn(),
-			put: vi.fn(),
-			del: vi.fn(),
-			upload: vi.fn(),
-		},
-		uploadFile: vi.fn(),
-		API_ENDPOINTS: {
-			PUBLIC: {},
-			ADMIN: adminEndpoints,
-		},
-		default: {
-			API_ENDPOINTS: {
-				PUBLIC: {},
-				ADMIN: adminEndpoints,
-			},
-		},
-	};
-});
+/** 传输层 mock：所有断言都从这组 vi.fn() 读取（vi.mock 工厂把它们装进 browserApi）。 */
+const apiMock = vi.hoisted(() => ({
+	get: vi.fn(),
+	post: vi.fn(),
+	put: vi.fn(),
+	del: vi.fn(),
+	upload: vi.fn(),
+	uploadFiles: vi.fn(),
+	download: vi.fn(),
+}));
 
-import { api } from "@/config/api";
+vi.mock('@/api/browser', () => ({
+	browserApi: apiMock,
+	unwrapApiPayload: (r?: { data?: unknown }) => r?.data ?? r,
+	getApiMessage: (r?: { msg?: string; message?: string }, fallback = '') =>
+		r?.msg || r?.message || fallback,
+	ApiError: class ApiError extends Error {
+		status: number;
+		constructor(status: number, message: string) {
+			super(message);
+			this.status = status;
+			this.name = 'ApiError';
+		}
+	},
+}));
+
+/** 与线上模块同名，断言读起来与实现一致。 */
+const api = apiMock;
 
 describe("aiStore", () => {
 	beforeEach(() => {
@@ -188,7 +187,7 @@ describe("aiStore", () => {
 
 			const result = useAiStore.getState().applySuggestions();
 
-			expect(result.tags).toEqual(["React", "Zustand", "TypeScript"]);
+			expect(result?.tags).toEqual(["React", "Zustand", "TypeScript"]);
 		});
 
 		it("没有建议时应返回 null", () => {

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import CommentCard, { getCommentStatusConfig } from './CommentCard';
+import type { Comment } from '@/api/types';
 
 const mockComment = {
   id: 1,
@@ -13,12 +14,21 @@ const mockComment = {
   created_at: '2024-01-15T10:30:00Z',
 };
 
+/** 评论卡片右上角的“更多操作”按钮（MUI IconButton 只带 role=button）。 */
+const findMenuButton = (): HTMLElement => {
+  const menuButton = screen
+    .getAllByRole('button')
+    .find(btn => btn.querySelector('[data-testid="MoreVertIcon"]'));
+  if (!menuButton) throw new Error('评论卡片的更多操作按钮未渲染');
+  return menuButton;
+};
+
 describe('CommentCard', () => {
   const defaultProps = {
-    comment: mockComment,
-    onView: vi.fn(),
-    onDelete: vi.fn(),
-    onStatusChange: vi.fn(),
+    comment: mockComment as Comment,
+    onView: vi.fn<(comment: Comment) => void>(),
+    onDelete: vi.fn<(comment: Comment) => void>(),
+    onStatusChange: vi.fn<(commentId: number, status: string) => void>(),
   };
 
   beforeEach(() => {
@@ -60,27 +70,21 @@ describe('CommentCard', () => {
   it('点击菜单查看详情时调用 onView', () => {
     render(<CommentCard {...defaultProps} />);
     // MUI IconButton 需要通过 role 查找
-    const moreButtons = screen.getAllByRole('button');
-    const menuButton = moreButtons.find(btn => btn.querySelector('[data-testid="MoreVertIcon"]'));
-    fireEvent.click(menuButton);
+    fireEvent.click(findMenuButton());
     fireEvent.click(screen.getByText('查看详情'));
     expect(defaultProps.onView).toHaveBeenCalledWith(mockComment);
   });
 
   it('点击菜单删除时调用 onDelete', () => {
     render(<CommentCard {...defaultProps} />);
-    const moreButtons = screen.getAllByRole('button');
-    const menuButton = moreButtons.find(btn => btn.querySelector('[data-testid="MoreVertIcon"]'));
-    fireEvent.click(menuButton);
+    fireEvent.click(findMenuButton());
     fireEvent.click(screen.getByText('删除评论'));
     expect(defaultProps.onDelete).toHaveBeenCalledWith(mockComment);
   });
 
   it('点击状态变更菜单项时调用 onStatusChange', () => {
     render(<CommentCard {...defaultProps} />);
-    const moreButtons = screen.getAllByRole('button');
-    const menuButton = moreButtons.find(btn => btn.querySelector('[data-testid="MoreVertIcon"]'));
-    fireEvent.click(menuButton);
+    fireEvent.click(findMenuButton());
     fireEvent.click(screen.getByText('标记为待审核'));
     expect(defaultProps.onStatusChange).toHaveBeenCalledWith(1, 'pending');
   });

@@ -1,27 +1,13 @@
-import type { ComponentType, ReactNode } from "react";
 import type { Metadata } from "next";
 import { connection } from "next/server";
 import { ExternalLink } from "lucide-react";
-import { Box, Typography, type SxProps, type Theme } from "@mui/material";
+import { Box, Typography } from "@mui/material";
 import { getProjects } from "@/api/publicApi.server";
 import { pageMetadata } from "@/seo/site";
 import { PublicShell } from "@/components/public/PublicShell";
 import { RevealList } from "@/components/public/RevealList";
-import PixelCardBase from "@/components/pixel/ui/PixelCard";
-import { PixelChip } from "@/components/pixel/ui/PixelChip";
-
-// PixelCard.jsx 无显式 props 类型，未解构的 title/subtitle/footer 被推断为必填；
-// 这里按本项目实际用法（外链卡片）声明 props，避免在 TS 调用处误报。
-type PixelCardLinkProps = {
-	component: "a";
-	href: string;
-	target?: string;
-	rel?: string;
-	sx?: SxProps<Theme>;
-	children?: ReactNode;
-};
-
-const PixelCard = PixelCardBase as unknown as ComponentType<PixelCardLinkProps>;
+import { PixelCard } from "@/components/pixel";
+import { PixelChip } from "@/components/pixel";
 
 export const metadata: Metadata = pageMetadata({
 	title: "Projects",

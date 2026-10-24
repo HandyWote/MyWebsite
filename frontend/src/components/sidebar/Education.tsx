@@ -1,6 +1,13 @@
+import type { ReactNode } from 'react';
 import { Box, Typography } from '@mui/material';
+import type { EducationItem } from '@/api/types';
 
-function Education({ items = [] }) {
+export interface EducationProps {
+  /** 侧边栏 sidebar 块的 education 数组；空数组渲染「(未配置)」。 */
+  items?: EducationItem[];
+}
+
+function Education({ items = [] }: EducationProps) {
   const educationList = items || [];
 
   return (
@@ -36,7 +43,7 @@ function Education({ items = [] }) {
   );
 }
 
-function SectionTitle({ children }) {
+function SectionTitle({ children }: { children: ReactNode }) {
   return (
     <Box
       component="div"

@@ -55,7 +55,7 @@ describe("sitemap prewarm script", () => {
 	});
 
 	it("waits for every warmed response body to finish", async () => {
-		let releaseBody;
+		let releaseBody: (value: string) => void = () => {};
 		const bodyFinished = new Promise((resolve) => {
 			releaseBody = resolve;
 		});
@@ -80,7 +80,7 @@ describe("sitemap prewarm script", () => {
 		expect(settled).toBe(false);
 
 		releaseBody("");
-		await expect(warming).resolves.toEqual({
+		await expect(warming as Promise<unknown>).resolves.toEqual({
 			sitemapUrl: "https://example.com/sitemap.xml",
 			warmed: 1,
 		});

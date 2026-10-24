@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { GitHubRepo } from '@/api/types';
 import {
   buildGithubCacheKey,
   fetchGithubRepos,
@@ -7,7 +8,7 @@ import {
   readGithubCache,
 } from './github';
 
-const MOCK_REPO = (id, name) => ({
+const MOCK_REPO = (id: number, name: string): GitHubRepo => ({
   id,
   name,
   description: `desc-${name}`,
@@ -18,6 +19,8 @@ const MOCK_REPO = (id, name) => ({
   updated_at: '2024-01-01T00:00:00Z',
   html_url: `https://github.com/user/${name}`,
 });
+
+let fetchMock: ReturnType<typeof vi.fn>;
 
 describe('normalizeGitHubUsername', () => {
   it('应该保留纯用户名', () => {
@@ -52,15 +55,17 @@ describe('mapGithubRepoToProject', () => {
 describe('fetchGithubRepos', () => {
   beforeEach(() => {
     localStorage.clear();
-    globalThis.fetch = vi.fn();
+    fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
   });
 
   afterEach(() => {
+    vi.unstubAllGlobals();
     vi.restoreAllMocks();
   });
 
   it('应该分页拉取全部仓库并写缓存', async () => {
-    globalThis.fetch
+    fetchMock
       .mockResolvedValueOnce({
         ok: true,
         json: async () => [MOCK_REPO(1, 'a'), MOCK_REPO(2, 'b')],
@@ -74,9 +79,9 @@ describe('fetchGithubRepos', () => {
 
     expect(repos).toHaveLength(2);
     // 第二页返回空 → 停止分页
-    expect(globalThis.fetch).toHaveBeenCalledTimes(2);
-    expect(String(globalThis.fetch.mock.calls[0][0])).toContain('per_page=2&page=1');
-    expect(String(globalThis.fetch.mock.calls[1][0])).toContain('page=2');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(String(fetchMock.mock.calls[0][0])).toContain('per_page=2&page=1');
+    expect(String(fetchMock.mock.calls[1][0])).toContain('page=2');
 
     // 缓存已写入
     const cacheKey = buildGithubCacheKey('HandyWote', 'updated', 2);
@@ -85,7 +90,7 @@ describe('fetchGithubRepos', () => {
   });
 
   it('缓存未过期时不再请求网络', async () => {
-    globalThis.fetch
+    fetchMock
       .mockResolvedValueOnce({
         ok: true,
         json: async () => [MOCK_REPO(1, 'a'), MOCK_REPO(2, 'b')],
@@ -96,16 +101,16 @@ describe('fetchGithubRepos', () => {
       });
 
     await fetchGithubRepos('HandyWote', { perPage: 2 });
-    expect(globalThis.fetch).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
 
     // 第二次调用命中缓存，不再发网络请求
     const repos = await fetchGithubRepos('HandyWote', { perPage: 2 });
     expect(repos).toHaveLength(2);
-    expect(globalThis.fetch).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it('GitHub API 失败时抛出异常', async () => {
-    globalThis.fetch.mockResolvedValueOnce({ ok: false, status: 403 });
+    fetchMock.mockResolvedValueOnce({ ok: false, status: 403 });
 
     await expect(fetchGithubRepos('HandyWote', { perPage: 30 })).rejects.toThrow(
       'GitHub API error: 403'

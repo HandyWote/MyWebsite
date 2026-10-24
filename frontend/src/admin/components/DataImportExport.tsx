@@ -1,6 +1,5 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, type ChangeEvent } from 'react';
 import {
-  Button,
   Typography,
   Container,
   Paper,
@@ -9,22 +8,24 @@ import {
   CardActions,
   Divider,
   Stack,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogContentText,
-  DialogActions,
 } from '@mui/material';
 import CloudDownloadIcon from '@mui/icons-material/CloudDownload';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
-import { api, API_ENDPOINTS } from '../../config/api';
+import { PixelButton, PixelConfirmDialog } from '@/components/pixel';
+import { exportApi } from '@/api/exportApi';
+import type { ExportDataSet } from '@/api/types';
 import useNotification from '../../hooks/useNotification';
-import { colors, typography } from '../../components/pixel/tokens';
+
+/** 隐藏的导入文件输入框（id 与下面 JSX 中的 `<input>` 一致）。 */
+const importInputElement = (): HTMLInputElement | null => {
+  const element = document.getElementById('import-input');
+  return element instanceof HTMLInputElement ? element : null;
+};
 
 export default function DataImportExport() {
   const [loading, setLoading] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const pendingFile = useRef(null);
+  const pendingFile = useRef<File | null>(null);
 
   const notify = useNotification();
 
@@ -32,7 +33,7 @@ export default function DataImportExport() {
   const handleExport = async () => {
     setLoading(true);
     try {
-      const data = await api.get(API_ENDPOINTS.ADMIN.EXPORT);
+      const data = await exportApi.exportData();
       // 创建并下载文件
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
@@ -43,21 +44,21 @@ export default function DataImportExport() {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      notify.notify().success('数据导出成功');
+      notify.success('数据导出成功');
     } catch {
-      notify.notify().error('数据导出失败');
+      notify.error('数据导出失败');
     } finally {
       setLoading(false);
     }
   };
 
   // 文件选择时：先存文件，弹出确认
-  const handleFileSelect = (event) => {
-    const file = event.target.files[0];
+  const handleFileSelect = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
     if (!file) return;
 
     if (file.type !== 'application/json') {
-      notify.notify().error('请选择JSON格式的文件');
+      notify.error('请选择JSON格式的文件');
       event.target.value = '';
       return;
     }
@@ -74,23 +75,25 @@ export default function DataImportExport() {
 
     setLoading(true);
     try {
-      const text = await new Promise((resolve, reject) => {
+      const text = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
+        reader.onload = () => resolve(String(reader.result));
         reader.onerror = () => reject(new Error('文件读取失败'));
         reader.readAsText(file);
       });
-      const jsonData = JSON.parse(text);
+      // 备份文件是后端导出数据的原样回灌，形状即 ExportDataSet。
+      const jsonData = JSON.parse(text) as ExportDataSet;
 
-      await api.post(API_ENDPOINTS.ADMIN.IMPORT, jsonData);
-      notify.notify().success('数据导入成功');
+      await exportApi.importData(jsonData);
+      notify.success('数据导入成功');
     } catch (error) {
-      notify.notify().error('数据导入失败: ' + error.message);
+      notify.error('数据导入失败: ' + (error instanceof Error ? error.message : String(error)));
     } finally {
       setLoading(false);
       pendingFile.current = null;
       // 重置文件输入
-      document.getElementById('import-input').value = '';
+      const input = importInputElement();
+      if (input) input.value = '';
     }
   };
 
@@ -98,11 +101,12 @@ export default function DataImportExport() {
   const handleCancelImport = () => {
     setConfirmOpen(false);
     pendingFile.current = null;
-    document.getElementById('import-input').value = '';
+    const input = importInputElement();
+    if (input) input.value = '';
   };
 
   const triggerFileInput = () => {
-    document.getElementById('import-input').click();
+    importInputElement()?.click();
   };
 
   return (
@@ -123,14 +127,14 @@ export default function DataImportExport() {
           </CardContent>
           <Divider />
           <CardActions sx={{ justifyContent: 'flex-end', p: 2 }}>
-            <Button
-              variant="contained"
+            <PixelButton
+              variant="primary"
               onClick={handleExport}
               disabled={loading}
               startIcon={<CloudDownloadIcon />}
             >
               导出数据
-            </Button>
+            </PixelButton>
           </CardActions>
         </Card>
 
@@ -154,14 +158,14 @@ export default function DataImportExport() {
               onChange={handleFileSelect}
               style={{ display: 'none' }}
             />
-            <Button
-              variant="contained"
+            <PixelButton
+              variant="primary"
               onClick={triggerFileInput}
               disabled={loading}
               startIcon={<CloudUploadIcon />}
             >
               选择文件导入
-            </Button>
+            </PixelButton>
           </CardActions>
         </Card>
 
@@ -180,23 +184,17 @@ export default function DataImportExport() {
         </Paper>
       </Stack>
 
-      {/* 导入确认对话框 */}
-      <Dialog open={confirmOpen} onClose={handleCancelImport}>
-        <DialogTitle sx={{ fontFamily: typography.fontFamily.mono, color: colors.text.primary }}>
-          确认导入数据
-        </DialogTitle>
-        <DialogContent>
-          <DialogContentText sx={{ color: colors.text.secondary }}>
-            导入将覆盖现有数据，确定要继续吗？
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCancelImport}>取消</Button>
-          <Button onClick={handleConfirmImport} variant="contained" disabled={loading}>
-            确认导入
-          </Button>
-        </DialogActions>
-      </Dialog>
+      {/* 导入确认对话框：PixelConfirmDialog 的 onConfirm 随后会自动调 onClose，
+          与原 ConfirmDialog 行为一致；确认按需在 loading 时置灰。 */}
+      <PixelConfirmDialog
+        open={confirmOpen}
+        title="确认导入数据"
+        message="导入将覆盖现有数据，确定要继续吗？"
+        confirmText="确认导入"
+        onConfirm={handleConfirmImport}
+        onCancel={handleCancelImport}
+        confirmButtonProps={{ disabled: loading }}
+      />
     </Container>
   );
 }

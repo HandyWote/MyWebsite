@@ -1,6 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { Box, Typography } from '@mui/material';
-import { PixelButton } from '../pixelProps';
+import { PixelButton } from '@/components/pixel';
 import { colors, typography, borders, spacing } from '../../../components/pixel/tokens';
 
 interface ErrorBoundaryProps {

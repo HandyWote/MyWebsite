@@ -1,13 +1,45 @@
+import type { CSSProperties } from 'react';
 import { render, screen } from '@testing-library/react';
 import { renderToString } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
+import type { Activity } from 'react-github-calendar';
 import GitHubActivity from './GitHubActivity';
 
-const mockCalendar = vi.fn(() => <div data-testid="github-calendar" />);
+/**
+ * 组件传给 GitHubCalendar 的 props 契约（测试只关心这几个字段，
+ * 断言的是「侧边栏拿到紧凑参数、首页拿到全年参数」这个行为）。
+ */
+type CalendarProps = {
+  username: string;
+  blockSize: number;
+  blockMargin: number;
+  showWeekdayLabels: boolean;
+  showMonthLabels: boolean;
+  showColorLegend: boolean;
+  showTotalCount: boolean;
+  style: CSSProperties;
+  transformData: (data: Activity[]) => Activity[];
+};
+
+const mockCalendar = vi.fn((_props: CalendarProps) => <div data-testid="github-calendar" />);
 
 vi.mock('react-github-calendar', () => ({
-  GitHubCalendar: (props) => mockCalendar(props),
+  GitHubCalendar: (props: CalendarProps) => mockCalendar(props),
 }));
+
+/** 取最近一次渲染时组件传下来的 props。 */
+const lastCalendarProps = (): CalendarProps => {
+  const call = mockCalendar.mock.calls.at(-1);
+  if (!call) throw new Error('GitHubCalendar was not rendered');
+  return call[0];
+};
+
+const makeActivities = (length: number): Activity[] =>
+  Array.from({ length }, (_, index) => ({
+    date: `day-${index}`,
+    count: index,
+    level: (index % 5) as Activity['level'],
+  }));
 
 describe('GitHubActivity', () => {
   it('uses a stable placeholder for server rendering', () => {
@@ -22,7 +54,7 @@ describe('GitHubActivity', () => {
   it('renders compact calendar settings for sidebar', () => {
     render(<GitHubActivity username="octocat" />);
 
-    const props = mockCalendar.mock.calls.at(-1)?.[0];
+    const props = lastCalendarProps();
     expect(props.username).toBe('octocat');
     expect(props.blockSize).toBe(10);
     expect(props.blockMargin).toBe(2);
@@ -35,13 +67,8 @@ describe('GitHubActivity', () => {
   it('trims contribution data to recent weeks for compact display', () => {
     render(<GitHubActivity username="HandyWote" />);
 
-    const props = mockCalendar.mock.calls.at(-1)?.[0];
-    const transformData = props.transformData;
-    const input = Array.from({ length: 365 }, (_, index) => ({
-      date: `2025-01-${String((index % 28) + 1).padStart(2, '0')}`,
-      count: index,
-      level: index % 5,
-    }));
+    const transformData = lastCalendarProps().transformData;
+    const input = makeActivities(365);
 
     const output = transformData(input);
     expect(output).toHaveLength(18 * 7);
@@ -52,12 +79,8 @@ describe('GitHubActivity', () => {
   it('uses the full-year client calendar on the home page', () => {
     render(<GitHubActivity username="octocat" compact={false} />);
 
-    const props = mockCalendar.mock.calls.at(-1)?.[0];
-    const input = Array.from({ length: 400 }, (_, index) => ({
-      date: `day-${index}`,
-      count: index,
-      level: index % 5,
-    }));
+    const props = lastCalendarProps();
+    const input = makeActivities(400);
     expect(props.transformData(input)).toEqual(input.slice(-(53 * 7)));
     expect(props.style.minWidth).toBe('720px');
     expect(screen.getByTestId('github-calendar-scroll')).toHaveStyle({ overflowX: 'hidden' });

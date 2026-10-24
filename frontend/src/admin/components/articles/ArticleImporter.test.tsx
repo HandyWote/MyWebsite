@@ -1,11 +1,11 @@
-// frontend/src/admin/components/articles/ArticleImporter.test.jsx
+// frontend/src/admin/components/articles/ArticleImporter.test.tsx
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import ArticleImporter from './ArticleImporter';
+import ArticleImporter, { type ArticleImporterProps } from './ArticleImporter';
 import MarkdownUploadPreview from './MarkdownUploadPreview';
 
 describe('ArticleImporter', () => {
-  const defaultProps = {
+  const defaultProps: ArticleImporterProps = {
     open: false,
     onImport: vi.fn().mockResolvedValue({ success: 2, failed: 0 }),
     onClose: vi.fn(),

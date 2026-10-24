@@ -13,7 +13,7 @@ import type { TabsProps } from '@mui/material';
 import { Database, FileText, MessageSquare, PenTool, Settings, LogOut } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { clearAuth } from '../utils/auth';
-import { PixelButton } from './pixelProps';
+import { PixelButton } from '@/components/pixel';
 import { authApi } from '../../api/authApi';
 import { colors, typography } from '../../components/pixel/tokens';
 import NotificationSnackbar from '../../components/NotificationSnackbar';

@@ -1,11 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { act } from '@testing-library/react';
 import useUploadStore from './uploadStore';
-import { uploadApi } from '@/api/uploadApi';
+
+const uploadApiMock = vi.hoisted(() => ({
+  cover: vi.fn(),
+  pdf: vi.fn(),
+  markdown: vi.fn(),
+}));
 
 vi.mock('@/api/uploadApi', () => ({
-  uploadApi: { cover: vi.fn(), pdf: vi.fn(), markdown: vi.fn() },
+  uploadApi: uploadApiMock,
 }));
+
+/** 与线上模块同名，断言读起来与实现一致。 */
+const uploadApi = uploadApiMock;
 
 describe('uploadStore', () => {
   beforeEach(() => {

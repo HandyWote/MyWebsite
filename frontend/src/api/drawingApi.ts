@@ -1,15 +1,18 @@
 import { API_ENDPOINTS } from './endpoints';
-import { ApiError, getApiMessage, unwrapApiPayload, type ApiEnvelope } from './browser';
-import type { Drawing, Stroke } from '@/games/types';
+import { ApiError, browserApi, getApiMessage, unwrapApiPayload, type ApiEnvelope } from './browser';
+import type { Stroke } from '@/games/types';
 
 /**
- * 画板公共画布 API（P1 审核链，冻结契约见工单 #9 T8）。
+ * 画板 API（P1 审核链，冻结契约见工单 #9 T8）。
  *
- * 一律走原生 fetch 封装（本文件私有 requestJson），不走 browserRequest：
- * browserRequest 在 401 时会 clearAuth + 跳转 /admin/login，而画布提交的
- * 401 是业务结果（访客未登录，提示登录引导即可），跳转与否由调用方
- * （DrawingGame）决定。解析规则与 browser.ts 一致（{code, data} 信封与
- * 裸数据都支持），错误统一抛 ApiError（status 原样保留供 409/429/422 分支）。
+ * 传输分两条，按 401 语义区分：
+ * - 公共画布（getCanvas/submitStrokes）走本文件私有 requestJson 的原生 fetch：
+ *   browserRequest 在 401 时会 clearAuth + 跳转 /admin/login，而画布提交的
+ *   401 是业务结果（访客未登录，提示登录引导即可），跳转与否由调用方
+ *   （DrawingGame）决定。解析规则与 browser.ts 一致（{code, data} 信封与
+ *   裸数据都支持），错误统一抛 ApiError（status 原样保留供 409/429/422 分支）。
+ * - 管理端审核（listSubmissions/approve/reject）走 browserApi：这些端点的
+ *   401 就是"管理员登录态失效"，由 browserRequest 统一 clearAuth + 跳登录。
  */
 
 export interface CanvasState {
@@ -41,6 +44,32 @@ export interface ModerationError extends ApiError {
 /** 409 冲突响应携带的当前画布版本（body: {"error":"version conflict","current_version":N}）。 */
 export interface VersionConflictError extends ApiError {
   currentVersion: number;
+}
+
+/** 管理端待审投稿条目（ADMIN.DRAWING_SUBMISSIONS 的 items，契约见工单 #9 T5）。 */
+export interface DrawingSubmission {
+  id: number;
+  base_version: number;
+  /** 增量笔画 JSON 字符串（T5 契约），解析归调用方。 */
+  strokes: string;
+  status: 'pending' | 'approved' | 'rejected' | 'superseded' | string;
+  reason?: string;
+  created_by?: string;
+  reviewed_by?: string;
+  created_at?: string;
+  reviewed_at?: string | null;
+}
+
+/** 待审队列响应：列表 + 全量总数（total 不受 limit 截断）。 */
+export interface DrawingSubmissionPage {
+  submissions?: DrawingSubmission[];
+  total?: number;
+}
+
+/** 审核动作结果：approve 返回投稿 id 与新状态，reject 只推进状态。 */
+export interface SubmissionReviewResult {
+  id?: number;
+  status?: string;
 }
 
 async function requestJson<T>(endpoint: string, init: RequestInit): Promise<T> {
@@ -101,4 +130,23 @@ export const drawingApi = {
       body: JSON.stringify({ base_version: baseVersion, strokes }),
     });
   },
+
+  /**
+   * GET 管理端待审队列。status 为空串表示不过滤（后端契约），limit 为截断条数。
+   * 失败抛 ApiError（401 由 browserRequest 统一跳登录）。
+   */
+  listSubmissions: (status: string, limit: number): Promise<DrawingSubmissionPage> => {
+    const query = new URLSearchParams({ status, limit: String(limit) }).toString();
+    return browserApi.get<DrawingSubmissionPage>(
+      `${API_ENDPOINTS.ADMIN.DRAWING_SUBMISSIONS}?${query}`,
+    );
+  },
+
+  /** POST 通过投稿：base 落后时后端 409（投稿被判 superseded）。 */
+  approve: (id: number | string): Promise<SubmissionReviewResult> =>
+    browserApi.post<SubmissionReviewResult>(API_ENDPOINTS.ADMIN.DRAWING_SUBMISSION_APPROVE(id)),
+
+  /** POST 拒绝投稿：非 pending 状态后端 400。 */
+  reject: (id: number | string): Promise<SubmissionReviewResult> =>
+    browserApi.post<SubmissionReviewResult>(API_ENDPOINTS.ADMIN.DRAWING_SUBMISSION_REJECT(id)),
 };

@@ -1,13 +1,12 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import AvatarsManager from './AvatarsManager';
-import type { AvatarItem } from './ui/types';
+import type { Avatar as AvatarItem } from '@/api/types';
 
 const avatarApiMock = vi.hoisted(() => ({
   fetchAll: vi.fn(),
   upload: vi.fn(),
   remove: vi.fn(),
-  setCurrent: vi.fn(),
   publicUrl: vi.fn((filename: string) => `/api/avatars/file/${filename}`),
 }));
 

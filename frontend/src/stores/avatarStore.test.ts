@@ -1,17 +1,20 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { act } from '@testing-library/react';
 import useAvatarStore from './avatarStore';
-import { avatarApi } from '@/api/avatarApi';
+
+const avatarApiMock = vi.hoisted(() => ({
+  fetchAll: vi.fn(),
+  upload: vi.fn(),
+  remove: vi.fn(),
+  publicUrl: vi.fn((filename: string) => `/api/avatars/file/${filename}`),
+}));
 
 vi.mock('@/api/avatarApi', () => ({
-  avatarApi: {
-    fetchAll: vi.fn(),
-    upload: vi.fn(),
-    remove: vi.fn(),
-    setCurrent: vi.fn(),
-    publicUrl: (filename) => `/api/avatars/file/${filename}`,
-  },
+  avatarApi: avatarApiMock,
 }));
+
+/** 与线上模块同名，断言读起来与实现一致。 */
+const avatarApi = avatarApiMock;
 
 describe('avatarStore', () => {
   beforeEach(() => {
@@ -56,20 +59,5 @@ describe('avatarStore', () => {
     const result = await act(async () => useAvatarStore.getState().deleteAvatar(1));
     expect(avatarApi.remove).toHaveBeenCalledWith(1);
     expect(result).toEqual({ msg: '已删除' });
-  });
-
-  it('设置当前头像后刷新列表', async () => {
-    avatarApi.setCurrent.mockResolvedValue({});
-    avatarApi.fetchAll.mockResolvedValue([{ id: 1, is_current: true }]);
-    await act(async () => useAvatarStore.getState().setCurrent(1));
-    expect(avatarApi.setCurrent).toHaveBeenCalledWith(1);
-  });
-
-  it('重排后把首项设为当前头像', async () => {
-    avatarApi.setCurrent.mockResolvedValue({});
-    avatarApi.fetchAll.mockResolvedValue([{ id: 2, is_current: true }, { id: 1, is_current: false }]);
-    await act(async () => useAvatarStore.getState().reorderAvatars([{ id: 2 }, { id: 1 }]));
-    expect(avatarApi.setCurrent).toHaveBeenCalledWith(2);
-    expect(useAvatarStore.getState().avatars[0].id).toBe(2);
   });
 });

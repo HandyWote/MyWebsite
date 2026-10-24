@@ -33,7 +33,6 @@ export const API_ENDPOINTS = {
     SITE_BLOCKS: '/api/admin/site-blocks',
     AVATARS: '/api/admin/avatars',
     AVATAR_FILE: (filename: string) => `/api/admin/avatars/file/${encodeMediaPath(filename)}`,
-    AVATAR_SET_CURRENT: (id: string | number) => `/api/admin/avatars/${id}/set_current`,
     AVATAR_DELETE: (id: string | number) => `/api/admin/avatars/${id}`,
     ARTICLES: '/api/admin/articles',
     ARTICLE_DETAIL: (id: string | number) => `/api/admin/articles/${id}`,

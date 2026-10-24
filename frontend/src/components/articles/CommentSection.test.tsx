@@ -1,11 +1,19 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import CommentSection from "./CommentSection";
-import { ApiError } from "../../config/api";
+import { ApiError } from "../../api/browser";
+import type { UserInfo } from "../../api/authApi";
+import type { SessionState } from "../../hooks/useSession";
 
 const { apiGetMock, apiPostMock, sessionMock, notificationMock } = vi.hoisted(
 	() => {
-		const session = {
+		const session: {
+			status: SessionState["status"];
+			user: UserInfo | null;
+			login: ReturnType<typeof vi.fn>;
+			logout: ReturnType<typeof vi.fn>;
+			refresh: ReturnType<typeof vi.fn>;
+		} = {
 			status: "guest",
 			user: null,
 			login: vi.fn(),
@@ -17,32 +25,31 @@ const { apiGetMock, apiPostMock, sessionMock, notificationMock } = vi.hoisted(
 			apiPostMock: vi.fn(),
 			sessionMock: session,
 			notificationMock: {
-				showNotification: vi.fn(),
-				hideNotification: vi.fn(),
+				success: vi.fn(),
+				error: vi.fn(),
+				info: vi.fn(),
+				warning: vi.fn(),
+				hide: vi.fn(),
 			},
 		};
 	},
 );
 
-vi.mock("../../config/api", () => ({
-	API_ENDPOINTS: {
-		PUBLIC: {
-			ARTICLE_COMMENTS: (id) => `/api/articles/${id}/comments`,
-			CREATE_COMMENT: (id) => `/api/articles/${id}/comments`,
-		},
-	},
+vi.mock("../../api/browser", () => ({
+	browserApi: { get: apiGetMock, post: apiPostMock },
 	ApiError: class ApiError extends Error {
-		constructor(status, message) {
+		status: number;
+
+		constructor(status: number, message: string) {
 			super(message);
 			this.status = status;
 		}
 	},
-	api: { get: apiGetMock, post: apiPostMock },
 }));
 
 vi.mock("../../api/authApi", () => ({
 	authApi: {
-		buildGithubAuthorizeUrl: (redirectTo) =>
+		buildGithubAuthorizeUrl: (redirectTo: string) =>
 			redirectTo
 				? `/api/auth/github/authorize?redirect_to=${encodeURIComponent(redirectTo)}`
 				: "/api/auth/github/authorize",
@@ -53,22 +60,34 @@ vi.mock("../../hooks/useSession", () => ({ useSession: () => sessionMock }));
 
 vi.mock("../../hooks/useNotification", () => ({
 	default: () => ({
-		snackbarOpen: false,
-		snackbarMessage: "",
-		showNotification: notificationMock.showNotification,
-		hideNotification: notificationMock.hideNotification,
+		open: false,
+		message: "",
+		severity: "info",
+		success: notificationMock.success,
+		error: notificationMock.error,
+		info: notificationMock.info,
+		warning: notificationMock.warning,
+		show: vi.fn(),
+		hide: notificationMock.hide,
 	}),
 }));
 
 const renderSection = (articleId = 7) =>
 	render(<CommentSection articleId={articleId} />);
 
-const typeMessage = (value) =>
+const resetNotifications = () => {
+	notificationMock.success.mockReset();
+	notificationMock.error.mockReset();
+	notificationMock.info.mockReset();
+	notificationMock.warning.mockReset();
+};
+
+const typeMessage = (value: string) =>
 	fireEvent.change(screen.getByLabelText("$ message"), {
 		target: { value },
 	});
 
-const githubUser = {
+const githubUser: UserInfo = {
 	username: "octocat",
 	provider: "github",
 	display_name: "Octo Cat",
@@ -79,7 +98,7 @@ describe("CommentSection identity rows", () => {
 	beforeEach(() => {
 		apiGetMock.mockReset().mockResolvedValue({ comments: [] });
 		apiPostMock.mockReset().mockResolvedValue({});
-		notificationMock.showNotification.mockReset();
+		resetNotifications();
 		sessionMock.status = "guest";
 		sessionMock.user = null;
 		window.localStorage.clear();
@@ -115,7 +134,7 @@ describe("CommentSection sign-in gate", () => {
 	beforeEach(() => {
 		apiGetMock.mockReset().mockResolvedValue({ comments: [] });
 		apiPostMock.mockReset().mockResolvedValue({});
-		notificationMock.showNotification.mockReset();
+		resetNotifications();
 		sessionMock.status = "guest";
 		sessionMock.user = null;
 		window.localStorage.clear();
@@ -174,7 +193,7 @@ describe("CommentSection submit identity", () => {
 	beforeEach(() => {
 		apiGetMock.mockReset().mockResolvedValue({ comments: [] });
 		apiPostMock.mockReset().mockResolvedValue({});
-		notificationMock.showNotification.mockReset();
+		resetNotifications();
 		sessionMock.status = "guest";
 		sessionMock.user = null;
 		window.localStorage.clear();
@@ -223,9 +242,8 @@ describe("CommentSection submit identity", () => {
 		fireEvent.click(screen.getByText("> submit"));
 
 		await waitFor(() => {
-			expect(notificationMock.showNotification).toHaveBeenCalledWith(
+			expect(notificationMock.warning).toHaveBeenCalledWith(
 				"请先登录后再评论",
-				"warning",
 			);
 		});
 	});
@@ -235,7 +253,7 @@ describe("CommentSection drafts", () => {
 	beforeEach(() => {
 		apiGetMock.mockReset().mockResolvedValue({ comments: [] });
 		apiPostMock.mockReset().mockResolvedValue({});
-		notificationMock.showNotification.mockReset();
+		resetNotifications();
 		sessionMock.status = "guest";
 		sessionMock.user = null;
 		window.localStorage.clear();
@@ -300,7 +318,7 @@ describe("CommentSection list", () => {
 	beforeEach(() => {
 		apiGetMock.mockReset().mockResolvedValue({ comments: [] });
 		apiPostMock.mockReset().mockResolvedValue({});
-		notificationMock.showNotification.mockReset();
+		resetNotifications();
 		sessionMock.status = "guest";
 		sessionMock.user = null;
 		window.localStorage.clear();

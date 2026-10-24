@@ -1,10 +1,23 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import AiSettingsDialog from './AiSettingsDialog';
+import type { AiSettings } from '@/api/types';
+
+type MockFn = ReturnType<typeof vi.fn>;
+
+interface AiStoreMockState {
+  aiSettings: AiSettings | null;
+  settingsLoading: boolean;
+  settingsSaving: boolean;
+  settingsTesting: boolean;
+  fetchAiSettings: MockFn;
+  updateAiSettings: MockFn;
+  testAiConnection: MockFn;
+}
 
 const { fetchAiSettings, storeState, useAiStoreMock } = vi.hoisted(() => {
   const fetchSettings = vi.fn();
-  const state = {
+  const state: AiStoreMockState = {
     aiSettings: null,
     settingsLoading: false,
     settingsSaving: false,
@@ -13,17 +26,29 @@ const { fetchAiSettings, storeState, useAiStoreMock } = vi.hoisted(() => {
     updateAiSettings: vi.fn(),
     testAiConnection: vi.fn(),
   };
-  const useStore = vi.fn(() => state);
-  useStore.getState = () => state;
+  // 组件在 fetch 失败时回落到 useAiStore.getState().aiSettings
+  const useStore = Object.assign(vi.fn(() => state), { getState: () => state });
   return { fetchAiSettings: fetchSettings, storeState: state, useAiStoreMock: useStore };
 });
 
 vi.mock('@/stores/aiStore', () => ({ default: useAiStoreMock }));
-vi.mock('../../../hooks/useNotification', () => ({
-  default: () => ({ notify: () => ({ success: vi.fn(), error: vi.fn() }) }),
+const { notifySuccess, notifyError } = vi.hoisted(() => ({
+  notifySuccess: vi.fn(),
+  notifyError: vi.fn(),
 }));
 
-const initialSettings = {
+vi.mock('../../../hooks/useNotification', () => ({
+  default: () => ({
+    success: notifySuccess,
+    error: notifyError,
+    info: vi.fn(),
+    warning: vi.fn(),
+    show: vi.fn(),
+    hide: vi.fn(),
+  }),
+}));
+
+const initialSettings: AiSettings = {
   prompt: 'Initial prompt',
   model: 'gpt-test',
   base_url: 'https://example.test/v1',
@@ -51,6 +76,15 @@ describe('AiSettingsDialog', () => {
     rerender(<AiSettingsDialog open={false} onClose={vi.fn()} />);
     rerender(<AiSettingsDialog open onClose={vi.fn()} />);
     await waitFor(() => expect(fetchAiSettings).toHaveBeenCalledTimes(2));
+  });
+
+  it('notifies success through the flat notification API after saving', async () => {
+    storeState.updateAiSettings = vi.fn().mockResolvedValue({});
+    render(<AiSettingsDialog open onClose={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: '保存设置' }));
+
+    await waitFor(() => expect(notifySuccess).toHaveBeenCalledWith('AI 设置保存成功'));
   });
 
   it('does not reset edited input when the store updates while open', async () => {

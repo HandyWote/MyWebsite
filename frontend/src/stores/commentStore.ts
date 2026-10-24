@@ -1,10 +1,32 @@
-// frontend/src/stores/commentStore.js
+// frontend/src/stores/commentStore.ts
 import { create } from 'zustand';
 import { commentApi } from '@/api/commentApi';
+import type { Comment } from '@/api/types';
 
 const PER_PAGE = 10;
 
-const useCommentStore = create((set, get) => ({
+export interface CommentState {
+  /** 列表行：status / article_title 已补默认值（后端可能缺省）。 */
+  comments: Comment[];
+  total: number;
+  page: number;
+  perPage: number;
+  searchTerm: string;
+  statusFilter: string;
+  loading: boolean;
+  error: string | null;
+
+  fetchComments: () => Promise<void>;
+  deleteComment: (id: number) => Promise<void>;
+  updateCommentStatus: (commentId: number, status: string) => Promise<void>;
+  exportComments: () => Promise<void>;
+
+  setPage: (page: number) => void;
+  setSearchTerm: (searchTerm: string) => void;
+  setStatusFilter: (statusFilter: string) => void;
+}
+
+const useCommentStore = create<CommentState>()((set, get) => ({
   comments: [],
   total: 0,
   page: 1,
@@ -20,14 +42,14 @@ const useCommentStore = create((set, get) => ({
     try {
       const data = await commentApi.fetchComments({ page, perPage, searchTerm, statusFilter });
 
-      const comments = (data.comments || []).map(comment => ({
+      const comments: Comment[] = (data.comments || []).map((comment) => ({
         ...comment,
         status: comment.status || 'normal',
         article_title: comment.article_title || '未知文章',
       }));
       set({ comments, total: data.total || 0, loading: false });
     } catch (err) {
-      set({ error: err.message, loading: false });
+      set({ error: (err as Error).message, loading: false });
       throw err;
     }
   },

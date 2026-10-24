@@ -1,52 +1,38 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { ExportDataSet } from '@/api/types';
 import DataImportExport from './DataImportExport';
 
-vi.mock('../../config/api', () => ({
-  getApiUrl: {
-    adminExport: () => '/api/admin/export',
-    adminImport: () => '/api/admin/import',
-  },
-  api: {
-    get: vi.fn(),
-    put: vi.fn(),
-    del: vi.fn(),
-    post: vi.fn(),
-    upload: vi.fn(),
-  },
-  apiClient: vi.fn(),
-  uploadFile: vi.fn(),
-  ApiError: class ApiError extends Error {
-    constructor(status, message) { super(message); this.status = status; this.name = 'ApiError'; }
-  },
-  buildApiUrl: (ep) => ep,
-  unwrapApiPayload: (r) => r?.data ?? r,
-  getApiMessage: (r, fb) => r?.msg || r?.message || fb,
-  API_ENDPOINTS: {
-    PUBLIC: {},
-    ADMIN: {
-      EXPORT: '/api/admin/export',
-      IMPORT: '/api/admin/import',
-    },
-  },
-  API_CONFIG: { BASE_URL: '', TIMEOUT: 10000 },
-  default: {},
+// 备份 API 未落成真类型前先用显式签名的 spy，行为断言仍按原样保留。
+const exportApiMocks = vi.hoisted(() => ({
+  exportData: vi.fn<() => Promise<ExportDataSet>>(),
+  importData: vi.fn<(payload: ExportDataSet) => Promise<void>>(),
 }));
 
-// Mock useNotification hook (Zustand-backed)
+vi.mock('../../api/exportApi', () => ({
+  exportApi: exportApiMocks,
+}));
 vi.mock('../../hooks/useNotification', () => ({
   default: () => ({
-    notify: () => ({
-      success: vi.fn(),
-      error: vi.fn(),
-      info: vi.fn(),
-      warning: vi.fn(),
-    }),
+    open: false,
+    message: '',
+    severity: 'info',
+    success: vi.fn<(message: string) => void>(),
+    error: vi.fn<(message: string) => void>(),
+    info: vi.fn<(message: string) => void>(),
+    warning: vi.fn<(message: string) => void>(),
+    show: vi.fn<(message: string, severity: string) => void>(),
+    hide: vi.fn<() => void>(),
   }),
 }));
 
-import { api } from '../../config/api';
+/** 组件里隐藏的导入文件输入框。 */
+const getFileInput = (): HTMLInputElement => {
+  const element = document.getElementById('import-input');
+  if (!(element instanceof HTMLInputElement)) throw new Error('import-input 未渲染');
+  return element;
+};
 
 describe('DataImportExport confirm dialog', () => {
   beforeEach(() => {
@@ -56,12 +42,12 @@ describe('DataImportExport confirm dialog', () => {
 
   it('shows confirmation dialog before importing data', async () => {
     const user = userEvent.setup();
-    api.post.mockResolvedValue(null);
+    exportApiMocks.importData.mockResolvedValue(undefined);
 
     render(<DataImportExport />);
 
     // Find the hidden file input and trigger a file selection
-    const fileInput = document.getElementById('import-input');
+    const fileInput = getFileInput();
     const file = new File(['{"test": true}'], 'backup.json', { type: 'application/json' });
 
     await user.upload(fileInput, file);
@@ -75,11 +61,11 @@ describe('DataImportExport confirm dialog', () => {
   });
 
   it('proceeds with import after user confirms', async () => {
-    api.post.mockResolvedValue(null);
+    exportApiMocks.importData.mockResolvedValue(undefined);
 
     render(<DataImportExport />);
 
-    const fileInput = document.getElementById('import-input');
+    const fileInput = getFileInput();
     const file = new File(['{"test": true}'], 'backup.json', { type: 'application/json' });
 
     fireEvent.change(fileInput, { target: { files: [file] } });
@@ -91,17 +77,17 @@ describe('DataImportExport confirm dialog', () => {
     fireEvent.click(screen.getByRole('button', { name: /确认导入/ }));
 
     await waitFor(() => {
-      expect(api.post).toHaveBeenCalledWith('/api/admin/import', expect.any(Object));
+      expect(exportApiMocks.importData).toHaveBeenCalledWith(expect.any(Object));
     }, { timeout: 5000 });
   });
 
   it('does not import when user cancels confirmation', async () => {
     const user = userEvent.setup();
-    api.post.mockResolvedValue(null);
+    exportApiMocks.importData.mockResolvedValue(undefined);
 
     render(<DataImportExport />);
 
-    const fileInput = document.getElementById('import-input');
+    const fileInput = getFileInput();
     const file = new File(['{"test": true}'], 'backup.json', { type: 'application/json' });
 
     await user.upload(fileInput, file);
@@ -109,6 +95,6 @@ describe('DataImportExport confirm dialog', () => {
     // Cancel
     await user.click(screen.getByRole('button', { name: /取消/i }));
 
-    expect(api.post).not.toHaveBeenCalled();
+    expect(exportApiMocks.importData).not.toHaveBeenCalled();
   });
 });

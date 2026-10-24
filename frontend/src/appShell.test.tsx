@@ -27,7 +27,7 @@ describe("Next app shell", () => {
 		// 路由行为测试：直接调用默认导出配置对象上的 redirects()（TS 允许调用对象属性方法，
 		// 导入该文件仅有对象定义、无副作用），断言配置模块的公开契约，实现文件零改动。
 		// 删除/改坏任一规则（source、destination、permanent）都会让本测试变红。
-		const rules = await nextConfig.redirects();
+		const rules = await nextConfig.redirects?.() ?? [];
 
 		expect(rules).toContainEqual({ source: "/app", destination: "/", permanent: true });
 		expect(rules).toContainEqual({

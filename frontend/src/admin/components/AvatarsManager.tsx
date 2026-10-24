@@ -6,28 +6,16 @@ import CardContent from '@mui/material/CardContent';
 import CardActions from '@mui/material/CardActions';
 import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
-import { PixelButton, PixelConfirmDialog } from './pixelProps';
+import { PixelButton, PixelConfirmDialog } from '@/components/pixel';
 import useAvatarStore from '@/stores/avatarStore';
 import useNotification from '../../hooks/useNotification';
 import { colors } from '../../components/pixel/tokens';
 import { describeError } from '../utils/errors';
-import type { AvatarItem } from './ui/types';
 
 /**
- * avatarStore 边界形状（store 仍是 JS zustand，无类型导出）。
- *
- * 只声明本组件读写的部分：avatars 用 ui/types.ts 的 AvatarItem（不退化成 any），
- * 方法签名与 store 里的同名 action 对齐。
+ * avatarStore 是已类型化的 zustand store：avatars/actions 直接用 store 导出的 AvatarState，
+ * 本组件不再声明边界 slice，也不做任何 cast。
  */
-interface AvatarStoreSlice {
-  avatars: AvatarItem[];
-  loading: boolean;
-  fetchAvatars: () => Promise<unknown>;
-  uploadAvatar: (file: File) => Promise<unknown>;
-  deleteAvatar: (avatarId: number) => Promise<{ msg?: string } | undefined>;
-}
-
-const useAvatarStateStore = useAvatarStore as unknown as () => AvatarStoreSlice;
 
 /**
  * AvatarsManager - 单头像管理
@@ -36,7 +24,7 @@ const useAvatarStateStore = useAvatarStore as unknown as () => AvatarStoreSlice;
  * 这里只展示当前头像（is_current；缺失时回落到列表第一项）并允许重新上传或删除。
  */
 export default function AvatarsManager() {
-  const { avatars, loading, fetchAvatars, uploadAvatar, deleteAvatar } = useAvatarStateStore();
+  const { avatars, loading, fetchAvatars, uploadAvatar, deleteAvatar } = useAvatarStore();
 
   const notify = useNotification();
 
@@ -71,8 +59,10 @@ export default function AvatarsManager() {
   const handleDeleteConfirm = async () => {
     if (!deleteConfirmId) return;
     try {
-      const data = await deleteAvatar(deleteConfirmId);
-      notify.success(data?.msg || '已删除头像');
+      await deleteAvatar(deleteConfirmId);
+      // deleteAvatar 的响应按 avatarApi.remove 的声明是实体（后端实际回 message 信封，
+      // 不含 msg 字段），故提示文案以固定文案为准。
+      notify.success('已删除头像');
     } catch (error) {
       notify.error('删除失败: ' + describeError(error));
     } finally {

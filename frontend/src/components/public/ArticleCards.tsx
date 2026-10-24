@@ -1,15 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { Box, Typography, type CardProps } from "@mui/material";
-import type { ComponentType } from "react";
+import { Box, Typography } from "@mui/material";
 import type { ArticleSummary } from "@/api/types";
-import PixelCardBase from "@/components/pixel/ui/PixelCard";
+import { PixelCard } from "@/components/pixel";
 import { RevealList } from "./RevealList";
-
-// PixelCard.jsx 无显式 props 类型，未解构的 title/subtitle/footer 被推断为必填；
-// 这里按 MUI Card 的 props 重新声明，避免在 TS 调用处误报。
-const PixelCard = PixelCardBase as unknown as ComponentType<CardProps>;
 
 const CARD_HOVER_SX = {
 	cursor: "pointer",

@@ -1,15 +1,16 @@
 // frontend/src/admin/components/articles/ArticleList.test.jsx
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import ArticleList from './ArticleList';
+import ArticleList, { type ArticleListProps } from './ArticleList';
+import type { ArticleSummary } from '@/api/types';
 
 describe('ArticleList', () => {
-  const mockArticles = [
+  const mockArticles: ArticleSummary[] = [
     { id: 1, title: 'Article 1', summary: 'Summary 1', category: 'Tech', tags: ['react'], created_at: '2024-01-01' },
     { id: 2, title: 'Article 2', summary: 'Summary 2', category: 'Life', tags: ['travel'], created_at: '2024-01-02' },
   ];
 
-  const defaultProps = {
+  const defaultProps: ArticleListProps = {
     articles: mockArticles,
     loading: false,
     onEdit: vi.fn(),

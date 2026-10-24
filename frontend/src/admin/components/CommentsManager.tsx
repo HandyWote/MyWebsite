@@ -1,10 +1,10 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, type ChangeEvent } from 'react';
 import {
   Box,
-  Button,
   Stack,
   Typography,
   InputAdornment,
+  MenuItem,
   Pagination,
   CircularProgress,
 } from '@mui/material';
@@ -13,10 +13,11 @@ import {
   Download as DownloadIcon,
   Refresh as RefreshIcon,
 } from '@mui/icons-material';
+import { PixelButton, PixelConfirmDialog, PixelInput } from '@/components/pixel';
 import useCommentStore from '@/stores/commentStore';
+import type { Comment } from '@/api/types';
 import useNotification from '../../hooks/useNotification';
 import { CommentCard, CommentDetailDialog, COMMENT_STATUS } from './comments';
-import { ConfirmDialog } from './shared';
 import {
   AdminEmptyState,
   AdminFieldGrid,
@@ -24,14 +25,18 @@ import {
   AdminFormStack,
   AdminPage,
   AdminSection,
-  AdminSelect,
   AdminStatsGrid,
-  AdminTextField,
 } from './ui';
 
 const PER_PAGE = 10;
 
-const StatItem = ({ value, label, color }) => (
+interface StatItemProps {
+  value: number;
+  label: string;
+  color: string;
+}
+
+const StatItem = ({ value, label, color }: StatItemProps) => (
   <AdminFieldGridItem size={{ xs: 12, sm: 3 }}>
     <Box sx={{ textAlign: 'center' }}>
       <Typography variant="h4" color={color}>{value}</Typography>
@@ -64,22 +69,24 @@ export default function CommentsManager() {
   } = useCommentStore();
 
   // UI 状态（保留在组件内）
-  const [selectedComment, setSelectedComment] = useState(null);
+  const [selectedComment, setSelectedComment] = useState<Comment | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [commentToDelete, setCommentToDelete] = useState(null);
+  const [commentToDelete, setCommentToDelete] = useState<Comment | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
 
-  // 通知
-  const { notify } = useNotification();
+  // 通知：成功/失败是 hook 里 useCallback 出来的稳定引用，可安全放进 handleFetchComments
+  // 的依赖数组；若直接依赖 useNotification() 返回的对象（含 open/message），通知一变化
+  // 就会重建回调并让下面的 useEffect 重新拉取，失败时形成循环。
+  const { success: notifySuccess, error: notifyError } = useNotification();
 
   // 获取评论列表
   const handleFetchComments = useCallback(async () => {
     try {
       await fetchComments();
     } catch (error) {
-      notify().error('获取评论列表失败: ' + error.message);
+      notifyError('获取评论列表失败: ' + (error instanceof Error ? error.message : String(error)));
     }
-  }, [fetchComments, notify]);
+  }, [fetchComments, notifyError]);
 
   useEffect(() => {
     handleFetchComments();
@@ -93,19 +100,19 @@ export default function CommentsManager() {
       await deleteComment(commentToDelete.id);
       setDeleteDialogOpen(false);
       setCommentToDelete(null);
-      notify().success('评论删除成功');
+      notifySuccess('评论删除成功');
     } catch (error) {
-      notify().error('删除评论失败: ' + error.message);
+      notifyError('删除评论失败: ' + (error instanceof Error ? error.message : String(error)));
     }
   };
 
   // 更改评论状态
-  const handleStatusChange = async (commentId, status) => {
+  const handleStatusChange = async (commentId: number, status: string) => {
     try {
       await updateCommentStatus(commentId, status);
-      notify().success('评论状态更新成功');
+      notifySuccess('评论状态更新成功');
     } catch (error) {
-      notify().error('更新评论状态失败: ' + error.message);
+      notifyError('更新评论状态失败: ' + (error instanceof Error ? error.message : String(error)));
     }
   };
 
@@ -113,9 +120,9 @@ export default function CommentsManager() {
   const handleExport = async () => {
     try {
       await exportComments();
-      notify().success('评论数据导出成功');
+      notifySuccess('评论数据导出成功');
     } catch (error) {
-      notify().error('导出失败: ' + error.message);
+      notifyError('导出失败: ' + (error instanceof Error ? error.message : String(error)));
     }
   };
 
@@ -148,10 +155,11 @@ export default function CommentsManager() {
         <AdminSection>
           <AdminFieldGrid sx={{ alignItems: 'center' }}>
             <AdminFieldGridItem size={{ xs: 12, sm: 6 }}>
-              <AdminTextField
+              <PixelInput
+                fullWidth
                 placeholder="搜索评论内容、作者、IP地址..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
                 slotProps={{
                   input: {
                     startAdornment: (
@@ -164,34 +172,36 @@ export default function CommentsManager() {
               />
             </AdminFieldGridItem>
             <AdminFieldGridItem size={{ xs: 12, sm: 3 }}>
-              <AdminSelect
+              <PixelInput
+                fullWidth
+                select
                 value={statusFilter}
                 label="状态筛选"
-                onChange={(e) => setStatusFilter(e.target.value)}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => setStatusFilter(e.target.value)}
               >
-                <AdminSelect.Item value="">全部状态</AdminSelect.Item>
-                <AdminSelect.Item value={COMMENT_STATUS.NORMAL}>正常</AdminSelect.Item>
-                <AdminSelect.Item value={COMMENT_STATUS.PENDING}>待审核</AdminSelect.Item>
-                <AdminSelect.Item value={COMMENT_STATUS.SPAM}>垃圾评论</AdminSelect.Item>
-              </AdminSelect>
+                <MenuItem value="">全部状态</MenuItem>
+                <MenuItem value={COMMENT_STATUS.NORMAL}>正常</MenuItem>
+                <MenuItem value={COMMENT_STATUS.PENDING}>待审核</MenuItem>
+                <MenuItem value={COMMENT_STATUS.SPAM}>垃圾评论</MenuItem>
+              </PixelInput>
             </AdminFieldGridItem>
             <AdminFieldGridItem size={{ xs: 12, sm: 3 }}>
               <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
-                <Button
-                  variant="outlined"
+                <PixelButton
+                  variant="outline"
                   startIcon={<RefreshIcon />}
                   onClick={handleFetchComments}
                   disabled={loading}
                 >
                   刷新
-                </Button>
-                <Button
-                  variant="outlined"
+                </PixelButton>
+                <PixelButton
+                  variant="outline"
                   startIcon={<DownloadIcon />}
                   onClick={handleExport}
                 >
                   导出
-                </Button>
+                </PixelButton>
               </Stack>
             </AdminFieldGridItem>
           </AdminFieldGrid>
@@ -210,11 +220,11 @@ export default function CommentsManager() {
                   <CommentCard
                     key={comment.id}
                     comment={comment}
-                    onView={(comment) => {
+                    onView={(comment: Comment) => {
                       setSelectedComment(comment);
                       setDetailDialogOpen(true);
                     }}
-                    onDelete={(comment) => {
+                    onDelete={(comment: Comment) => {
                       setCommentToDelete(comment);
                       setDeleteDialogOpen(true);
                     }}
@@ -229,7 +239,7 @@ export default function CommentsManager() {
               <Pagination
                 count={Math.ceil(total / PER_PAGE)}
                 page={page}
-                onChange={(_, newPage) => setPage(newPage)}
+                onChange={(_event, newPage: number) => setPage(newPage)}
                 color="primary"
                 showFirstButton
                 showLastButton
@@ -242,7 +252,7 @@ export default function CommentsManager() {
       </AdminFormStack>
 
       {/* 删除确认对话框 */}
-      <ConfirmDialog
+      <PixelConfirmDialog
         open={deleteDialogOpen}
         title="确认删除"
         message="确定要删除这条评论吗？此操作不可撤销。"

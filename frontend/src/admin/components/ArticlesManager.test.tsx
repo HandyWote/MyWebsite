@@ -1,6 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import ArticlesManager from './ArticlesManager';
+import type { ArticleSummary } from '@/api/types';
+import type { ArticleListProps } from './articles/ArticleList';
+import type { ArticleImporterProps } from './articles/ArticleImporter';
+import type { ArticleEditDialogProps } from './articles/ArticleEditDialog';
+import type { AiSettingsDialogProps } from './articles/AiSettingsDialog';
 
 // Mock PDF.js 相关依赖（必须在导入组件前）
 vi.mock('pdfjs-dist', () => ({
@@ -12,41 +17,48 @@ vi.mock('@/components/PdfViewerOnCanvas', () => ({
   default: () => null,
 }));
 
-// Mock Stores
+// Mock Stores（用 hoisted Mock 句柄，避免对 zustand store 函数做 mockImplementation）
+const { useArticleStoreMock, useUploadStoreMock, useAiStoreMock } = vi.hoisted(() => ({
+  useArticleStoreMock: vi.fn(),
+  useUploadStoreMock: vi.fn(),
+  useAiStoreMock: vi.fn(),
+}));
+
 vi.mock('@/stores/articleStore', () => ({
   __esModule: true,
-  default: vi.fn(),
+  default: useArticleStoreMock,
 }));
 
 vi.mock('@/stores/uploadStore', () => ({
   __esModule: true,
-  default: vi.fn(),
+  default: useUploadStoreMock,
 }));
 
 vi.mock('@/stores/aiStore', () => ({
   __esModule: true,
-  default: vi.fn(),
+  default: useAiStoreMock,
 }));
 
-// Mock useNotification
+// Mock useNotification（扁平 API：notify.success / notify.error，无 .notify() 链式壳）
+const { notifySuccess, notifyError } = vi.hoisted(() => ({
+  notifySuccess: vi.fn(),
+  notifyError: vi.fn(),
+}));
+
 vi.mock('../../hooks/useNotification', () => ({
   default: () => ({
-    notify: () => ({
-      success: vi.fn(),
-      error: vi.fn(),
-      info: vi.fn(),
-      warning: vi.fn(),
-    }),
+    success: notifySuccess,
+    error: notifyError,
+    info: vi.fn(),
+    warning: vi.fn(),
+    show: vi.fn(),
+    hide: vi.fn(),
   }),
 }));
 
-import useArticleStore from '@/stores/articleStore';
-import useUploadStore from '@/stores/uploadStore';
-import useAiStore from '@/stores/aiStore';
-
 // Mock 子组件
 vi.mock('./articles', () => ({
-  ArticleList: ({ articles, onEdit, onDelete, selectedIds, onSelectionChange, onRowsPerPageChange }) => (
+  ArticleList: ({ articles, onEdit, onDelete, selectedIds, onSelectionChange, onRowsPerPageChange }: ArticleListProps) => (
     <div data-testid="article-list">
       <button onClick={() => onRowsPerPageChange?.(25)}>RowsPerPage</button>
       {articles.map((a) => (
@@ -64,7 +76,7 @@ vi.mock('./articles', () => ({
       ))}
     </div>
   ),
-  ArticleImporter: ({ open, onImport, onClose }) => (
+  ArticleImporter: ({ open, onImport, onClose }: ArticleImporterProps) => (
     <div data-testid="article-importer" data-open={open}>
       {open && (
         <>
@@ -78,12 +90,25 @@ vi.mock('./articles', () => ({
 
 // Mock ArticleEditDialog — 现在只有 5 个 props
 vi.mock('./articles/ArticleEditDialog', () => ({
-  default: ({ open, onSave, onClose }) => (
+  default: ({ open, onSave, onClose }: ArticleEditDialogProps) => (
     <div data-testid="article-editor" data-open={open}>
       {open && (
         <>
           <span>Edit Dialog</span>
-          <button onClick={() => onSave({ title: 'Test', content: 'content', content_type: 'markdown' })}>Save</button>
+          <button
+            onClick={() => onSave({
+              title: 'Test',
+              category: '',
+              tags: '',
+              summary: '',
+              content: 'content',
+              content_type: 'markdown',
+              cover: '',
+              pdf_filename: '',
+            })}
+          >
+            Save
+          </button>
           <button onClick={onClose}>Close</button>
         </>
       )}
@@ -93,7 +118,7 @@ vi.mock('./articles/ArticleEditDialog', () => ({
 
 // Mock AiSettingsDialog
 vi.mock('./articles/AiSettingsDialog', () => ({
-  default: ({ open, onClose }) => (
+  default: ({ open, onClose }: AiSettingsDialogProps) => (
     <div data-testid="ai-settings-dialog" data-open={open}>
       {open && <span>AI Settings</span>}
       <button onClick={onClose}>Close Settings</button>
@@ -101,22 +126,8 @@ vi.mock('./articles/AiSettingsDialog', () => ({
   ),
 }));
 
-// Mock ConfirmDialog (imported from barrel './shared')
-vi.mock('./shared', () => ({
-  ConfirmDialog: ({ open, onConfirm, onCancel }) => (
-    <div data-testid="confirm-dialog" data-open={open}>
-      {open && (
-        <>
-          <button onClick={() => onConfirm()}>ConfirmDelete</button>
-          <button onClick={() => onCancel()}>CancelDelete</button>
-        </>
-      )}
-    </div>
-  ),
-}));
-
 describe('ArticlesManager', () => {
-  const mockArticles = [
+  const mockArticles: ArticleSummary[] = [
     { id: 1, title: 'Article 1', tags: ['tag1'] },
     { id: 2, title: 'Article 2', tags: ['tag2'] },
   ];
@@ -126,12 +137,12 @@ describe('ArticlesManager', () => {
     loading: false,
     error: null,
     pagination: { page: 1, perPage: 10, total: 2 },
-    fetchArticles: vi.fn().mockResolvedValue(),
+    fetchArticles: vi.fn().mockResolvedValue(undefined),
     fetchArticleById: vi.fn().mockResolvedValue(mockArticles[0]),
     createArticle: vi.fn().mockResolvedValue({ id: 3 }),
-    updateArticle: vi.fn().mockResolvedValue(),
-    deleteArticle: vi.fn().mockResolvedValue(),
-    batchDeleteArticles: vi.fn().mockResolvedValue(),
+    updateArticle: vi.fn().mockResolvedValue(undefined),
+    deleteArticle: vi.fn().mockResolvedValue(undefined),
+    batchDeleteArticles: vi.fn().mockResolvedValue(undefined),
   };
 
   const mockUploadStore = {
@@ -151,18 +162,19 @@ describe('ArticlesManager', () => {
     settingsLoading: false,
   };
 
-  const createStoreMock = (store) => (selector) => {
-    if (typeof selector === 'function') {
-      return selector(store);
-    }
-    return store;
-  };
+  const createStoreMock = <T extends object>(store: T) =>
+    (selector?: (state: T) => unknown) => {
+      if (typeof selector === 'function') {
+        return selector(store);
+      }
+      return store;
+    };
 
   beforeEach(() => {
     vi.clearAllMocks();
-    useArticleStore.mockImplementation(createStoreMock(mockArticleStore));
-    useUploadStore.mockImplementation(createStoreMock(mockUploadStore));
-    useAiStore.mockImplementation(createStoreMock(mockAiStore));
+    useArticleStoreMock.mockImplementation(createStoreMock(mockArticleStore));
+    useUploadStoreMock.mockImplementation(createStoreMock(mockUploadStore));
+    useAiStoreMock.mockImplementation(createStoreMock(mockAiStore));
   });
 
   it('应该渲染文章列表', async () => {
@@ -194,36 +206,53 @@ describe('ArticlesManager', () => {
     });
   });
 
-  it('应该在删除按钮点击时弹出确认对话框', async () => {
+  it('应该在删除按钮点击时弹出带文案的确认对话框', async () => {
     render(<ArticlesManager />);
 
     const deleteButtons = screen.getAllByText('Delete');
     fireEvent.click(deleteButtons[0]);
 
-    // ConfirmDialog 应该出现（替代 window.confirm）
-    await waitFor(() => {
-      expect(screen.getByTestId('confirm-dialog')).toHaveAttribute('data-open', 'true');
-    });
+    // PixelConfirmDialog（替代 window.confirm / 后台手搓 ConfirmDialog）
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByRole('heading', { name: '确认删除' })).toBeInTheDocument();
+    expect(within(dialog).getByText('确定删除该文章？')).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: '取消' })).toBeInTheDocument();
   });
 
-  it('应该在确认删除后调用 deleteArticle', async () => {
+  it('应该在确认删除后调用 deleteArticle 并关闭确认框', async () => {
     render(<ArticlesManager />);
 
     const deleteButtons = screen.getAllByText('Delete');
     fireEvent.click(deleteButtons[0]);
 
-    await waitFor(() => {
-      expect(screen.getByText('ConfirmDelete')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByText('ConfirmDelete'));
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: '确认删除' }));
 
     await waitFor(() => {
       expect(mockArticleStore.deleteArticle).toHaveBeenCalledWith(1);
     });
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+    expect(notifySuccess).toHaveBeenCalledWith('文章删除成功');
   });
 
-  it('应该在批量删除按钮点击时弹出确认对话框', async () => {
+  it('删除失败时应通过通知上报错误', async () => {
+    mockArticleStore.deleteArticle.mockRejectedValueOnce(new Error('删除失败'));
+    render(<ArticlesManager />);
+
+    const deleteButtons = screen.getAllByText('Delete');
+    fireEvent.click(deleteButtons[0]);
+
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: '确认删除' }));
+
+    await waitFor(() => {
+      expect(notifyError).toHaveBeenCalledWith('删除失败');
+    });
+  });
+
+  it('应该在批量删除按钮点击时弹出批量确认文案', async () => {
     render(<ArticlesManager />);
 
     // 先选中一篇文章
@@ -233,9 +262,9 @@ describe('ArticlesManager', () => {
     const batchDeleteButton = screen.getByText(/删除选中/);
     fireEvent.click(batchDeleteButton);
 
-    await waitFor(() => {
-      expect(screen.getByTestId('confirm-dialog')).toHaveAttribute('data-open', 'true');
-    });
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText('批量删除确认')).toBeInTheDocument();
+    expect(within(dialog).getByText('确定删除选中的 1 篇文章？')).toBeInTheDocument();
   });
 
   it('应该打开批量导入对话框', async () => {

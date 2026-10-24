@@ -1,5 +1,17 @@
 import { Box } from '@mui/material';
+import type { BoxProps } from '@mui/material/Box';
 import { colors } from '../tokens';
+
+const MAX_WIDTH_MAP = {
+  xs: '480px',
+  sm: '640px',
+  md: '800px',
+  lg: '960px',
+  xl: '1200px',
+} as const;
+
+/** 预设内容最大宽度。 */
+export type PixelContainerWidth = keyof typeof MAX_WIDTH_MAP;
 
 /**
  * PixelContainer - 终端风格响应式容器
@@ -7,21 +19,23 @@ import { colors } from '../tokens';
  * 特点:
  * - 终端窗口角标装饰 ┌ ─ ┐
  * - 响应式宽度控制
+ *
+ * 类型: 复用 MUI BoxProps（component / sx / children 等），额外补充
+ * maxWidth / section 两个可选 props。
  */
+export type PixelContainerProps = BoxProps & {
+  /** 内容最大宽度，默认 md；未知取值回落到 md。 */
+  maxWidth?: PixelContainerWidth;
+  /** 全屏段落模式（角标装饰 + 居中 + 内边距），默认 false。 */
+  section?: boolean;
+};
+
 export function PixelContainer({
   children,
   maxWidth = 'md',
   section = false,
   ...props
-}) {
-  const maxWidthMap = {
-    xs: '480px',
-    sm: '640px',
-    md: '800px',
-    lg: '960px',
-    xl: '1200px',
-  };
-
+}: PixelContainerProps) {
   return (
     <Box
       component="section"
@@ -104,7 +118,7 @@ export function PixelContainer({
       <Box
         sx={{
           width: '100%',
-          maxWidth: maxWidthMap[maxWidth] || maxWidthMap.md,
+          maxWidth: MAX_WIDTH_MAP[maxWidth] || MAX_WIDTH_MAP.md,
           margin: '0 auto',
           padding: '0 clamp(16px, 7vw, 48px)',
         }}

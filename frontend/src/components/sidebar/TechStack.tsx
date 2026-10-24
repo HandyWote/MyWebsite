@@ -1,7 +1,17 @@
+import type { ReactNode } from 'react';
 import { Box } from '@mui/material';
+import type { TechStackItem } from '@/api/types';
 import PixelChip from '../pixel/ui/PixelChip';
 
-function TechStack({ items = [] }) {
+/** 技术栈条目：历史配置可能是纯字符串，也可能是 `{ name }` 对象。 */
+export type TechStackEntry = TechStackItem | string;
+
+export interface TechStackProps {
+  /** 侧边栏 sidebar 块的 tech_stack 数组；空数组渲染「(未配置)」。 */
+  items?: TechStackEntry[];
+}
+
+function TechStack({ items = [] }: TechStackProps) {
   const techStackList = items || [];
 
   return (
@@ -28,7 +38,7 @@ function TechStack({ items = [] }) {
   );
 }
 
-function SectionTitle({ children }) {
+function SectionTitle({ children }: { children: ReactNode }) {
   return (
     <Box
       component="div"

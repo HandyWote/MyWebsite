@@ -1,3 +1,4 @@
+import type { ChangeEvent, MouseEvent } from 'react';
 import {
   Box,
   CircularProgress,
@@ -16,6 +17,22 @@ import {
   Chip,
 } from '@mui/material';
 import { Edit, Delete } from '@mui/icons-material';
+import type { ArticlePagination, ArticleSummary } from '@/api/types';
+
+export interface ArticleListProps {
+  /** 列表行（后端文章摘要，tags 已由 store 归一化为数组）。 */
+  articles: ArticleSummary[];
+  loading: boolean;
+  onEdit: (article: ArticleSummary) => void;
+  onDelete: (id: number) => void;
+  selectedIds?: number[];
+  /** 传了才渲染多选列（头部全选 + 行复选框）。 */
+  onSelectionChange?: (ids: number[]) => void;
+  pagination?: ArticlePagination;
+  /** 1 基页码（内部转成 TablePagination 的 0 基）。 */
+  onPageChange?: (page: number) => void;
+  onRowsPerPageChange?: (perPage: number) => void;
+}
 
 /**
  * 文章列表展示组件（纯渲染）
@@ -31,7 +48,7 @@ export default function ArticleList({
   pagination = { page: 1, perPage: 10, total: 0 },
   onPageChange,
   onRowsPerPageChange,
-}) {
+}: ArticleListProps) {
   // 加载状态
   if (loading && articles.length === 0) {
     return (
@@ -50,7 +67,7 @@ export default function ArticleList({
     );
   }
 
-  const handleSelectAll = (event) => {
+  const handleSelectAll = (event: ChangeEvent<HTMLInputElement>) => {
     if (event.target.checked) {
       onSelectionChange?.(articles.map((a) => a.id));
     } else {
@@ -58,18 +75,18 @@ export default function ArticleList({
     }
   };
 
-  const handleSelect = (id) => {
+  const handleSelect = (id: number) => {
     const newSelected = selectedIds.includes(id)
       ? selectedIds.filter((i) => i !== id)
       : [...selectedIds, id];
     onSelectionChange?.(newSelected);
   };
 
-  const handleChangePage = (event, newPage) => {
+  const handleChangePage = (_event: MouseEvent<HTMLButtonElement> | null, newPage: number) => {
     onPageChange?.(newPage + 1); // TablePagination uses 0-indexed
   };
 
-  const handleChangeRowsPerPage = (event) => {
+  const handleChangeRowsPerPage = (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     onRowsPerPageChange?.(parseInt(event.target.value, 10));
   };
 

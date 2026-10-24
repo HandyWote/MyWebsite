@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Box, Button, Typography } from '@mui/material';
+import { Box, Typography } from '@mui/material';
 import { Add, Upload, SettingsSuggest, Delete } from '@mui/icons-material';
+import { PixelButton, PixelConfirmDialog } from '@/components/pixel';
 
 // Store
 import useArticleStore from '@/stores/articleStore';
@@ -8,15 +9,32 @@ import useUploadStore from '@/stores/uploadStore';
 
 // 子组件
 import { ArticleList, ArticleImporter } from './articles';
+import type { ArticleImportResult } from './articles/ArticleImporter';
 import ArticleEditDialog from './articles/ArticleEditDialog';
 import AiSettingsDialog from './articles/AiSettingsDialog';
-import { ConfirmDialog } from './shared';
 
 // Hook
 import useNotification from '../../hooks/useNotification';
 
+import type {
+  Article,
+  ArticleFormValues,
+  ArticleImportStats,
+  ArticlePagination,
+  ArticleInput,
+  ArticleSummary,
+} from '@/api/types';
+
+/**
+ * 本容器只声明读写的 store 切片已随 store 类型化而移除：
+ * 状态用 api/types.ts 的领域类型，动作签名由 `@/stores/articleStore` 自身给出。
+ */
+
+/** 删除确认的目标（单篇 / 批量）。 */
+type DeleteConfirmTarget = { type: 'single'; id: number } | { type: 'batch' };
+
 // 默认文章结构
-const defaultArticle = {
+const defaultArticle: ArticleFormValues = {
   title: '',
   category: '',
   tags: '',
@@ -52,14 +70,14 @@ export default function ArticlesManager() {
 
   // ========== UI 状态（局部）==========
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [editingArticle, setEditingArticle] = useState(defaultArticle);
-  const [editId, setEditId] = useState(null);
+  const [editingArticle, setEditingArticle] = useState<ArticleFormValues>(defaultArticle);
+  const [editId, setEditId] = useState<number | null>(null);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [aiSettingsOpen, setAiSettingsOpen] = useState(false);
-  const [selectedIds, setSelectedIds] = useState([]);
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
 
   // 删除确认对话框
-  const [deleteConfirm, setDeleteConfirm] = useState(null); // null | { type: 'single', id } | { type: 'batch' }
+  const [deleteConfirm, setDeleteConfirm] = useState<DeleteConfirmTarget | null>(null);
 
   // 通知
   const notify = useNotification();
@@ -76,7 +94,7 @@ export default function ArticlesManager() {
     setEditDialogOpen(true);
   };
 
-  const handleEdit = async (article) => {
+  const handleEdit = async (article: ArticleSummary) => {
     try {
       const fullArticle = await fetchArticleById(article.id);
       setEditingArticle({
@@ -89,42 +107,42 @@ export default function ArticlesManager() {
       setEditId(article.id);
       setEditDialogOpen(true);
     } catch (err) {
-      notify.notify().error(err.message);
+      notify.error(err instanceof Error ? err.message : String(err));
     }
   };
 
-  const handleSave = async (formData) => {
+  const handleSave = async (formData: ArticleFormValues) => {
     // 验证
     if (!formData.title) {
-      notify.notify().error('标题必填');
+      notify.error('标题必填');
       return;
     }
     if (formData.content_type === 'markdown' && !formData.content) {
-      notify.notify().error('Markdown 内容必填');
+      notify.error('Markdown 内容必填');
       return;
     }
     if (formData.content_type === 'pdf' && !formData.pdf_filename) {
-      notify.notify().error('PDF 文件必填');
+      notify.error('PDF 文件必填');
       return;
     }
     if (formData.tags && !/^[一-龥a-zA-Z0-9_,\-\s]+$/.test(formData.tags)) {
-      notify.notify().error('标签格式不合法');
+      notify.error('标签格式不合法');
       return;
     }
 
     try {
       if (editId) {
         await updateArticle(editId, formData);
-        notify.notify().success('文章更新成功');
+        notify.success('文章更新成功');
       } else {
         await createArticle(formData);
-        notify.notify().success('文章创建成功');
+        notify.success('文章创建成功');
       }
       setEditDialogOpen(false);
       setEditingArticle(defaultArticle);
       setEditId(null);
     } catch (err) {
-      notify.notify().error(err.message);
+      notify.error(err instanceof Error ? err.message : String(err));
     }
   };
 
@@ -134,18 +152,18 @@ export default function ArticlesManager() {
     try {
       if (deleteConfirm.type === 'single') {
         await deleteArticle(deleteConfirm.id);
-        notify.notify().success('文章删除成功');
+        notify.success('文章删除成功');
       } else if (deleteConfirm.type === 'batch') {
         await batchDeleteArticles(selectedIds);
         setSelectedIds([]);
-        notify.notify().success('批量删除成功');
+        notify.success('批量删除成功');
       }
     } catch (err) {
-      notify.notify().error(err.message);
+      notify.error(err instanceof Error ? err.message : String(err));
     }
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = (id: number) => {
     setDeleteConfirm({ type: 'single', id });
   };
 
@@ -155,15 +173,15 @@ export default function ArticlesManager() {
   };
 
   // ========== 批量导入 ==========
-  const handleImport = async (files) => {
+  const handleImport = async (files: File[]): Promise<ArticleImportResult> => {
     try {
       const result = await importMarkdown(files);
-      const stats = result || {};
+      const stats: ArticleImportStats = result || {};
       const successCount = (stats.markdown || 0) + (stats.pdf || 0);
-      notify.notify().success(`成功导入 ${successCount} 篇文章`);
+      notify.success(`成功导入 ${successCount} 篇文章`);
       return { success: successCount, failed: (stats.failed || []).length };
     } catch (err) {
-      notify.notify().error(err.message);
+      notify.error(err instanceof Error ? err.message : String(err));
       return { success: 0, failed: files.length };
     }
   };
@@ -173,32 +191,32 @@ export default function ArticlesManager() {
     <Box>
       {/* 工具栏 */}
       <Box sx={{ mb: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-        <Button variant="contained" startIcon={<Add />} onClick={handleCreate}>
+        <PixelButton variant="contained" startIcon={<Add />} onClick={handleCreate}>
           新建文章
-        </Button>
-        <Button
+        </PixelButton>
+        <PixelButton
           variant="outlined"
           startIcon={<Upload />}
           onClick={() => setImportDialogOpen(true)}
         >
           批量导入
-        </Button>
-        <Button
+        </PixelButton>
+        <PixelButton
           variant="outlined"
           startIcon={<SettingsSuggest />}
           onClick={() => setAiSettingsOpen(true)}
         >
           AI 设置
-        </Button>
+        </PixelButton>
         {selectedIds.length > 0 && (
-          <Button
+          <PixelButton
             variant="outlined"
             color="error"
             startIcon={<Delete />}
             onClick={handleBatchDelete}
           >
             删除选中 ({selectedIds.length})
-          </Button>
+          </PixelButton>
         )}
       </Box>
 
@@ -211,8 +229,8 @@ export default function ArticlesManager() {
         selectedIds={selectedIds}
         onSelectionChange={setSelectedIds}
         pagination={pagination}
-        onPageChange={(page) => fetchArticles({ page })}
-        onRowsPerPageChange={(perPage) => fetchArticles({ page: 1, perPage })}
+        onPageChange={(page: number) => fetchArticles({ page })}
+        onRowsPerPageChange={(perPage: number) => fetchArticles({ page: 1, perPage })}
       />
 
       {/* 编辑对话框（精简为 5 个 props）*/}
@@ -242,7 +260,7 @@ export default function ArticlesManager() {
       />
 
       {/* 删除确认对话框 */}
-      <ConfirmDialog
+      <PixelConfirmDialog
         open={Boolean(deleteConfirm)}
         title={deleteConfirm?.type === 'batch' ? '批量删除确认' : '确认删除'}
         message={deleteConfirm?.type === 'batch'

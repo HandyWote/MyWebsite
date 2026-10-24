@@ -1,29 +1,45 @@
-import { api, API_ENDPOINTS } from '@/config/api';
+import { browserApi } from './browser';
+import { API_ENDPOINTS } from './endpoints';
+import type { CommentPage } from './types';
 
-const { ADMIN_COMMENTS, DELETE_COMMENT, COMMENT_STATUS, COMMENT_EXPORT } =
-  API_ENDPOINTS.ADMIN;
+/** 评论列表查询参数：page/perPage 必填（分页由 store 持有），筛选可空。 */
+export interface CommentListParams {
+  page: number;
+  perPage: number;
+  searchTerm?: string;
+  statusFilter?: string;
+}
 
 /** 评论领域 API：纯函数层，store 只做状态编排 */
 export const commentApi = {
-  fetchComments: ({ page, perPage, searchTerm = '', statusFilter = '' } = {}) => {
+  fetchComments: ({
+    page,
+    perPage,
+    searchTerm = '',
+    statusFilter = '',
+  }: CommentListParams): Promise<CommentPage> => {
     const params = new URLSearchParams({
-      page: page.toString(),
-      per_page: perPage.toString(),
+      page: String(page),
+      per_page: String(perPage),
     });
     if (searchTerm) params.append('search', searchTerm);
     if (statusFilter) params.append('status', statusFilter);
-    return api.get(`${ADMIN_COMMENTS}?${params}`);
+    return browserApi.get<CommentPage>(`${API_ENDPOINTS.ADMIN.ADMIN_COMMENTS}?${params}`);
   },
 
-  deleteComment: (id) => api.del(DELETE_COMMENT(id)),
+  deleteComment: (id: number | string): Promise<void> =>
+    browserApi.del<void>(API_ENDPOINTS.ADMIN.DELETE_COMMENT(id)),
 
-  updateCommentStatus: (commentId, status) =>
-    api.put(COMMENT_STATUS(commentId), { status }),
+  updateCommentStatus: (commentId: number | string, status: string): Promise<void> =>
+    browserApi.put<void>(API_ENDPOINTS.ADMIN.COMMENT_STATUS(commentId), { status }),
 
-  exportComments: ({ searchTerm = '', statusFilter = '' } = {}) => {
+  exportComments: ({
+    searchTerm = '',
+    statusFilter = '',
+  }: Omit<CommentListParams, 'page' | 'perPage'> = {}): Promise<Blob> => {
     const params = new URLSearchParams();
     if (searchTerm) params.append('search', searchTerm);
     if (statusFilter) params.append('status', statusFilter);
-    return api.download(`${COMMENT_EXPORT()}?${params}`);
+    return browserApi.download(`${API_ENDPOINTS.ADMIN.COMMENT_EXPORT()}?${params}`);
   },
 };

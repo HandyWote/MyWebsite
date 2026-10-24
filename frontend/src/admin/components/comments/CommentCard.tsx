@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type MouseEvent, type ReactElement } from 'react';
 import {
   Card,
   CardContent,
@@ -12,6 +12,7 @@ import {
   Menu,
   MenuItem,
 } from '@mui/material';
+import type { CardProps } from '@mui/material';
 import {
   MoreVert as MoreVertIcon,
   Visibility as VisibilityIcon,
@@ -23,6 +24,7 @@ import {
   CalendarToday as CalendarIcon,
   Delete as DeleteIcon,
 } from '@mui/icons-material';
+import type { Comment } from '@/api/types';
 import { formatDateTime } from '../../../utils/formatDate';
 
 // 评论状态枚举
@@ -30,10 +32,21 @@ export const COMMENT_STATUS = {
   NORMAL: 'normal',
   PENDING: 'pending',
   SPAM: 'spam',
-};
+} as const;
+
+export type CommentStatus = (typeof COMMENT_STATUS)[keyof typeof COMMENT_STATUS];
+
+/** 状态标签配色：取 MUI Chip 允许的语义色。 */
+type CommentStatusColor = 'success' | 'warning' | 'error';
+
+interface CommentStatusConfig {
+  label: string;
+  color: CommentStatusColor;
+  icon: ReactElement;
+}
 
 // 评论状态配置
-const STATUS_CONFIG = {
+const STATUS_CONFIG: Record<string, CommentStatusConfig> = {
   [COMMENT_STATUS.NORMAL]: {
     label: '正常',
     color: 'success',
@@ -51,30 +64,44 @@ const STATUS_CONFIG = {
   },
 };
 
-export const getCommentStatusConfig = (status) =>
-  STATUS_CONFIG[status] || STATUS_CONFIG[COMMENT_STATUS.NORMAL];
+export const getCommentStatusConfig = (status?: string): CommentStatusConfig =>
+  (status && STATUS_CONFIG[status]) || STATUS_CONFIG[COMMENT_STATUS.NORMAL];
+
+export interface CommentCardProps extends CardProps {
+  /** 单条评论；后端仍在加载（null）时不渲染。 */
+  comment: Comment | null;
+  onView: (comment: Comment) => void;
+  onDelete: (comment: Comment) => void;
+  onStatusChange: (commentId: number, status: string) => void;
+}
 
 /**
  * CommentCard - 单条评论卡片
  * 纯展示 + 交互组件，通过 props 接收数据和回调。
  */
-export default function CommentCard({ comment, onView, onDelete, onStatusChange, ...props }) {
-  const [anchorEl, setAnchorEl] = useState(null);
+export default function CommentCard({
+  comment,
+  onView,
+  onDelete,
+  onStatusChange,
+  ...props
+}: CommentCardProps) {
+  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const [expanded, setExpanded] = useState(false);
 
   if (!comment) return null;
 
   const statusConfig = getCommentStatusConfig(comment.status);
 
-  const handleMenuOpen = (event) => setAnchorEl(event.currentTarget);
+  const handleMenuOpen = (event: MouseEvent<HTMLElement>) => setAnchorEl(event.currentTarget);
   const handleMenuClose = () => setAnchorEl(null);
 
-  const handleStatusChange = (status) => {
+  const handleStatusChange = (status: CommentStatus) => {
     onStatusChange(comment.id, status);
     handleMenuClose();
   };
 
-  const formatDate = (dateString) => formatDateTime(dateString);
+  const formatDate = (dateString: string | undefined) => formatDateTime(dateString ?? '');
 
   return (
     <Card sx={{ overflow: 'hidden' }} {...props}>
@@ -86,7 +113,9 @@ export default function CommentCard({ comment, onView, onDelete, onStatusChange,
 
           <Box sx={{ flex: 1, minWidth: 0 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, flexWrap: 'wrap' }}>
-              <Typography variant="subtitle1" fontWeight="bold" noWrap>
+              {/* MUI v9 已废弃 system props：原先的 fontWeight="bold" 只会落成一个
+                  不生效的 DOM 属性，转换时移除；要真加粗需显式写 sx。 */}
+              <Typography variant="subtitle1" noWrap>
                 {comment.author}
               </Typography>
               <Chip

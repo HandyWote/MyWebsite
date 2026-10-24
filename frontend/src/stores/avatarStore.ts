@@ -1,9 +1,22 @@
-// frontend/src/stores/avatarStore.js
+// frontend/src/stores/avatarStore.ts
 import { create } from 'zustand';
 import { avatarApi } from '@/api/avatarApi';
 import { withLoading } from '@/api/withLoading';
+import type { Avatar } from '@/api/types';
 
-const useAvatarStore = create((set, get) => ({
+export interface AvatarState {
+  /** 头像列表：url 由 store 依据 filename 生成（后端只存文件名）。 */
+  avatars: Avatar[];
+  loading: boolean;
+  error: string | null;
+
+  fetchAvatars: () => Promise<void>;
+  uploadAvatar: (file: File) => Promise<void>;
+  /** 返回删除接口的响应（avatarsManager 只取提示文案，缺省时用固定文案）。 */
+  deleteAvatar: (avatarId: number) => Promise<Avatar>;
+}
+
+const useAvatarStore = create<AvatarState>()((set, get) => ({
   avatars: [],
   loading: false,
   error: null,
@@ -11,9 +24,9 @@ const useAvatarStore = create((set, get) => ({
   fetchAvatars: async () =>
     withLoading(set, 'loading', 'error', async () => {
       const data = await avatarApi.fetchAll();
-      const arr = (data || []).map(a => {
-        const url = a.filename ? avatarApi.publicUrl(a.filename) : undefined;
-        return { ...a, url };
+      const arr = (data || []).map((avatar) => {
+        const url = avatar.filename ? avatarApi.publicUrl(avatar.filename) : undefined;
+        return { ...avatar, url };
       });
       set({ avatars: arr });
     }),
@@ -27,19 +40,6 @@ const useAvatarStore = create((set, get) => ({
     const data = await avatarApi.remove(avatarId);
     await get().fetchAvatars();
     return data;
-  },
-
-  setCurrent: async (avatarId) => {
-    await avatarApi.setCurrent(avatarId);
-    await get().fetchAvatars();
-  },
-
-  reorderAvatars: async (newOrder) => {
-    set({ avatars: newOrder });
-    // 设第一个为当前头像
-    if (newOrder.length > 0) {
-      await get().setCurrent(newOrder[0].id);
-    }
   },
 }));
 

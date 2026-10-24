@@ -1,4 +1,3 @@
-import type { ComponentType, ReactNode } from "react";
 import type { Metadata } from "next";
 import { connection } from "next/server";
 import { Box, Typography, type SxProps, type Theme } from "@mui/material";
@@ -6,20 +5,7 @@ import { GAME_REGISTRY } from "@/games/registry";
 import { pageMetadata } from "@/seo/site";
 import { PublicShell } from "@/components/public/PublicShell";
 import { RevealList } from "@/components/public/RevealList";
-import PixelCardBase from "@/components/pixel/ui/PixelCard";
-
-// PixelCard.jsx 无显式 props 类型，未解构的 title/subtitle/footer 被推断为必填；
-// 这里按本项目实际用法（内链卡片）声明 props，避免在 TS 调用处误报。
-type PixelCardLinkProps = {
-	component: "a";
-	href: string;
-	sx?: SxProps<Theme>;
-	children?: ReactNode;
-	/** e2e 探针定位：data-game-card={game.id}。 */
-	"data-game-card"?: string;
-};
-
-const PixelCard = PixelCardBase as unknown as ComponentType<PixelCardLinkProps>;
+import { PixelCard } from "@/components/pixel";
 
 export const metadata: Metadata = pageMetadata({
 	title: "Games",

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Box, CircularProgress, Stack, Typography } from '@mui/material';
 import { Check, PenTool, RotateCw, X } from 'lucide-react';
-import { PixelButton } from '../pixelProps';
+import { PixelButton } from '@/components/pixel';
 import useNotification from '@/hooks/useNotification';
 import { ApiError } from '@/api/browser';
 import { drawingApi } from '@/api/drawingApi';

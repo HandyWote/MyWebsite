@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import type { ChangeEvent } from "react";
 import {
 	Typography,
 	Box,
@@ -9,8 +10,10 @@ import {
 	Snackbar,
 } from "@mui/material";
 import { Send as SendIcon } from "@mui/icons-material";
-import { api, API_ENDPOINTS, ApiError } from "../../config/api";
+import { API_ENDPOINTS } from "../../api/endpoints";
+import { ApiError, browserApi } from "../../api/browser";
 import { authApi } from "../../api/authApi";
+import type { Comment, CommentPage } from "../../api/types";
 import { formatDateTime } from "../../utils/formatDate";
 import {
 	PixelCard,
@@ -26,7 +29,12 @@ import { useSession } from "../../hooks/useSession";
 // 与画板草稿 game:drawing:draft 同模式：防抖自动保存、隐私模式静默降级。
 const DRAFT_SAVE_DEBOUNCE_MS = 500;
 
-function loadCommentDraft(articleId) {
+interface CommentDraft {
+	articleId: number;
+	content: string;
+}
+
+function loadCommentDraft(articleId: number): string | null {
 	if (typeof window === "undefined") return null;
 	try {
 		return window.localStorage.getItem(`comment:draft:${articleId}`);
@@ -35,7 +43,7 @@ function loadCommentDraft(articleId) {
 	}
 }
 
-function saveCommentDraft(articleId, content) {
+function saveCommentDraft(articleId: number, content: string): void {
 	if (typeof window === "undefined") return;
 	try {
 		const key = `comment:draft:${articleId}`;
@@ -51,9 +59,16 @@ function saveCommentDraft(articleId, content) {
 
 // 整页跳转 GitHub 登录：模块级函数持有对 window.location 的修改，
 // 便于测试桩替换（模式同 TerminalCommandBar）。
-function redirectToGithubLogin() {
+function redirectToGithubLogin(): void {
 	const redirectTo = `${window.location.pathname}${window.location.search}`;
 	window.location.href = authApi.buildGithubAuthorizeUrl(redirectTo);
+}
+
+export interface CommentSectionProps {
+	/** 文章 id，决定评论接口与草稿命名空间。 */
+	articleId: number;
+	/** 演示模式：不发请求、不允许输入（仅展示占位与提示）。 */
+	demoMode?: boolean;
 }
 
 /**
@@ -62,13 +77,16 @@ function redirectToGithubLogin() {
  * 评论需登录（P2 决策 1/3/5）：guest 提交只弹登录提醒（不发请求），
  * 草稿自动保存/恢复；身份一律来自会话（GitHub 或 admin），无手填昵称。
  */
-export default function CommentSection({ articleId, demoMode = false }) {
-	const [comments, setComments] = useState([]);
+export default function CommentSection({
+	articleId,
+	demoMode = false,
+}: CommentSectionProps) {
+	const [comments, setComments] = useState<Comment[]>([]);
 	const [commentsLoading, setCommentsLoading] = useState(false);
 	const [submittingComment, setSubmittingComment] = useState(false);
 	const [newComment, setNewComment] = useState("");
 	const [signInOpen, setSignInOpen] = useState(false);
-	const { showNotification, ...snackbarProps } = useNotification();
+	const notify = useNotification();
 	const session = useSession();
 
 	const authedUser = session.status === "authed" ? session.user : null;
@@ -78,12 +96,12 @@ export default function CommentSection({ articleId, demoMode = false }) {
 			? authedUser.display_name || authedUser.username || ""
 			: "";
 
-	const fetchComments = useCallback(async () => {
+	const fetchComments = useCallback(async (): Promise<void> => {
 		if (!articleId || demoMode) return;
 
 		try {
 			setCommentsLoading(true);
-			const payload = await api.get(
+			const payload = await browserApi.get<CommentPage>(
 				API_ENDPOINTS.PUBLIC.ARTICLE_COMMENTS(articleId),
 			);
 			setComments(payload?.comments || []);
@@ -113,7 +131,7 @@ export default function CommentSection({ articleId, demoMode = false }) {
 	}, [articleId, demoMode]);
 
 	// 草稿：输入防抖自动保存；卸载时 flush 防抖窗口内的内容（路由切换兜底）。
-	const draftRef = useRef(null);
+	const draftRef = useRef<CommentDraft | null>(null);
 	useEffect(() => {
 		draftRef.current = { articleId, content: newComment };
 		if (demoMode) return;
@@ -130,7 +148,7 @@ export default function CommentSection({ articleId, demoMode = false }) {
 		};
 	}, []);
 
-	const handleSubmitComment = async () => {
+	const handleSubmitComment = async (): Promise<void> => {
 		const content = newComment.trim();
 		if (!content || demoMode) return;
 
@@ -142,36 +160,40 @@ export default function CommentSection({ articleId, demoMode = false }) {
 
 		try {
 			setSubmittingComment(true);
-			await api.post(API_ENDPOINTS.PUBLIC.CREATE_COMMENT(articleId), {
-				author: isGithub ? githubAuthor : authedUser.username,
-				email: authedUser.email || "",
-				avatar_url: isGithub ? authedUser.avatar_url || "" : "",
-				content,
-			});
+			await browserApi.post<unknown>(
+				API_ENDPOINTS.PUBLIC.CREATE_COMMENT(articleId),
+				{
+					author: isGithub ? githubAuthor : authedUser.username,
+					// 会话用户（/api/auth/me、登录响应）从不带 email，字段恒为空串；
+					// 保留字段是为了后端请求体契约不变（后端按 email 做风控分类）。
+					email: "",
+					avatar_url: isGithub ? authedUser.avatar_url || "" : "",
+					content,
+				},
+			);
 
 			setNewComment("");
 			saveCommentDraft(articleId, "");
 			await fetchComments();
-			showNotification("评论发布成功！", "success");
+			notify.success("评论发布成功！");
 		} catch (error) {
 			if (error instanceof ApiError && error.status === 429) {
-				showNotification(
+				notify.warning(
 					error.message || "评论发布频率过高，请稍后再试",
-					"warning",
 				);
 			} else if (error instanceof ApiError && error.status === 401) {
 				// 会话过期竞态兜底：展示服务端消息（browserRequest 已 clearAuth 并回首页）。
-				showNotification(error.message || "请先登录后再评论", "warning");
+				notify.warning(error.message || "请先登录后再评论");
 			} else {
 				console.error("提交评论失败:", error);
-				showNotification("评论发布失败，请稍后重试", "error");
+				notify.error("评论发布失败，请稍后重试");
 			}
 		} finally {
 			setSubmittingComment(false);
 		}
 	};
 
-	const handleSignIn = () => {
+	const handleSignIn = (): void => {
 		// 跳转前立即落盘：登录跳回后草稿原样恢复（防抖窗口内的输入不丢）。
 		saveCommentDraft(articleId, newComment);
 		redirectToGithubLogin();
@@ -248,7 +270,9 @@ export default function CommentSection({ articleId, demoMode = false }) {
 						rows={3}
 						label="$ message"
 						value={newComment}
-						onChange={(e) => setNewComment(e.target.value)}
+						onChange={(
+							e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+						) => setNewComment(e.target.value)}
 						disabled={demoMode}
 						sx={{ mb: 2 }}
 					/>
@@ -291,15 +315,16 @@ export default function CommentSection({ articleId, demoMode = false }) {
 											mb: 1,
 										}}
 									>
+										{/* MUI v9 已废弃 system props：原先的 fontWeight="bold" 只会落成一个
+										    不生效的 DOM 属性，转换时移除（要真加粗需显式写 sx）。 */}
 										<Typography
 											variant="subtitle2"
-											fontWeight="bold"
 											sx={{ fontFamily: "monospace" }}
 										>
 											{comment.author}
 										</Typography>
 										<Typography variant="caption" color="text.secondary">
-											{formatDateTime(comment.created_at)}
+											{formatDateTime(comment.created_at ?? "")}
 										</Typography>
 									</Box>
 									<Typography
@@ -353,10 +378,10 @@ export default function CommentSection({ articleId, demoMode = false }) {
 			</PixelDialog>
 
 			<Snackbar
-				open={snackbarProps.snackbarOpen}
+				open={notify.open}
 				autoHideDuration={3000}
-				onClose={snackbarProps.hideNotification}
-				message={snackbarProps.snackbarMessage}
+				onClose={notify.hide}
+				message={notify.message}
 			/>
 		</>
 	);

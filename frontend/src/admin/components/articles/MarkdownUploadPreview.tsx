@@ -1,19 +1,31 @@
-import { useRef, useState } from 'react';
-import { Box, Button, Chip, Stack, Typography} from '@mui/material';
+import { useRef, useState, type ChangeEvent } from 'react';
+import { Box, Chip, Stack, Typography} from '@mui/material';
+import { PixelButton } from '@/components/pixel';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import 'katex/dist/katex.min.css';
 
+/** 上传/读取失败的提示通道（severity 缺省 error）。 */
+export type UploadErrorReporter = (message: string, severity?: 'error' | 'warning') => void;
+
+export interface MarkdownUploadPreviewProps {
+  /** 当前正文（受控）。 */
+  content: string;
+  onContentChange: (value: string) => void;
+  onError?: UploadErrorReporter;
+  /** 选中 .md 后回调去掉后缀的文件名（用于自动填标题）。 */
+  onFileNameChange?: (nameWithoutExt: string) => void;
+}
 
 const MarkdownUploadPreview = ({
   content,
   onContentChange,
   onError,
   onFileNameChange
-}) => {
-  const inputRef = useRef(null);
+}: MarkdownUploadPreviewProps) => {
+  const inputRef = useRef<HTMLInputElement>(null);
   const [fileName, setFileName] = useState('');
 
-  const handleUpload = e => {
+  const handleUpload = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -72,7 +84,7 @@ const MarkdownUploadPreview = ({
             </Typography>
           </Box>
           <Box>
-            <Button variant="outlined" component="label" startIcon={<UploadFileIcon />}>
+            <PixelButton variant="outlined" component="label" startIcon={<UploadFileIcon />}>
               选择 Markdown 文件
               <input
                 key={content ? 'loaded' : 'empty'}
@@ -82,7 +94,7 @@ const MarkdownUploadPreview = ({
                 hidden
                 onChange={handleUpload}
               />
-            </Button>
+            </PixelButton>
           </Box>
         </Stack>
         <Box sx={{ mt: 1, display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>

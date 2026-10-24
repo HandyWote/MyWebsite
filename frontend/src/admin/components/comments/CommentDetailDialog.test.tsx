@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import type { Comment } from '@/api/types';
 import CommentDetailDialog from './CommentDetailDialog';
 
 const mockComment = {
@@ -20,17 +21,29 @@ describe('CommentDetailDialog', () => {
   });
 
   it('comment 为 null 时不渲染', () => {
-    render(<CommentDetailDialog comment={null} open={true} onClose={vi.fn()} />);
+    render(<CommentDetailDialog comment={null} open={true} onClose={vi.fn<() => void>()} />);
     expect(screen.queryByText('评论详情')).not.toBeInTheDocument();
   });
 
   it('open=false 时不渲染', () => {
-    render(<CommentDetailDialog comment={mockComment} open={false} onClose={vi.fn()} />);
+    render(
+      <CommentDetailDialog
+        comment={mockComment as Comment}
+        open={false}
+        onClose={vi.fn<() => void>()}
+      />
+    );
     expect(screen.queryByText('评论详情')).not.toBeInTheDocument();
   });
 
   it('open=true 且 comment 存在时渲染详情', () => {
-    render(<CommentDetailDialog comment={mockComment} open={true} onClose={vi.fn()} />);
+    render(
+      <CommentDetailDialog
+        comment={mockComment as Comment}
+        open={true}
+        onClose={vi.fn<() => void>()}
+      />
+    );
     expect(screen.getByText('评论详情')).toBeInTheDocument();
     expect(screen.getByText('测试用户')).toBeInTheDocument();
     expect(screen.getByText('test@example.com')).toBeInTheDocument();
@@ -40,8 +53,8 @@ describe('CommentDetailDialog', () => {
   });
 
   it('渲染关闭按钮', () => {
-    const onClose = vi.fn();
-    render(<CommentDetailDialog comment={mockComment} open={true} onClose={onClose} />);
+    const onClose = vi.fn<() => void>();
+    render(<CommentDetailDialog comment={mockComment as Comment} open={true} onClose={onClose} />);
     fireEvent.click(screen.getByText('关闭'));
     expect(onClose).toHaveBeenCalled();
   });
@@ -51,7 +64,7 @@ describe('CommentDetailDialog', () => {
       <CommentDetailDialog
         comment={{ ...mockComment, email: '' }}
         open={true}
-        onClose={vi.fn()}
+        onClose={vi.fn<() => void>()}
       />
     );
     expect(screen.getByText('未提供')).toBeInTheDocument();
@@ -62,7 +75,7 @@ describe('CommentDetailDialog', () => {
       <CommentDetailDialog
         comment={{ ...mockComment, user_agent: '' }}
         open={true}
-        onClose={vi.fn()}
+        onClose={vi.fn<() => void>()}
       />
     );
     expect(screen.queryByText('用户代理')).not.toBeInTheDocument();
@@ -71,9 +84,9 @@ describe('CommentDetailDialog', () => {
   it('有 user_agent 时显示用户代理信息', () => {
     render(
       <CommentDetailDialog
-        comment={mockComment}
+        comment={mockComment as Comment}
         open={true}
-        onClose={vi.fn()}
+        onClose={vi.fn<() => void>()}
       />
     );
     expect(screen.getByText('用户代理')).toBeInTheDocument();

@@ -1,9 +1,26 @@
 import { Box, Typography } from '@mui/material';
+import type { BoxProps } from '@mui/material/Box';
+import type { ReactNode } from 'react';
 import { PixelCard, PixelAvatar, PixelTypography, TerminalLine } from '../index';
 
 /**
  * PixelSidebar - 终端风格侧边栏组件
+ *
+ * 类型: 复用 MUI BoxProps（sx / children 等），额外补充 title / avatar /
+ * name / description 四个可选 props（都有默认值或可缺省）。
  */
+// `title` 同时是 HTML 的全局属性（string），先剔除后再声明为 ReactNode。
+export type PixelSidebarProps = Omit<BoxProps, 'title'> & {
+  /** 顶栏终端提示文案，默认 '~/about'。 */
+  title?: ReactNode;
+  /** 头像地址；不给则不渲染头像。 */
+  avatar?: string;
+  /** 姓名（同时作为头像 alt），默认 'HandyWote'。 */
+  name?: string;
+  /** 一句话简介。 */
+  description?: ReactNode;
+};
+
 export function PixelSidebar({
   title = '~/about',
   children,
@@ -11,7 +28,7 @@ export function PixelSidebar({
   name = 'HandyWote',
   description = '汕头大学 | 软件工程',
   ...props
-}) {
+}: PixelSidebarProps) {
   return (
     <Box
       {...props}

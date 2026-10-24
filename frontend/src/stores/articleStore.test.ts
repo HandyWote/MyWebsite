@@ -1,38 +1,36 @@
-// frontend/src/stores/articleStore.test.js
+// frontend/src/stores/articleStore.test.ts
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { act } from "@testing-library/react";
 import useArticleStore from "./articleStore";
 
-// Mock config/api
-vi.mock("@/config/api", () => {
-	const adminEndpoints = {
-		ARTICLES: "/api/admin/articles",
-		ARTICLE_DETAIL: (id) => `/api/admin/articles/${id}`,
-		ARTICLE_BATCH_DELETE: "/api/admin/articles/batch-delete",
-	};
-	return {
-		api: {
-			get: vi.fn(),
-			post: vi.fn(),
-			put: vi.fn(),
-			del: vi.fn(),
-			upload: vi.fn(),
-		},
-		uploadFile: vi.fn(),
-		API_ENDPOINTS: {
-			PUBLIC: {},
-			ADMIN: adminEndpoints,
-		},
-		default: {
-			API_ENDPOINTS: {
-				PUBLIC: {},
-				ADMIN: adminEndpoints,
-			},
-		},
-	};
-});
+/** 传输层 mock：域模块（articleApi）只依赖 browserApi，所有断言都从这组 vi.fn() 读取。 */
+const apiMock = vi.hoisted(() => ({
+	get: vi.fn(),
+	post: vi.fn(),
+	put: vi.fn(),
+	del: vi.fn(),
+	upload: vi.fn(),
+	uploadFiles: vi.fn(),
+	download: vi.fn(),
+}));
 
-import { api } from "@/config/api";
+vi.mock('@/api/browser', () => ({
+	browserApi: apiMock,
+	unwrapApiPayload: (r?: { data?: unknown }) => r?.data ?? r,
+	getApiMessage: (r?: { msg?: string; message?: string }, fallback = '') =>
+		r?.msg || r?.message || fallback,
+	ApiError: class ApiError extends Error {
+		status: number;
+		constructor(status: number, message: string) {
+			super(message);
+			this.status = status;
+			this.name = 'ApiError';
+		}
+	},
+}));
+
+/** 与线上模块同名，断言读起来与实现一致。 */
+const api = apiMock;
 
 describe("articleStore (slim)", () => {
 	beforeEach(() => {
@@ -88,7 +86,7 @@ describe("articleStore (slim)", () => {
 
 		it("应该按分页参数拉取对应页的数据", async () => {
 			// mock 按请求参数返回不同数据：store 请求第几页，列表就反映第几页内容
-			api.get.mockImplementation((url) => {
+			api.get.mockImplementation((url: string) => {
 				const params = new URLSearchParams(url.split("?")[1]);
 				if (params.get("page") === "2") {
 					return Promise.resolve({
@@ -116,7 +114,7 @@ describe("articleStore (slim)", () => {
 		it("应该按 perPage 和 search 拉取对应的数据", async () => {
 			// mock 按 page + per_page + search 三个参数同时分流：
 			// store 丢失 per_page 或 search 任一参数，都会落到默认分支，列表断言必红
-			api.get.mockImplementation((url) => {
+			api.get.mockImplementation((url: string) => {
 				const params = new URLSearchParams(url.split("?")[1]);
 				if (
 					params.get("page") === "2" &&
@@ -245,7 +243,7 @@ describe("articleStore (slim)", () => {
 	describe("reset", () => {
 		it("应该重置所有状态", () => {
 			useArticleStore.setState({
-				articles: [{ id: 1 }],
+				articles: [{ id: 1, title: "" }],
 				loading: true,
 				error: "Some error",
 				pagination: { page: 5, perPage: 20, total: 100 },

@@ -1,7 +1,6 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, type ChangeEvent } from 'react';
 import {
   Box,
-  Button,
   Stack,
   Typography,
   Chip,
@@ -10,13 +9,24 @@ import {
   IconButton,
   Tooltip
 } from '@mui/material';
+import { PixelButton } from '@/components/pixel';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import DeleteIcon from '@mui/icons-material/Delete';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
-import { getApiUrl } from '../../../config/api';
+import { API_ENDPOINTS } from '../../../api/endpoints';
 import PdfViewerOnCanvas from '../../../components/PdfViewerOnCanvas';
 import { normalizeBrowserPdfUrl } from '../../../utils/pdfUrl';
+
+export interface PdfUploadPreviewProps {
+  /** 已上传的 PDF 文件名（空表示未上传）。 */
+  filename?: string;
+  /** 选好 .pdf 后交给容器上传。 */
+  onUpload?: (file: File) => void;
+  uploading?: boolean;
+  onClear?: () => void;
+  errorMessage?: string;
+}
 
 const PdfUploadPreview = ({
   filename,
@@ -24,13 +34,13 @@ const PdfUploadPreview = ({
   uploading = false,
   onClear,
   errorMessage
-}) => {
-  const inputRef = useRef(null);
+}: PdfUploadPreviewProps) => {
+  const inputRef = useRef<HTMLInputElement>(null);
   const [localError, setLocalError] = useState('');
-  const pdfUrl = filename ? getApiUrl.articlePdf(filename) : '';
+  const pdfUrl = filename ? API_ENDPOINTS.PUBLIC.ARTICLE_PDF(filename) : '';
   const safePdfUrl = normalizeBrowserPdfUrl(pdfUrl);
 
-  const handleFileChange = (event) => {
+  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -77,7 +87,7 @@ const PdfUploadPreview = ({
             </Typography>
           </Box>
           <Box>
-            <Button
+            <PixelButton
               variant="outlined"
               component="label"
               startIcon={<UploadFileIcon />}
@@ -91,7 +101,7 @@ const PdfUploadPreview = ({
                 hidden
                 onChange={handleFileChange}
               />
-            </Button>
+            </PixelButton>
           </Box>
         </Stack>
 
@@ -152,7 +162,7 @@ const PdfUploadPreview = ({
           }}
         >
           <Typography variant="body2">
-            上传 PDF 文件后，可在此处预览渲染效果。
+            上传 PDF 文件后，可在此预览渲染效果。
           </Typography>
         </Paper>
       )}

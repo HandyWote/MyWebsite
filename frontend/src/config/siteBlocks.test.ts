@@ -3,7 +3,7 @@ import { getBlockContent, SITE_BLOCK_DEFAULTS } from './siteBlocks';
 
 describe('site blocks defaults', () => {
   it('does not keep legacy about block defaults', () => {
-    expect(SITE_BLOCK_DEFAULTS.about).toBeUndefined();
+    expect('about' in SITE_BLOCK_DEFAULTS).toBe(false);
   });
 
   it('returns block defaults when block is missing', () => {

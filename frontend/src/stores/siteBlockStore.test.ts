@@ -1,32 +1,38 @@
-// frontend/src/stores/siteBlockStore.test.js
+// frontend/src/stores/siteBlockStore.test.ts
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { act } from '@testing-library/react';
 import useSiteBlockStore from './siteBlockStore';
 
-vi.mock('@/config/api', () => ({
-  api: {
-    get: vi.fn(),
-    put: vi.fn(),
-    del: vi.fn(),
-    post: vi.fn(),
-    upload: vi.fn(),
-  },
-  uploadFile: vi.fn(),
-  getApiUrl: {
-    adminSiteBlocks: () => '/api/admin/site-blocks',
-  },
-  unwrapApiPayload: (r) => r?.data ?? r,
-  API_ENDPOINTS: {
-    PUBLIC: {},
-    ADMIN: {
-      SITE_BLOCKS: '/api/admin/site-blocks',
-    },
-  },
-  default: {},
+/** 传输层 mock：站点内容域 API 只依赖 browserApi，所有断言都从这组 vi.fn() 读取。 */
+const apiMock = vi.hoisted(() => ({
+  get: vi.fn(),
+  post: vi.fn(),
+  put: vi.fn(),
+  del: vi.fn(),
+  upload: vi.fn(),
+  uploadFiles: vi.fn(),
+  download: vi.fn(),
 }));
 
+vi.mock('@/api/browser', () => ({
+  browserApi: apiMock,
+  unwrapApiPayload: (r?: { data?: unknown }) => r?.data ?? r,
+  getApiMessage: (r?: { msg?: string; message?: string }, fallback = '') =>
+    r?.msg || r?.message || fallback,
+  ApiError: class ApiError extends Error {
+    status: number;
+    constructor(status: number, message: string) {
+      super(message);
+      this.status = status;
+      this.name = 'ApiError';
+    }
+  },
+}));
 vi.mock('@/config/siteBlocks', () => ({
-  getBlockContent: (blocks, name) => {
+  getBlockContent: (
+    blocks: Array<{ name?: string; content?: Record<string, unknown> }> | undefined,
+    name: string,
+  ) => {
     const found = (blocks || []).find((b) => b?.name === name);
     return found?.content || {};
   },
@@ -47,7 +53,8 @@ vi.mock('@/config/siteBlocks', () => ({
   },
 }));
 
-import { api } from '@/config/api';
+/** 与线上模块同名，断言读起来与实现一致。 */
+const api = apiMock;
 
 describe('siteBlockStore', () => {
   beforeEach(() => {
@@ -60,6 +67,7 @@ describe('siteBlockStore', () => {
       loading: false,
       saving: false,
       error: null,
+      loaded: false,
     });
     vi.clearAllMocks();
   });
@@ -72,6 +80,7 @@ describe('siteBlockStore', () => {
       expect(state.loading).toBe(false);
       expect(state.saving).toBe(false);
       expect(state.error).toBe(null);
+      expect(state.loaded).toBe(false);
     });
   });
 
@@ -91,6 +100,17 @@ describe('siteBlockStore', () => {
       expect(state.form.home.title).toBe('My Title');
       expect(state.form.sidebar.social_links).toHaveLength(1);
       expect(state.loading).toBe(false);
+      expect(state.loaded).toBe(true);
+    });
+
+    it('获取失败时应把 loaded 置为 false（表单不可信，禁止保存）', async () => {
+      api.get.mockRejectedValueOnce(new Error('Fetch failed'));
+
+      await expect(
+        useSiteBlockStore.getState().fetchBlocks()
+      ).rejects.toThrow('Fetch failed');
+
+      expect(useSiteBlockStore.getState().loaded).toBe(false);
     });
 
     it('应该处理获取失败', async () => {
@@ -131,6 +151,7 @@ describe('siteBlockStore', () => {
       api.put.mockResolvedValueOnce({});
 
       useSiteBlockStore.setState({
+        loaded: true,
         form: {
           home: { title: 'My Title', subtitle: 'Sub', github_calendar_url: 'https://...' },
           sidebar: { social_links: [] },
@@ -153,12 +174,36 @@ describe('siteBlockStore', () => {
     it('应该处理保存失败', async () => {
       api.put.mockRejectedValueOnce(new Error('Save failed'));
 
+      useSiteBlockStore.setState({ loaded: true });
+
       await expect(
         useSiteBlockStore.getState().saveBlocks()
       ).rejects.toThrow('Save failed');
 
       expect(useSiteBlockStore.getState().saving).toBe(false);
       expect(useSiteBlockStore.getState().error).toBe('Save failed');
+    });
+
+    it('未成功加载时拒绝保存且不发起 PUT', async () => {
+      await expect(
+        useSiteBlockStore.getState().saveBlocks()
+      ).rejects.toThrow(/尚未加载成功/);
+
+      expect(api.put).not.toHaveBeenCalled();
+      expect(useSiteBlockStore.getState().saving).toBe(false);
+    });
+
+    it('重新加载失败后已加载标记回落，保存再次被拒绝', async () => {
+      api.get.mockResolvedValueOnce([{ name: 'home', content: { title: 'Real' } }]);
+      await useSiteBlockStore.getState().fetchBlocks();
+      expect(useSiteBlockStore.getState().loaded).toBe(true);
+
+      api.get.mockRejectedValueOnce(new Error('Reload failed'));
+      await expect(useSiteBlockStore.getState().fetchBlocks()).rejects.toThrow('Reload failed');
+
+      expect(useSiteBlockStore.getState().loaded).toBe(false);
+      await expect(useSiteBlockStore.getState().saveBlocks()).rejects.toThrow(/尚未加载成功/);
+      expect(api.put).not.toHaveBeenCalled();
     });
   });
 });
