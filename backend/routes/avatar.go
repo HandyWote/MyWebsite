@@ -2,29 +2,12 @@ package routes
 
 import (
 	"errors"
-	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/handywote/website/models"
 	"github.com/handywote/website/services"
 	"github.com/handywote/website/utils"
 )
-
-func buildUploadedAvatar(filename string) models.Avatar {
-	return models.Avatar{Filename: filename, IsCurrent: true}
-}
-
-func createThenClearCurrent(create func() error, clear func() error) error {
-	if err := create(); err != nil {
-		return fmt.Errorf("create avatar: %w", err)
-	}
-	if err := clear(); err != nil {
-		return fmt.Errorf("clear previous current avatar: %w", err)
-	}
-	return nil
-}
 
 func GetAvatars(c *gin.Context) {
 	avatars, err := avatarService.List(c.Request.Context())
@@ -46,36 +29,6 @@ func GetCurrentAvatar(c *gin.Context) {
 		return
 	}
 	utils.Success(c, avatar)
-}
-
-func SetCurrentAvatar(c *gin.Context) {
-	var avatarID uint
-	if idString := c.Param("id"); idString != "" {
-		if parsed, err := strconv.ParseUint(idString, 10, 32); err == nil {
-			avatarID = uint(parsed)
-		}
-	}
-	if avatarID == 0 {
-		var input struct {
-			AvatarID uint `json:"avatar_id"`
-		}
-		if err := c.ShouldBindJSON(&input); err == nil {
-			avatarID = input.AvatarID
-		}
-	}
-	if avatarID == 0 {
-		utils.ErrorBadRequest(c, "Avatar ID is required")
-		return
-	}
-	if err := avatarService.SetCurrent(c.Request.Context(), avatarID); err != nil {
-		if errors.Is(err, services.ErrAvatarNotFound) {
-			utils.ErrorNotFound(c, "Avatar not found")
-		} else {
-			utils.ErrorInternal(c, "Failed to set current avatar")
-		}
-		return
-	}
-	utils.Success(c, gin.H{"message": "Avatar updated successfully"})
 }
 
 func UploadAvatar(c *gin.Context) {

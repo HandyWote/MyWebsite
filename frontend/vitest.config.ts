@@ -32,16 +32,16 @@ const config: VitestConfig = {
 	test: {
 		environment: "jsdom",
 		globals: true,
-		setupFiles: ["./src/test/setupTests.js"],
+		setupFiles: ["./src/test/setupTests.ts"],
 		include: [
-			"src/**/*.{test,spec}.{js,jsx,ts,tsx}",
-			"app/**/*.{test,spec}.{js,jsx,ts,tsx}",
-			"scripts/**/*.{test,spec}.{js,jsx,ts,tsx}",
+			"src/**/*.{test,spec}.{ts,tsx}",
+			"app/**/*.{test,spec}.{ts,tsx}",
+			"scripts/**/*.{test,spec}.{ts,tsx}",
 		],
 		coverage: {
 			provider: "v8",
 			reporter: ["text", "json", "html"],
-			include: ["src/**/*.{js,jsx,ts,tsx}"],
+			include: ["src/**/*.{ts,tsx}"],
 			exclude: ["src/test/**"],
 		},
 	},

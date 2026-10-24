@@ -174,7 +174,7 @@ export async function getProjects() {
 			API_ENDPOINTS.PUBLIC.SITE_BLOCKS,
 			publicDataPolicy(CACHE_TAGS.siteBlocks),
 		);
-		config = getBlockContent(blocks, "projects_page") as typeof config;
+		config = getBlockContent(blocks, "projects_page");
 	} catch {
 		// The configured defaults keep the projects page useful when profile data is unavailable.
 	}

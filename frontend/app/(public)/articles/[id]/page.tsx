@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { Box, Button, Typography, type CardProps } from "@mui/material";
-import type { ComponentType } from "react";
+import { Box, Button, Typography } from "@mui/material";
 import { CalendarDays, Eye } from "lucide-react";
 import { formatServerDate } from "@/api/publicApi.server";
 import { ServerApiError } from "@/api/server";
@@ -12,7 +11,7 @@ import { CommentSectionClient } from "@/components/public/CommentSectionClient";
 import { MarkdownContent } from "@/components/public/MarkdownContent";
 import { PdfViewerClient } from "@/components/public/PdfViewerClient";
 import PixelChip from "@/components/pixel/ui/PixelChip";
-import PixelCardBase from "@/components/pixel/ui/PixelCard";
+import { PixelCard } from "@/components/pixel";
 import { PublicShell } from "@/components/public/PublicShell";
 import { getArticleForPage } from "@/seo/data.server";
 import {
@@ -21,10 +20,6 @@ import {
 	getArticlePdfUrl,
 	serializeJsonLd,
 } from "@/seo/site";
-
-type PixelCardProps = CardProps & { accentLine?: boolean };
-
-const PixelCard = PixelCardBase as unknown as ComponentType<PixelCardProps>;
 
 export const dynamicParams = true;
 export const revalidate = 86_400;

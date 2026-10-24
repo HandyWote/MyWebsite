@@ -12,10 +12,6 @@ import SocialLinks from "@/components/sidebar/SocialLinks";
 import TechStack from "@/components/sidebar/TechStack";
 import { normalizeGitHubUsername } from "@/utils/github";
 
-type SocialLink = { label?: string; href?: string; value?: string };
-type Education = { school?: string; degree?: string; period?: string };
-type Tech = { name?: string; label?: string };
-
 export async function generateMetadata(): Promise<Metadata> {
 	const { home, avatarUrl } = await getProfileForPage();
 	return pageMetadata({
@@ -30,9 +26,9 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function HomePage() {
 	await connection();
 	const { home, sidebar, avatarUrl } = await getProfileForPage();
-	const socialLinks = (sidebar.social_links as SocialLink[] | undefined) ?? [];
-	const education = (sidebar.education as Education[] | undefined) ?? [];
-	const techStack = (sidebar.tech_stack as Tech[] | undefined) ?? [];
+	const socialLinks = sidebar.social_links ?? [];
+	const education = sidebar.education ?? [];
+	const techStack = sidebar.tech_stack ?? [];
 	const githubUsername = normalizeGitHubUsername(home.github_calendar_url);
 	return (
 		<HomeEnterBoundary>
@@ -129,9 +125,9 @@ export default async function HomePage() {
 								},
 							}}
 						>
-							<SocialLinks links={socialLinks as never[]} />
-							<Education items={education as never[]} />
-							<TechStack items={techStack as never[]} />
+							<SocialLinks links={socialLinks} />
+							<Education items={education} />
+							<TechStack items={techStack} />
 							<GitHubActivity username={githubUsername} compact={false} />
 						</Box>
 						<Typography

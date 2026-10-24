@@ -45,23 +45,21 @@ func (r *AvatarRepository) Create(ctx context.Context, avatar *models.Avatar) er
 	return r.db(ctx).Create(avatar).Error
 }
 
-func (r *AvatarRepository) SetCurrent(ctx context.Context, id uint) error {
-	result := r.db(ctx).Model(&models.Avatar{}).Where("id = ?", id).Update("is_current", true)
-	if result.Error != nil {
-		return result.Error
-	}
-	if result.RowsAffected == 0 {
-		return gorm.ErrRecordNotFound
-	}
-	return r.db(ctx).Model(&models.Avatar{}).Where("id <> ? AND is_current = ?", id, true).Update("is_current", false).Error
-}
-
 func (r *AvatarRepository) ClearOtherCurrent(ctx context.Context, id uint) error {
 	return r.db(ctx).Model(&models.Avatar{}).Where("id <> ? AND is_current = ?", id, true).Update("is_current", false).Error
 }
 
 func (r *AvatarRepository) Delete(ctx context.Context, id uint) error {
 	return r.db(ctx).Delete(&models.Avatar{}, id).Error
+}
+
+// DeleteOthers 删除除指定头像以外的其它头像记录，保证只保留一张头像。
+//
+// 两个上传事务并发时，各自都只会看到自己插入的那一行，于是两边都删不到对方，
+// 可能短暂留下两行（is_current 都为真）。下一次上传或后台列表会把它们收敛成
+// 一行，且前台只渲染 is_current 的那张，所以这里不加锁也不做重试。
+func (r *AvatarRepository) DeleteOthers(ctx context.Context, id uint) error {
+	return r.db(ctx).Where("id <> ?", id).Delete(&models.Avatar{}).Error
 }
 
 func (r *AvatarRepository) UpdateKey(ctx context.Context, id uint, key string) error {
