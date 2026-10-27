@@ -1,6 +1,6 @@
 import 'server-only';
 
-import type { ApiEnvelope } from './browser';
+import { ApiError, parseApiPayload, type ApiEnvelope } from './response';
 
 export class ServerApiError extends Error {
   constructor(
@@ -36,10 +36,19 @@ export async function serverRequest<T>(endpoint: string, init: ServerRequestInit
     },
   });
   const payload = (await response.json().catch(() => ({ message: response.statusText }))) as ApiEnvelope<T>;
-  if (!response.ok || (typeof payload.code === 'number' && payload.code !== 0)) {
-    throw new ServerApiError(response.status, payload.msg ?? payload.message ?? 'Backend request failed');
+  try {
+    return parseApiPayload<T>(payload, {
+      ok: response.ok,
+      status: response.status,
+      statusText: response.statusText,
+      fallbackMessage: 'Backend request failed',
+    });
+  } catch (error) {
+    // RSC 侧对外只暴露 ServerApiError（页面按 status 区分 404 等），
+    // 共享解析的 ApiError 在此转换，不泄漏到服务端组件。
+    if (error instanceof ApiError) {
+      throw new ServerApiError(error.status, error.message);
+    }
+    throw error;
   }
-  return payload && typeof payload === 'object' && 'data' in payload
-    ? payload.data as T
-    : payload as T;
 }

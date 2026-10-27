@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { UserInfo } from "@/api/authApi";
+import { ApiError } from "@/api/response";
 import { TerminalCommandBar } from "./TerminalCommandBar";
 
 const { pushMock, loginMock, sessionMock } = vi.hoisted(() => {
@@ -336,7 +337,7 @@ describe("TerminalCommandBar", () => {
 			renderBar();
 			type("login -u admin");
 			pressKey("Enter");
-			expect(screen.getByText("password:")).toBeInTheDocument();
+			expect(screen.getByText("password for admin:")).toBeInTheDocument();
 			fireEvent.change(passwordInput(), { target: { value: "secret" } });
 			expect(screen.getByText("*".repeat(6))).toBeInTheDocument();
 			expect(passwordInput()).toHaveValue("secret");
@@ -348,7 +349,7 @@ describe("TerminalCommandBar", () => {
 			pressKey("Enter");
 			fireEvent.change(passwordInput(), { target: { value: "secret" } });
 			fireEvent.keyDown(passwordInput(), { key: "Escape" });
-			expect(screen.queryByText("password:")).not.toBeInTheDocument();
+			expect(screen.queryByText("password for admin:")).not.toBeInTheDocument();
 			expect(input()).toHaveValue("");
 		});
 
@@ -357,12 +358,27 @@ describe("TerminalCommandBar", () => {
 			type("login -u admin");
 			pressKey("Enter");
 			fireEvent.keyDown(passwordInput(), { key: "Enter" });
-			expect(screen.queryByText("password:")).not.toBeInTheDocument();
+			expect(screen.queryByText("password for admin:")).not.toBeInTheDocument();
 			expect(input()).toBeInTheDocument();
 		});
 
+		it("asks for the username instead of submitting an empty one", () => {
+			renderBar();
+			type("login -u");
+			pressKey("Enter");
+
+			expect(screen.getByText("username:")).toBeInTheDocument();
+			expect(screen.queryByText(/^password/)).not.toBeInTheDocument();
+
+			// 空用户名绝不发给后端（旧实现在这里发空串，token 被写成 "undefined"）。
+			type("admin");
+			pressKey("Enter");
+			expect(screen.getByText("password for admin:")).toBeInTheDocument();
+			expect(loginMock).not.toHaveBeenCalled();
+		});
+
 		it("reports invalid credentials and stays in password mode for retry", async () => {
-			loginMock.mockRejectedValue(new Error("Invalid username or password"));
+			loginMock.mockRejectedValue(new ApiError(401, "Invalid username or password"));
 			renderBar();
 			type("login -u admin");
 			pressKey("Enter");
@@ -371,13 +387,55 @@ describe("TerminalCommandBar", () => {
 			expect(
 				await screen.findByText("invalid credentials"),
 			).toBeInTheDocument();
-			expect(screen.getByText("password:")).toBeInTheDocument();
+			expect(screen.getByText("password for admin:")).toBeInTheDocument();
 			expect(passwordInput()).toHaveValue("");
 			expect(loginMock).toHaveBeenCalledWith({
 				username: "admin",
 				password: "wrong",
 				remember: false,
 			});
+		});
+
+		it("surfaces the rate limit message instead of invalid credentials", async () => {
+			loginMock.mockRejectedValue(new ApiError(429, "too many attempts"));
+			renderBar();
+			type("login -u admin");
+			pressKey("Enter");
+			fireEvent.change(passwordInput(), { target: { value: "pw" } });
+			fireEvent.keyDown(passwordInput(), { key: "Enter" });
+
+			expect(
+				await screen.findByText("too many attempts, try again later"),
+			).toBeInTheDocument();
+			expect(screen.queryByText("invalid credentials")).not.toBeInTheDocument();
+		});
+
+		it("shows a signing-in line and keeps the password focused while submitting", async () => {
+			let resolveLogin: ((value: { token: string }) => void) | undefined;
+			let rejectLogin: ((reason: unknown) => void) | undefined;
+			loginMock.mockReturnValue(
+				new Promise<{ token: string }>((resolve, reject) => {
+					resolveLogin = resolve;
+					rejectLogin = reject;
+				}),
+			);
+			renderBar();
+			type("login -u admin");
+			pressKey("Enter");
+			const password = passwordInput();
+			password.focus();
+			fireEvent.change(password, { target: { value: "pw" } });
+			fireEvent.keyDown(password, { key: "Enter" });
+
+			expect(await screen.findByText("signing in…")).toBeInTheDocument();
+			// 提交期间不能把输入框 disabled（disabled ⇒ 浏览器把焦点扔回 body）。
+			expect(password).not.toBeDisabled();
+			expect(password).toHaveFocus();
+
+			rejectLogin?.(new ApiError(401, "Invalid username or password"));
+			expect(await screen.findByText("invalid credentials")).toBeInTheDocument();
+			expect(passwordInput()).toHaveFocus();
+			resolveLogin?.({ token: "t" });
 		});
 
 		it("stores the token and navigates to /admin on success", async () => {
@@ -402,7 +460,7 @@ describe("TerminalCommandBar", () => {
 			fireEvent.keyDown(passwordInput(), { key: "Escape" });
 			type("login -u");
 			pressKey("Enter");
-			expect(screen.getByText("password:")).toBeInTheDocument();
+			expect(screen.getByText("password for admin:")).toBeInTheDocument();
 			fireEvent.change(passwordInput(), { target: { value: "pw" } });
 			fireEvent.keyDown(passwordInput(), { key: "Enter" });
 			await waitFor(() =>
@@ -531,6 +589,63 @@ describe("TerminalCommandBar", () => {
 			expect(
 				screen.getByText("command not found: login google"),
 			).toBeInTheDocument();
+			// 近似提示：首词是真实命令时给出口，而不是让人卡在 not found。
+			expect(screen.getByText("hint: login")).toBeInTheDocument();
+		});
+	});
+
+	describe("input focus", () => {
+		/** 桌面精细指针（与 utils/focus 的 FINE_POINTER_MEDIA 对应）。 */
+		const stubMatchMedia = (finePointer: boolean) => {
+			Object.defineProperty(window, "matchMedia", {
+				writable: true,
+				value: (query: string) => ({
+					matches: finePointer && query.includes("pointer: fine"),
+					media: query,
+					onchange: null,
+					addEventListener: () => {},
+					removeEventListener: () => {},
+					addListener: () => {},
+					removeListener: () => {},
+					dispatchEvent: () => false,
+				}),
+			});
+		};
+
+		it("focuses the terminal on mount on desktop pointers", () => {
+			stubMatchMedia(true);
+			renderBar();
+
+			expect(input()).toHaveFocus();
+		});
+
+		it("does not autofocus on touch-first devices", () => {
+			stubMatchMedia(false);
+			renderBar();
+
+			expect(input()).not.toHaveFocus();
+		});
+
+		it("never steals focus from another field", () => {
+			stubMatchMedia(true);
+			function Harness({ showBar }: { showBar: boolean }) {
+				return (
+					<>
+						<input aria-label="already focused" />
+						{showBar ? (
+							<TerminalCommandBar cwd="~/app" commands={[]} />
+						) : null}
+					</>
+				);
+			}
+			const { rerender } = render(<Harness showBar={false} />);
+			const other = screen.getByLabelText("already focused");
+			other.focus();
+
+			// 新页面的终端栏挂载时，用户正在别的输入框里打字：不许抢。
+			rerender(<Harness showBar />);
+
+			expect(other).toHaveFocus();
 		});
 	});
 });

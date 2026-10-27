@@ -75,16 +75,64 @@ func githubOAuthStateFromAuthorize(t *testing.T, router http.Handler, query stri
 	return state, w.Result().Cookies()
 }
 
-func TestGithubOAuthAuthorizeNotConfigured(t *testing.T) {
+// githubOAuthUnconfigured disables every GitHub OAuth setting for one test.
+func githubOAuthUnconfigured(t *testing.T) {
+	t.Helper()
 	t.Setenv("GITHUB_OAUTH_CLIENT_ID", "")
 	t.Setenv("GITHUB_OAUTH_CLIENT_SECRET", "")
 	t.Setenv("GITHUB_OAUTH_REDIRECT_URI", "")
+}
+
+// 未配置时必须把访客 302 回站内回调页（复用错误 UI）。裸 400 JSON 会让整页
+// GET 跳转的访客停在没有任何站点 UI 的 JSON 页上，只能后退。
+func TestGithubOAuthAuthorizeNotConfiguredRedirectsToSite(t *testing.T) {
+	githubOAuthUnconfigured(t)
 	router := githubOAuthTestRouter()
 
 	w := githubOAuthGet(t, router, "/api/auth/github/authorize")
 
-	assert.Equal(t, http.StatusBadRequest, w.Code)
-	assert.JSONEq(t, `{"error":"github oauth not configured"}`, w.Body.String())
+	require.Equal(t, http.StatusFound, w.Code)
+	// gin 对 GET 的 302 响应体会带一个 <a href=…> 存根；关键是不再是 JSON 错误体。
+	assert.NotContains(t, w.Header().Get("Content-Type"), "application/json")
+	assert.NotContains(t, w.Body.String(), `"github oauth not configured"`)
+	assert.Empty(t, w.Result().Cookies(), "未配置时不该种 oauth cookie")
+
+	loc, err := url.Parse(w.Header().Get("Location"))
+	require.NoError(t, err)
+	assert.Equal(t, "/auth/callback", loc.Path, "Location 必须是站内回调页")
+	assert.Equal(t, "not_configured", loc.Query().Get("error"))
+	assert.Empty(t, loc.Query().Get("redirect_to"))
+}
+
+func TestGithubOAuthAuthorizeNotConfiguredKeepsSafeRedirectTo(t *testing.T) {
+	githubOAuthUnconfigured(t)
+	router := githubOAuthTestRouter()
+
+	for _, tc := range []struct {
+		name       string
+		redirectTo string
+		wantKept   bool
+	}{
+		{"site path is carried back", "/articles?tab=1", true},
+		{"protocol-relative URL is dropped", "//evil.example.com", false},
+		{"backslash path is dropped", `/\\evil.example.com`, false},
+		{"absolute URL is dropped", "https://evil.example.com", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			w := githubOAuthGet(t, router, "/api/auth/github/authorize?redirect_to="+url.QueryEscape(tc.redirectTo))
+			require.Equal(t, http.StatusFound, w.Code)
+
+			loc, err := url.Parse(w.Header().Get("Location"))
+			require.NoError(t, err)
+			assert.Equal(t, "/auth/callback", loc.Path)
+			assert.Equal(t, "not_configured", loc.Query().Get("error"))
+			if tc.wantKept {
+				assert.Equal(t, tc.redirectTo, loc.Query().Get("redirect_to"))
+			} else {
+				assert.Empty(t, loc.Query().Get("redirect_to"))
+			}
+		})
+	}
 }
 
 func TestGithubOAuthAuthorizeRedirect(t *testing.T) {

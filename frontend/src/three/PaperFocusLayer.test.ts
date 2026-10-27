@@ -72,6 +72,7 @@ function setup() {
 	// Where the CSS3D renderer keeps the host between renders.
 	const cssCameraElement = document.createElement("div");
 	cssCameraElement.appendChild(host);
+	document.body.appendChild(cssCameraElement);
 	const mount = document.createElement("div");
 	document.body.appendChild(mount);
 	const getPaperScreen = vi.fn(() => paperScreen);
@@ -206,5 +207,47 @@ describe("PaperFocusLayer", () => {
 		layer.engage(); // dead layer never re-engages
 		expect(layer.engaged).toBe(false);
 		expect(mount.querySelectorAll("[data-paper-focus-layer]")).toHaveLength(0);
+	});
+
+	it("keeps focus inside the host across engage and release", async () => {
+		const { host, mount, layer } = setup();
+		mockRect(mount, { left: 0, top: 0, width: 1200, height: 800 });
+		mockRect(host, { left: 100, top: 50, width: 600, height: 750 });
+		mockLayoutSize(host, LAYOUT_WIDTH, LAYOUT_HEIGHT);
+		const input = document.createElement("input");
+		host.appendChild(input);
+		input.focus();
+		expect(document.activeElement).toBe(input);
+
+		layer.engage();
+
+		// Reparenting blurs the focused descendant synchronously...
+		expect(document.activeElement).toBe(document.body);
+		// ...and the layer hands focus back on the next frame.
+		await vi.waitFor(() => expect(document.activeElement).toBe(input));
+
+		layer.release();
+
+		expect(document.activeElement).toBe(document.body);
+		await vi.waitFor(() => expect(document.activeElement).toBe(input));
+	});
+
+	it("never steals focus from an element outside the host", async () => {
+		const { host, mount, layer } = setup();
+		mockRect(mount, { left: 0, top: 0, width: 1200, height: 800 });
+		mockRect(host, { left: 100, top: 50, width: 600, height: 750 });
+		mockLayoutSize(host, LAYOUT_WIDTH, LAYOUT_HEIGHT);
+		// 模拟页面上的评论框：焦点在 host 之外，搬家不得抢走它。
+		const comment = document.createElement("textarea");
+		document.body.appendChild(comment);
+		comment.focus();
+
+		layer.engage();
+		await new Promise((resolve) => setTimeout(resolve, 20));
+		expect(document.activeElement).toBe(comment);
+
+		layer.release();
+		await new Promise((resolve) => setTimeout(resolve, 20));
+		expect(document.activeElement).toBe(comment);
 	});
 });

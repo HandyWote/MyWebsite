@@ -2,14 +2,27 @@
 
 import { Box } from "@mui/material";
 import { useRouter } from "next/navigation";
-import { useState, type KeyboardEvent } from "react";
+import { useRef, useState, type KeyboardEvent } from "react";
 import { authApi } from "@/api/authApi";
+import { ApiError } from "@/api/response";
+import { PixelPromptInput } from "@/components/pixel";
 import { useSession } from "@/hooks/useSession";
 import {
 	SHELL_NAV_ITEMS,
 	uniqueCommands,
 	type ShellArticle,
 } from "./shellUtils";
+import {
+	authCompletionCandidates,
+	authHelpLines,
+	nearMissCommand,
+	toHelpLine,
+} from "./terminal/commands";
+import {
+	TerminalOutput,
+	type TerminalOutputLine,
+	type TerminalTone,
+} from "./terminal/TerminalOutput";
 
 const stripTrailingSlash = (value: string) =>
 	value.length > 1 && value.endsWith("/") ? value.slice(0, -1) : value;
@@ -23,20 +36,18 @@ const getHelpLines = (): string[] => {
 		["/games", "open game arcade"],
 	]);
 	for (const item of SHELL_NAV_ITEMS) {
-		const label = labelByHref.get(item.href) ?? item.label;
-		lines.push(`  ${item.command.padEnd(18, " ")}${label}`);
+		lines.push(toHelpLine(item.command, labelByHref.get(item.href) ?? item.label));
 	}
 	lines.push(
-		"  open latest       open latest article",
-		"  open <article>    open article by id/title",
-		"  open prev         open previous article",
-		"  open next         open next article",
-		"  exit              leave current article buffer",
-		"  clear             clear terminal output",
-		"  help              show this help",
-		"  login              sign in with GitHub",
-		"  logout             sign out",
-		"  whoami             show current user",
+		toHelpLine("open latest", "open latest article"),
+		toHelpLine("open <article>", "open article by id/title"),
+		toHelpLine("open prev", "open previous article"),
+		toHelpLine("open next", "open next article"),
+		toHelpLine("exit", "leave current article buffer"),
+		toHelpLine("clear", "clear terminal output"),
+		toHelpLine("help", "show this help"),
+		// 登录相关命令来自 terminal/commands 注册表（help / 补全 / 执行同源）。
+		...authHelpLines(),
 	);
 	return lines;
 };
@@ -51,6 +62,34 @@ function redirectTo(url: string): void {
 	window.location.href = url;
 }
 
+/**
+ * 登录失败的终端文案（英文小写）。
+ *
+ * 401 凭证错、429 限流、其它（契约异常/网络）必须区分：以前一律 `invalid
+ * credentials`，被限流的人会一直重试到窗口过期（工单 #16）。
+ */
+const loginErrorMessage = (error: unknown): string => {
+	if (error instanceof ApiError) {
+		if (error.status === 401) return "invalid credentials";
+		if (error.status === 429) return "too many attempts, try again later";
+		return error.message || "sign in failed";
+	}
+	return error instanceof Error && error.message ? error.message : "sign in failed";
+};
+
+/**
+ * 终端交互态：命令行 / 登录用户名 / 登录密码。
+ *
+ * 密码登录以前只有一个隐式 `inputMode === "password"` 布尔值，用户名只能从
+ * `login -u <name>` 里来；没有用户名时会把空串发给后端（HTTP 200 +
+ * `{code:400}`，被旧解析当成功，token 写成 "undefined"）。现在缺用户名时先
+ * 进 `username` 步，再也不会发空用户名。
+ */
+type PromptState =
+	| { kind: "command" }
+	| { kind: "username" }
+	| { kind: "password"; username: string };
+
 export function TerminalCommandBar({
 	cwd,
 	commands,
@@ -64,16 +103,22 @@ export function TerminalCommandBar({
 }) {
 	const router = useRouter();
 	const session = useSession();
+	const inputRef = useRef<HTMLInputElement | null>(null);
+	// 输出行必须带稳定 id（`key={text}` 会让重复行撞 key，见 TerminalOutput）。
+	const lineSeq = useRef(0);
 	const [command, setCommand] = useState("");
-	const [outputLines, setOutputLines] = useState<string[]>([]);
 	const [activeIndex, setActiveIndex] = useState(0);
-	// 掩码模式：password 模式镜像层渲染 * 遮罩，真实 input 保持透明值。
-	const [inputMode, setInputMode] = useState<"command" | "password">("command");
+	const [prompt, setPrompt] = useState<PromptState>({ kind: "command" });
+	const [usernameDraft, setUsernameDraft] = useState("");
 	const [password, setPassword] = useState("");
 	// 进入密码模式时记住用户名，`login -u`（不带用户名）缺省复用。
 	const [passwordUsername, setPasswordUsername] = useState("");
-	// 提交期间禁用输入，防连击。
+	// 提交期间忽略按键（不再用 disabled，避免失焦）。
 	const [busy, setBusy] = useState(false);
+	const [output, setOutput] = useState<TerminalOutputLine[]>([]);
+	// 交互提示行（`username:` / `password for x:` + 失败原因）随交互态生灭，
+	// 与历史输出分开：取消/重试不会抹掉上面已经打印的内容。
+	const [promptLines, setPromptLines] = useState<TerminalOutputLine[]>([]);
 
 	const promptUser =
 		session.status === "authed" && session.user
@@ -83,58 +128,83 @@ export function TerminalCommandBar({
 	const availableCommands = uniqueCommands([
 		...commands,
 		...articles.map((article) => `open ${article.title}`),
-		"login",
-		"login github",
-		"logout",
-		"whoami",
+		...authCompletionCandidates(),
 	]);
 	const normalizedInput = command.trim().toLowerCase();
 	const visibleCandidates =
-		inputMode === "command" && normalizedInput
+		prompt.kind === "command" && normalizedInput
 			? availableCommands
 					.filter((item) => item.toLowerCase().includes(normalizedInput))
 					.slice(0, 8)
 			: [];
 
+	const makeLine = (text: string, tone: TerminalTone = "info"): TerminalOutputLine => {
+		lineSeq.current += 1;
+		return { id: `line-${lineSeq.current}`, text, tone };
+	};
+
+	const print = (text: string, tone: TerminalTone = "info") =>
+		setOutput((lines) => [...lines, makeLine(text, tone)]);
+
+	const resetPrompt = () => {
+		setPrompt({ kind: "command" });
+		setPassword("");
+		setPromptLines([]);
+	};
+
 	const startPasswordMode = (username: string) => {
 		setPasswordUsername(username);
 		setPassword("");
-		setInputMode("password");
-		setActiveIndex(0);
-		setOutputLines(["password:"]);
+		setPrompt({ kind: "password", username });
+		setPromptLines([makeLine(`password for ${username}:`)]);
 	};
 
-	const cancelPassword = () => {
-		setInputMode("command");
+	const startUsernameMode = () => {
+		setUsernameDraft(passwordUsername);
 		setPassword("");
-		setOutputLines([]);
+		setPrompt({ kind: "username" });
+		setPromptLines([makeLine("username:")]);
 	};
 
 	const submitPassword = async () => {
-		if (busy) return;
+		if (busy || prompt.kind !== "password") return;
 		if (!password) {
-			// 空回车取消回命令模式。
-			cancelPassword();
+			// 空回车取消回命令模式（历史输出保留）。
+			resetPrompt();
 			return;
 		}
+		const passwordLabel = `password for ${prompt.username}:`;
 		setBusy(true);
+		setPromptLines([makeLine(passwordLabel), makeLine("signing in…")]);
 		try {
 			const data = await authApi.login({
-				username: passwordUsername,
+				username: prompt.username,
 				password,
 				remember: false,
 			});
 			session.login(data.token, {
-				username: passwordUsername,
+				username: prompt.username,
 				provider: "password",
 			});
 			router.push("/admin");
-		} catch {
-			// 失败留在密码模式可重试，清空已输入密码。
+		} catch (error) {
+			// 失败留在密码模式可重试，清空已输入密码并把真实原因打出来。
 			setBusy(false);
 			setPassword("");
-			setOutputLines(["password:", "invalid credentials"]);
+			setPromptLines([
+				makeLine(passwordLabel),
+				makeLine(loginErrorMessage(error), "error"),
+			]);
 		}
+	};
+
+	const submitUsername = () => {
+		const username = usernameDraft.trim().toLowerCase();
+		if (!username) {
+			resetPrompt();
+			return;
+		}
+		startPasswordMode(username);
 	};
 
 	const executeCommand = (rawCommand: string) => {
@@ -143,19 +213,19 @@ export function TerminalCommandBar({
 
 		setCommand("");
 		setActiveIndex(0);
+		setPromptLines([]);
 
 		// login/logout/whoami 大小写与空格归一化后匹配。
 		const commandKey = nextCommand.toLowerCase();
 
 		if (commandKey === "login" || commandKey === "login github") {
 			if (session.status === "authed" && session.user) {
-				setOutputLines([
-					`already logged in as ${session.user.username}, use logout first`,
-				]);
+				print(`already logged in as ${session.user.username}, use logout first`);
 				return;
 			}
-			setOutputLines(["opening GitHub authorization…"]);
-			// 仅传站内路径（pathname + search）；未配置的 400 降级提示由后端返回。
+			print("opening GitHub authorization…");
+			// 仅传站内路径（pathname + search）；未配置的降级由后端 302 回
+			// /auth/callback?error=not_configured（站点自己的错误 UI）。
 			redirectTo(
 				authApi.buildGithubAuthorizeUrl(
 					`${window.location.pathname}${window.location.search}`,
@@ -165,10 +235,20 @@ export function TerminalCommandBar({
 		}
 
 		if (commandKey === "login -u" || commandKey.startsWith("login -u ")) {
+			if (session.status === "authed" && session.user) {
+				// 与 GitHub 分支一致：已登录不再进密码模式（改密码要先 logout）。
+				print(`already logged in as ${session.user.username}, use logout first`);
+				return;
+			}
 			const username =
 				commandKey === "login -u"
 					? passwordUsername
 					: commandKey.slice("login -u ".length).trim();
+			if (!username) {
+				// 没有可复用用户名：先问用户名，绝不把空串发给后端。
+				startUsernameMode();
+				return;
+			}
 			startPasswordMode(username);
 			return;
 		}
@@ -176,9 +256,9 @@ export function TerminalCommandBar({
 		if (commandKey === "logout") {
 			if (session.status === "authed") {
 				session.logout();
-				setOutputLines(["logged out"]);
+				print("logged out");
 			} else {
-				setOutputLines(["not logged in"]);
+				print("not logged in");
 			}
 			return;
 		}
@@ -186,10 +266,10 @@ export function TerminalCommandBar({
 		if (commandKey === "whoami") {
 			if (session.status === "authed" && session.user) {
 				const kind =
-					session.user.provider === "password" ? "admin" : "github";
-				setOutputLines([`${session.user.username} (${kind})`]);
+					session.user.provider === "password" ? "admin" : session.user.provider;
+				print(`${session.user.username} (${kind})`);
 			} else {
-				setOutputLines(["not logged in"]);
+				print("not logged in");
 			}
 			return;
 		}
@@ -238,9 +318,9 @@ export function TerminalCommandBar({
 					return;
 				}
 			}
-			setOutputLines([
+			print(
 				nextCommand === "open prev" ? "no previous article" : "no next article",
-			]);
+			);
 			return;
 		}
 
@@ -267,36 +347,52 @@ export function TerminalCommandBar({
 		}
 
 		if (nextCommand === "clear") {
-			setOutputLines([]);
+			setOutput([]);
 			return;
 		}
 
 		if (nextCommand === "help") {
-			setOutputLines(getHelpLines());
+			setOutput(getHelpLines().map((line) => makeLine(line)));
 			return;
 		}
 
-		setOutputLines([`command not found: ${nextCommand}`]);
+		print(`command not found: ${nextCommand}`, "error");
+		// 近似命令提示：`login google` 这种首词存在的输入直接指出正确命令，
+		// 否则用户只会看到 not found 却不知道差在哪。
+		const hint = nearMissCommand(nextCommand);
+		if (hint) print(`hint: ${hint}`);
 	};
 
 	const completeCommand = () => {
 		if (visibleCandidates.length === 0) return;
-		setCommand(visibleCandidates[activeIndex] || visibleCandidates[0]);
+		const active = visibleCandidates[activeIndex] || visibleCandidates[0];
+		setCommand(active);
+	};
+
+	const submitCurrentPrompt = () => {
+		if (busy) return;
+		if (prompt.kind === "password") {
+			void submitPassword();
+			return;
+		}
+		if (prompt.kind === "username") {
+			submitUsername();
+			return;
+		}
+		const active = visibleCandidates[activeIndex];
+		executeCommand(active || command);
 	};
 
 	const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
 		if (busy) return;
 
-		if (inputMode === "password") {
-			if (event.key === "Escape") {
-				event.preventDefault();
-				cancelPassword();
-			} else if (event.key === "Enter") {
-				event.preventDefault();
-				void submitPassword();
-			}
+		if (event.key === "Escape" && prompt.kind !== "command") {
+			event.preventDefault();
+			resetPrompt();
 			return;
 		}
+
+		if (prompt.kind !== "command") return;
 
 		if (event.key === "Tab") {
 			event.preventDefault();
@@ -316,12 +412,27 @@ export function TerminalCommandBar({
 				(index) =>
 					(index - 1 + visibleCandidates.length) % visibleCandidates.length,
 			);
+		}
+	};
+
+	const activeValue =
+		prompt.kind === "password"
+			? password
+			: prompt.kind === "username"
+				? usernameDraft
+				: command;
+
+	const onValueChange = (value: string) => {
+		if (prompt.kind === "password") {
+			setPassword(value);
 			return;
 		}
-
-		if (event.key === "Enter") {
-			executeCommand(visibleCandidates[activeIndex] || command);
+		if (prompt.kind === "username") {
+			setUsernameDraft(value);
+			return;
 		}
+		setCommand(value);
+		setActiveIndex(0);
 	};
 
 	return (
@@ -335,26 +446,7 @@ export function TerminalCommandBar({
 				flexShrink: 0,
 			}}
 		>
-			{outputLines.length > 0 && (
-				<Box
-					sx={{
-						mb: 0.75,
-						maxHeight: { xs: "24dvh", sm: "32vh" },
-						overflow: "auto",
-						fontFamily: "JetBrains Mono, monospace",
-						color: "text.secondary",
-						fontSize: "0.75rem",
-						lineHeight: 1.45,
-						whiteSpace: "pre-wrap",
-					}}
-				>
-					{outputLines.map((line) => (
-						<Box component="div" key={line}>
-							{line}
-						</Box>
-					))}
-				</Box>
-			)}
+			<TerminalOutput lines={[...output, ...promptLines]} />
 
 			{visibleCandidates.length > 0 && (
 				<Box
@@ -408,85 +500,22 @@ export function TerminalCommandBar({
 				</Box>
 			)}
 
-			<Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0 }}>
-				<Box
-					component="label"
-					htmlFor={`command-${cwd}`}
-					sx={{
-						color: "primary.main",
-						fontFamily: "JetBrains Mono, monospace",
-						fontSize: "0.8125rem",
-						whiteSpace: "nowrap",
-					}}
-				>
-					{promptUser}@{cwd} $
-				</Box>
-				<Box
-					sx={{
-						position: "relative",
-						flex: 1,
-						minWidth: 0,
-						display: "flex",
-						alignItems: "center",
-						fontFamily: "JetBrains Mono, monospace",
-						fontSize: "0.8125rem",
-					}}
-				>
-					{/* 镜像文本 + 光标（视觉层）：密码模式渲染 * 遮罩，光标紧跟末尾 */}
-					<Box
-						component="span"
-						aria-hidden="true"
-						sx={{ color: "text.primary", whiteSpace: "pre" }}
-					>
-						{inputMode === "password" ? "*".repeat(password.length) : command}
-						<Box
-							component="span"
-							className="cursor-blink"
-							sx={{
-								display: "inline-block",
-								width: "0.55em",
-								height: "1.2em",
-								bgcolor: "primary.main",
-								ml: "0.15em",
-								flexShrink: 0,
-							}}
-						/>
-					</Box>
-					{/* 真实 input（交互层）：透明文字 + 透明 caret，覆盖镜像捕获输入 */}
-					<Box
-						id={`command-${cwd}`}
-						component="input"
-						value={inputMode === "password" ? password : command}
-						onChange={(event) => {
-							if (inputMode === "password") {
-								setPassword(event.target.value);
-							} else {
-								setCommand(event.target.value);
-								setActiveIndex(0);
-							}
-						}}
-						onKeyDown={onKeyDown}
-						disabled={busy}
-						aria-label={
-							inputMode === "password" ? "Password" : "Terminal command"
-						}
-						autoComplete="off"
-						spellCheck={false}
-						sx={{
-							position: "absolute",
-							inset: 0,
-							width: "100%",
-							border: 0,
-							outline: "none",
-							bgcolor: "transparent",
-							color: "transparent",
-							caretColor: "transparent",
-							fontFamily: "JetBrains Mono, monospace",
-							fontSize: "0.8125rem",
-						}}
-					/>
-				</Box>
-			</Box>
+			<PixelPromptInput
+				prompt={`${promptUser}@${cwd} $`}
+				value={activeValue}
+				onChange={onValueChange}
+				onSubmit={submitCurrentPrompt}
+				onKeyDown={onKeyDown}
+				mode={prompt.kind === "password" ? "secret" : "text"}
+				busy={busy}
+				inputRef={inputRef}
+				ariaLabel={
+					prompt.kind === "password" ? "Password" : "Terminal command"
+				}
+				// 桌面精细指针 + 当前没有别的输入在用时才自动聚焦：进入站点即
+				// 可打字、刷新/路由切换后不丢，且绝不抢评论框等已有焦点。
+				autoFocusPolicy="fine-pointer"
+			/>
 		</Box>
 	);
 }

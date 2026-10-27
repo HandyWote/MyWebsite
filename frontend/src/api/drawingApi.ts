@@ -1,5 +1,6 @@
 import { API_ENDPOINTS } from './endpoints';
-import { ApiError, browserApi, getApiMessage, unwrapApiPayload, type ApiEnvelope } from './browser';
+import { browserApi } from './browser';
+import { ApiError, parseApiPayload, type ApiEnvelope } from './response';
 import type { Stroke } from '@/games/types';
 
 /**
@@ -9,8 +10,9 @@ import type { Stroke } from '@/games/types';
  * - 公共画布（getCanvas/submitStrokes）走本文件私有 requestJson 的原生 fetch：
  *   browserRequest 在 401 时会 clearAuth + 跳转 /admin/login，而画布提交的
  *   401 是业务结果（访客未登录，提示登录引导即可），跳转与否由调用方
- *   （DrawingGame）决定。解析规则与 browser.ts 一致（{code, data} 信封与
- *   裸数据都支持），错误统一抛 ApiError（status 原样保留供 409/429/422 分支）。
+ *   （DrawingGame）决定。解析交给共享的 `parseApiPayload`（信封拆包 + HTTP/
+ *   业务 code 双判），错误统一抛 ApiError（status 原样保留供 409/429/422 分支），
+ *   原始响应体挂在 error.body 供契约扩展字段读取。
  * - 管理端审核（listSubmissions/approve/reject）走 browserApi：这些端点的
  *   401 就是"管理员登录态失效"，由 browserRequest 统一 clearAuth + 跳登录。
  */
@@ -74,26 +76,31 @@ export interface SubmissionReviewResult {
 
 async function requestJson<T>(endpoint: string, init: RequestInit): Promise<T> {
   const response = await fetch(endpoint, init);
-  const payload = (await response.json().catch(() => ({ message: response.statusText }))) as ApiEnvelope<T> & {
-    current_version?: number;
-    reason?: string;
-  };
-  if (!response.ok) {
-    const error = new ApiError(response.status, getApiMessage(payload, 'Request failed'));
-    // 契约扩展字段：409 携带 current_version；422 携带审核拒绝原因（ocr/graphic）。
-    // 赋值前窄化到契约声明的枚举，非契约值不挂载（调用方按缺省分支处理）。
-    if (response.status === 409 && typeof payload.current_version === 'number') {
-      (error as VersionConflictError).currentVersion = payload.current_version;
-    }
-    if (
-      response.status === 422 &&
-      (payload.reason === 'ocr' || payload.reason === 'graphic')
-    ) {
-      (error as ModerationError).reason = payload.reason;
-    }
+  const payload = (await response.json().catch(() => ({ message: response.statusText }))) as ApiEnvelope<T>;
+  try {
+    return parseApiPayload<T>(payload, {
+      ok: response.ok,
+      status: response.status,
+      statusText: response.statusText,
+    });
+  } catch (error) {
+    if (error instanceof ApiError) attachContractFields(error);
     throw error;
   }
-  return unwrapApiPayload(payload);
+}
+
+/**
+ * 契约扩展字段从 `error.body` 读：409 携带 current_version；422 携带审核拒绝原因。
+ * 赋值前窄化到契约声明的枚举，非契约值不挂载（调用方按缺省分支处理）。
+ */
+function attachContractFields(error: ApiError): void {
+  const body = (error.body ?? {}) as { current_version?: unknown; reason?: unknown };
+  if (error.status === 409 && typeof body.current_version === 'number') {
+    (error as VersionConflictError).currentVersion = body.current_version;
+  }
+  if (error.status === 422 && (body.reason === 'ocr' || body.reason === 'graphic')) {
+    (error as ModerationError).reason = body.reason;
+  }
 }
 
 export const drawingApi = {

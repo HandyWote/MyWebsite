@@ -23,6 +23,12 @@ export { PixelAvatar } from "./ui/PixelAvatar";
 export type { PixelAvatarProps, PixelAvatarSize } from "./ui/PixelAvatar";
 export { PixelInput } from "./ui/PixelInput";
 export type { PixelInputProps } from "./ui/PixelInput";
+export { PixelPromptInput } from "./ui/PixelPromptInput";
+export type {
+	PixelPromptAutoFocusPolicy,
+	PixelPromptInputMode,
+	PixelPromptInputProps,
+} from "./ui/PixelPromptInput";
 export { PixelDialog, PixelConfirmDialog } from "./ui/PixelDialog";
 export type {
 	PixelConfirmDialogProps,

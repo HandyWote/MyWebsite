@@ -132,7 +132,7 @@ test("logout clears an existing session and reverts the prompt to guest", async 
 	await expect(host(page)).toContainText("not logged in");
 });
 
-test("login degrades to the backend message when GitHub OAuth is not configured", async ({
+test("login returns unconfigured GitHub OAuth visitors to the site error UI", async ({
 	page,
 }, testInfo: TestInfo) => {
 	test.skip(testInfo.project.name === "desktop-chrome");
@@ -143,12 +143,14 @@ test("login degrades to the backend message when GitHub OAuth is not configured"
 	await expect(terminalInput(page)).toBeVisible();
 
 	await runTerminal(page, "login");
-	// 终端照常跳转 authorize；未配置降级由后端 400 返回提示语（浏览器直接展示）。
-	await expect(page).toHaveURL(/\/api\/auth\/github\/authorize/, {
+	// 未配置降级：authorize 302 回站内 /auth/callback?error=not_configured，
+	// 由回调页的错误 UI 接管（不再展示后端裸 JSON）。
+	await expect(page).toHaveURL(/\/auth\/callback\?error=not_configured/, {
 		timeout: 15_000,
 	});
-	await expect(page.locator("body")).toContainText(
-		"github oauth not configured",
-		{ timeout: 15_000 },
+	await expect(page.getByText("github sign-in is not configured")).toBeVisible();
+	// 裸 JSON 是这条降级路径的老行为，必须彻底消失。
+	await expect(page.locator("body")).not.toContainText(
+		'"github oauth not configured"',
 	);
 });

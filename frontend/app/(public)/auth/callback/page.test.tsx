@@ -58,6 +58,17 @@ describe('AuthCallbackPage', () => {
     expect(exchangeMock).not.toHaveBeenCalled();
   });
 
+  it('error=not_configured 显示 github 登录未配置提示，且不调用 exchange', () => {
+    renderWithParams('error=not_configured&redirect_to=/articles');
+    expect(screen.getByText('github sign-in is not configured')).toBeInTheDocument();
+    expect(exchangeMock).not.toHaveBeenCalled();
+  });
+
+  it('未知 error 码（含对象原型键）落兜底文案', () => {
+    renderWithParams('error=__proto__');
+    expect(screen.getByText('authorization cancelled or failed')).toBeInTheDocument();
+  });
+
   it('其他 error 显示授权取消或失败提示，按钮跳回首页', async () => {
     const user = userEvent.setup();
     renderWithParams('error=other');
