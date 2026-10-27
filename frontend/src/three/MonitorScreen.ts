@@ -1,6 +1,7 @@
 import { Group } from '@tweenjs/tween.js';
 import * as THREE from 'three';
 import { CSS3DObject } from 'three/examples/jsm/renderers/CSS3DRenderer.js';
+import { preserveFocusAcrossMove } from '@/utils/focus';
 import type { Camera } from './Camera';
 import { disposeMaterial } from './dispose';
 import { TextureLayers } from './TextureLayers';
@@ -12,6 +13,24 @@ const SMUDGE_OFFSET = 96;
 
 type AttributeSnapshot = string | null;
 
+/**
+ * Creates the CSS3DObject and remembers whether focus was held inside the host
+ * at that moment. The renderer appends the element to its own DOM on the first
+ * render frame, which blurs a focused descendant (terminal input, comment box);
+ * `preserveFocusAcrossMove` hands that focus back on the next frame.
+ */
+function createCssObject(host: HTMLElement): {
+  object: CSS3DObject;
+  cancelFocusRestore: () => void;
+} {
+  let object: CSS3DObject | undefined;
+  const cancelFocusRestore = preserveFocusAcrossMove(() => {
+    object = new CSS3DObject(host);
+  });
+  if (!object) throw new Error('CSS3DObject was not created');
+  return { object, cancelFocusRestore };
+}
+
 export class MonitorScreen {
   readonly object: CSS3DObject;
   private readonly styleBefore: AttributeSnapshot;
@@ -19,6 +38,7 @@ export class MonitorScreen {
   private readonly attachedBefore: AttributeSnapshot;
   private readonly meshes: THREE.Mesh[] = [];
   private readonly textureLayers: TextureLayers;
+  private cancelPendingFocusRestore: (() => void) | null = null;
   private destroyed = false;
 
   constructor(
@@ -33,7 +53,9 @@ export class MonitorScreen {
     this.draggableBefore = host.getAttribute('draggable');
     this.attachedBefore = host.getAttribute('data-three-screen-attached');
 
-    this.object = new CSS3DObject(host);
+    const created = createCssObject(host);
+    this.object = created.object;
+    this.cancelPendingFocusRestore = created.cancelFocusRestore;
     host.dataset.threeScreenAttached = 'true';
     host.style.width = `${SCREEN_SIZE.width}px`;
     host.style.height = `${SCREEN_SIZE.height}px`;
@@ -79,13 +101,19 @@ export class MonitorScreen {
   destroy(): void {
     if (this.destroyed) return;
     this.destroyed = true;
+    this.cancelPendingFocusRestore?.();
+    this.cancelPendingFocusRestore = null;
 
     // r137 removes CSS3DObject.element on the Object3D `removed` event. Point it
     // at a sacrificial node before parking React's real host synchronously.
     const removalMarker = document.createElement('div');
     this.object.element = removalMarker;
     this.restoreHost();
-    this.parkingNode.appendChild(this.host);
+    // Parking reparents the host; restoring focus keeps a focused terminal
+    // input (or comment box) alive across the 3D teardown.
+    this.cancelPendingFocusRestore = preserveFocusAcrossMove(() => {
+      this.parkingNode.appendChild(this.host);
+    });
     this.cssScene.remove(this.object);
 
     this.textureLayers.destroy();

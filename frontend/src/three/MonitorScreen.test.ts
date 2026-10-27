@@ -52,4 +52,68 @@ describe('MonitorScreen', () => {
     expect(host.getAttribute('data-three-screen-attached')).toBe('before');
     expect(document.getElementById('screen-host')).toBe(host);
   });
+
+  it('restores focus when the renderer reparents the host after construction', async () => {
+    const scene = new THREE.Scene();
+    const cssScene = new THREE.Scene();
+    const parking = document.createElement('div');
+    const cssRendererTree = document.createElement('div');
+    const host = document.createElement('div');
+    const input = document.createElement('input');
+    host.appendChild(input);
+    parking.appendChild(host);
+    document.body.append(parking, cssRendererTree);
+    input.focus();
+    expect(document.activeElement).toBe(input);
+
+    new MonitorScreen(scene, cssScene, host, parking, camera(), new Group());
+    // First render frame: CSS3DRenderer moves the element into its own DOM.
+    cssRendererTree.appendChild(host);
+
+    await vi.waitFor(() => expect(document.activeElement).toBe(input));
+  });
+
+  it('restores focus when destroy parks the host out of the CSS3D tree', async () => {
+    const scene = new THREE.Scene();
+    const cssScene = new THREE.Scene();
+    const parking = document.createElement('div');
+    const cssRendererTree = document.createElement('div');
+    const host = document.createElement('div');
+    const input = document.createElement('input');
+    host.appendChild(input);
+    parking.appendChild(host);
+    document.body.append(parking, cssRendererTree);
+
+    const monitor = new MonitorScreen(scene, cssScene, host, parking, camera(), new Group());
+    cssRendererTree.appendChild(host);
+    input.focus();
+    expect(document.activeElement).toBe(input);
+
+    monitor.destroy();
+
+    // Parked synchronously, focus handed back on the next frame.
+    expect(host.parentElement).toBe(parking);
+    await vi.waitFor(() => expect(document.activeElement).toBe(input));
+  });
+
+  it('never steals focus from an element outside the host', async () => {
+    const scene = new THREE.Scene();
+    const cssScene = new THREE.Scene();
+    const parking = document.createElement('div');
+    const cssRendererTree = document.createElement('div');
+    const host = document.createElement('div');
+    parking.appendChild(host);
+    document.body.append(parking, cssRendererTree);
+
+    const monitor = new MonitorScreen(scene, cssScene, host, parking, camera(), new Group());
+    cssRendererTree.appendChild(host);
+    const comment = document.createElement('textarea');
+    document.body.appendChild(comment);
+    comment.focus();
+
+    monitor.destroy();
+
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(document.activeElement).toBe(comment);
+  });
 });

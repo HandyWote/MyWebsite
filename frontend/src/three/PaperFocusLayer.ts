@@ -1,3 +1,4 @@
+import { preserveFocusAcrossMove } from "@/utils/focus";
 import type { PaperScreen } from "./PaperScreen";
 
 /**
@@ -109,9 +110,15 @@ export class PaperFocusLayer {
 		this.hostParent = host.parentNode;
 		this.layoutHeight = size.height;
 
-		this.mount.appendChild(layer);
-		paperScreen.detachHost();
-		layer.appendChild(host);
+		// Moving the host between DOM trees blurs whatever is focused inside it.
+		// Focus is handed back on the next frame to the element this very move
+		// blurred — never to a hard-coded control, so a comment box focused
+		// outside the host is left untouched.
+		preserveFocusAcrossMove(() => {
+			this.mount.appendChild(layer);
+			paperScreen.detachHost();
+			layer.appendChild(host);
+		});
 		this.applyRect(rect);
 	}
 
@@ -135,9 +142,11 @@ export class PaperFocusLayer {
 		// Restore the CSS3DObject element + transform snapshot first, then put
 		// the host back into its original parent (the CSS3D renderer's
 		// cameraElement) so the very next paint is identical to the 2D frame.
-		paperScreen?.reattachHost();
-		if (host && hostParent) hostParent.appendChild(host);
-		layer.remove();
+		preserveFocusAcrossMove(() => {
+			paperScreen?.reattachHost();
+			if (host && hostParent) hostParent.appendChild(host);
+			layer.remove();
+		});
 	}
 
 	/**
