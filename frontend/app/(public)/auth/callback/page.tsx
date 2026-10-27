@@ -35,6 +35,18 @@ function requestExchange(code: string): Promise<ExchangeResult> {
 /** error 参数场景下展示提示后自动跳回前的停留时长（按钮可立即跳回）。 */
 export const ERROR_REDIRECT_DELAY_MS = 4000;
 
+/**
+ * error 参数 → 终端风格提示（英文小写，与 "$ name"、"signing in…" 一致）。
+ * 未知码落 FALLBACK_ERROR_MESSAGE。用 Map 而非对象字面量：参数来自 URL，
+ * "__proto__" 这类原型键不应拿到原型链上的值。
+ */
+const ERROR_MESSAGES = new Map<string, string>([
+  ['access_denied', 'authorization cancelled'],
+  ['not_configured', 'github sign-in is not configured'],
+]);
+
+const FALLBACK_ERROR_MESSAGE = 'authorization cancelled or failed';
+
 /** 极简 loading 视图：Suspense fallback 与 exchange 处理中共用。 */
 function CallbackLoading() {
   return (
@@ -72,12 +84,9 @@ function CallbackHandler() {
   const code = searchParams.get('code');
   const redirectToParam = searchParams.get('redirect_to');
 
-  const errorFromParams =
-    errorParam === 'access_denied'
-      ? 'authorization cancelled'
-      : errorParam
-        ? 'authorization cancelled or failed'
-        : null;
+  const errorFromParams = errorParam
+    ? (ERROR_MESSAGES.get(errorParam) ?? FALLBACK_ERROR_MESSAGE)
+    : null;
   const target = isSafeInternalPath(redirectToParam) ? redirectToParam : '/';
 
   // exchange 失败提示（ApiError message 或兜底文案）。

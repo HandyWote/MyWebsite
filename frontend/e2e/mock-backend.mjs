@@ -198,14 +198,15 @@ const server = http.createServer(async (request, response) => {
   }
 
   if (url.pathname === '/api/auth/github/authorize') {
-    // 真实后端：未配置 → 400 提示；配置后重定向到 GitHub。
+    // 真实后端：未配置 → 302 回站内 /auth/callback?error=not_configured（复用回调页
+    // 错误 UI，不把访客扔进裸 JSON）；配置后重定向到 GitHub。
     // mock 直接 302 回站内 /auth/callback（code 单次有效），模拟完整往返。
     if (!githubEnabled) {
-      sendJson(
-        response,
-        400,
-        JSON.stringify({ code: 400, error: 'github oauth not configured' }),
-      );
+      const params = new URLSearchParams({ error: 'not_configured' });
+      const redirectTo = url.searchParams.get('redirect_to');
+      if (redirectTo) params.set('redirect_to', redirectTo);
+      response.writeHead(302, { location: `/auth/callback?${params}` });
+      response.end();
       return;
     }
     const redirectTo = url.searchParams.get('redirect_to') || '/';

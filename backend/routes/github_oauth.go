@@ -34,6 +34,10 @@ const (
 	// githubOAuthCodeTTL is the lifetime of the single-use code handed to the
 	// frontend; it only needs to survive the POST to /api/auth/exchange.
 	githubOAuthCodeTTL = 60 * time.Second
+	// githubFrontendCallbackPath is the site-internal path of the frontend
+	// callback page. It is the last-resort redirect target when the flow
+	// cannot be started at all (see GithubOAuthAuthorize).
+	githubFrontendCallbackPath = "/auth/callback"
 )
 
 // GitHub endpoint URLs are package-level so tests can point them at mock
@@ -174,7 +178,7 @@ func githubFrontendCallbackURL(redirectURI string) string {
 		return ""
 	}
 	frontend := *u
-	frontend.Path = strings.TrimSuffix(u.Path, "/api/auth/github/callback") + "/auth/callback"
+	frontend.Path = strings.TrimSuffix(u.Path, "/api/auth/github/callback") + githubFrontendCallbackPath
 	frontend.RawQuery = ""
 	frontend.Fragment = ""
 	return frontend.String()
@@ -302,11 +306,21 @@ func githubFetchUser(ctx context.Context, accessToken string) (*githubUserProfil
 
 // GithubOAuthAuthorize starts the GitHub OAuth authorization-code flow: it
 // stores a CSRF state in an httpOnly cookie and 302-redirects the browser to
-// GitHub. Returns 400 when GitHub OAuth is not configured.
+// GitHub. When GitHub OAuth is not configured it 302-redirects to the site
+// callback page with error=not_configured, so a full-page GET from the site
+// lands on the site's own error UI instead of raw backend JSON.
 func GithubOAuthAuthorize(c *gin.Context) {
 	cfg := config.LoadConfig()
 	if cfg.GithubOAuthClientID == "" || cfg.GithubOAuthClientSecret == "" || cfg.GithubOAuthRedirectURI == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "github oauth not configured"})
+		// A bare 4xx JSON body would leave the visitor on a page without any site
+		// UI (the site reaches this handler with a full-page GET). Send them back
+		// to the callback page, which already renders OAuth errors.
+		params := url.Values{}
+		params.Set("error", "not_configured")
+		if redirectTo := sanitizeRedirectTo(c.Query("redirect_to")); redirectTo != "" {
+			params.Set("redirect_to", redirectTo)
+		}
+		c.Redirect(http.StatusFound, githubFrontendRedirect(githubFrontendCallbackPath, params))
 		return
 	}
 
