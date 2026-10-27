@@ -50,4 +50,18 @@ describe('server API', () => {
     }));
     await expect(serverRequest('/api/articles/404')).rejects.toMatchObject({ status: 404, message: 'missing' } satisfies Partial<ServerApiError>);
   });
+
+  it('converts a business-code failure delivered with HTTP 200 into ServerApiError', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ code: 400, message: 'Invalid request body' }),
+    }));
+
+    await expect(serverRequest('/api/articles')).rejects.toBeInstanceOf(ServerApiError);
+    await expect(serverRequest('/api/articles')).rejects.toMatchObject({
+      status: 200,
+      message: 'Invalid request body',
+    } satisfies Partial<ServerApiError>);
+  });
 });

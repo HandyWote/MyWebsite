@@ -42,6 +42,16 @@ describe('authApi', () => {
     expect(window.localStorage.getItem('token')).toBe('keep-me');
   });
 
+  it('login rejects a business-code failure delivered with HTTP 200 (#16)', async () => {
+    // `login -u` 空用户名时后端回 HTTP 200 + {code:400}；漏判 code 会把失败当成功。
+    vi.mocked(fetch).mockResolvedValue(jsonResponse(200, { code: 400, message: 'Invalid request body' }));
+
+    await expect(authApi.login({ username: '', password: 'secret', remember: false })).rejects.toMatchObject({
+      status: 200,
+      message: 'Invalid request body',
+    });
+  });
+
   it('verifies the caller-provided localStorage token', async () => {
     vi.mocked(fetch).mockResolvedValue({ ok: true, status: 200, json: async () => ({ code: 0, data: { valid: true } }) } as Response);
     await authApi.verify('jwt');

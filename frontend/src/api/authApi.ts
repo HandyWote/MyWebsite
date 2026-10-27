@@ -1,7 +1,6 @@
 import { API_ENDPOINTS } from './endpoints';
 import { browserRequest } from './browser';
-import { ApiError, getApiMessage, unwrapApiPayload, type ApiEnvelope } from './browser';
-
+import { ApiError, parseApiPayload, type ApiEnvelope } from './response';
 /** 当前登录用户（GitHub OAuth 或管理员），与 GET /api/auth/me 的响应一致。 */
 export interface UserInfo {
   username: string;
@@ -31,13 +30,17 @@ interface ExchangeResponse {
  * 不能走 browserRequest：它在 401 时会 clearAuth 并跳转 /admin/login，
  * 而这里的 401（token 失效 / 一次性 code 无效/过期）是业务结果，跳转动作
  * 应由调用方决定（F4 会改造 browser.ts 的跳转行为，此处先保持调用方控制权）。
- * 解析规则与 browser.ts 保持一致（支持 {code, data} 信封与裸数据）。
+ * 解析交给共享的 `parseApiPayload`（信封拆包 + HTTP/业务 code 双判），
+ * 只是不经过 browser.ts 的 401 副作用。
  */
 async function requestJson<T>(endpoint: string, init: RequestInit): Promise<T> {
   const response = await fetch(endpoint, init);
   const payload = (await response.json().catch(() => ({ message: response.statusText }))) as ApiEnvelope<T>;
-  if (!response.ok) throw new ApiError(response.status, getApiMessage(payload, 'Request failed'));
-  return unwrapApiPayload(payload);
+  return parseApiPayload<T>(payload, {
+    ok: response.ok,
+    status: response.status,
+    statusText: response.statusText,
+  });
 }
 
 export const authApi = {
@@ -46,7 +49,7 @@ export const authApi = {
    *
    * 必须用原生 fetch 而非 browserRequest：凭据错误时后端返回 401 是业务结果
    * （终端要留在掩码模式提示 invalid credentials 可重试），而 browserRequest
-   * 在 401 时会 clearAuth 并跳首页，会打断重试流程。解析规则与 browser.ts 一致。
+   * 在 401 时会 clearAuth 并跳首页，会打断重试流程。解析交共享的 `parseApiPayload`。
    */
   login: (credentials: { username: string; password: string; remember: boolean }) =>
     requestJson<LoginResponse>(API_ENDPOINTS.ADMIN.LOGIN, {

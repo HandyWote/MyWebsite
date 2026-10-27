@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { drawingApi } from "./drawingApi";
+import { drawingApi, type ModerationError } from "./drawingApi";
 import { ApiError } from "./browser";
 
 function jsonResponse(status: number, body: unknown): Response {
@@ -121,6 +121,17 @@ describe("drawingApi", () => {
 
     await expect(drawingApi.submitStrokes(0, STROKES)).rejects.toMatchObject({ status: 429 });
     await expect(drawingApi.submitStrokes(0, STROKES)).rejects.toMatchObject({ status: 422 });
+  });
+
+  it("submitStrokes surfaces the 422 moderation reason on the thrown ApiError", async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse(422, { error: "rejected", reason: "graphic" }),
+    );
+
+    const error = await drawingApi.submitStrokes(3, STROKES).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(ApiError);
+    expect((error as ModerationError).reason).toBe("graphic");
+    expect((error as ApiError).body).toEqual({ error: "rejected", reason: "graphic" });
   });
 
   it("submitStrokes unwraps the 202 pending envelope", async () => {

@@ -1,41 +1,22 @@
 import { clearAuth } from '@/utils/auth';
 import { redirectToLogin } from './navigation';
+import { ApiError, parseApiPayload, type ApiEnvelope } from './response';
 
-export type ApiEnvelope<T> = {
-  code?: number;
-  data?: T;
-  message?: string;
-  msg?: string;
-};
-
-export class ApiError extends Error {
-  constructor(
-    public readonly status: number,
-    message: string,
-  ) {
-    super(message);
-    this.name = 'ApiError';
-  }
-}
+// 现存 import 全部走 `@/api/browser`：符号本体已收归 ./response，此处原样转发。
+export {
+  ApiError,
+  getApiMessage,
+  parseApiPayload,
+  unwrapApiPayload,
+  type ApiEnvelope,
+  type ApiPayloadContext,
+} from './response';
 
 export function buildBrowserApiUrl(endpoint: string): string {
   if (!endpoint.startsWith('/api/') && endpoint !== '/api' && !endpoint.startsWith('/uploads/')) {
     throw new Error(`Browser API endpoint must be relative: ${endpoint}`);
   }
   return endpoint;
-}
-
-export function unwrapApiPayload<T>(response: ApiEnvelope<T> | T): T {
-  if (response && typeof response === 'object' && !Array.isArray(response) && 'data' in response) {
-    return (response as ApiEnvelope<T>).data as T;
-  }
-  return response as T;
-}
-
-export function getApiMessage(response: unknown, fallback = ''): string {
-  if (!response || typeof response !== 'object') return fallback;
-  const payload = response as ApiEnvelope<unknown>;
-  return payload.msg ?? payload.message ?? fallback;
 }
 
 function authHeaders(noAuth: boolean): HeadersInit {
@@ -47,14 +28,17 @@ function authHeaders(noAuth: boolean): HeadersInit {
 async function parseResponse<T>(response: Response): Promise<T> {
   const payload = (await response.json().catch(() => ({ message: response.statusText }))) as ApiEnvelope<T>;
 
+  // 浏览器端独有的 401 副作用：清会话 + 跳登录。放在纯解析函数外面，
+  // authApi/drawingApi 用原生 fetch 就是为了绕开它（401 在那里是业务结果）。
   if (response.status === 401 && typeof window !== 'undefined') {
     clearAuth();
     redirectToLogin();
   }
-  if (!response.ok || (typeof payload.code === 'number' && payload.code !== 0)) {
-    throw new ApiError(response.status, getApiMessage(payload, 'Request failed'));
-  }
-  return unwrapApiPayload(payload);
+  return parseApiPayload<T>(payload, {
+    ok: response.ok,
+    status: response.status,
+    statusText: response.statusText,
+  });
 }
 
 export async function browserRequest<T>(
