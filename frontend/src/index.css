@@ -63,6 +63,7 @@ html {
 }
 
 body {
+	position: relative;
 	font-family: var(--font-sans);
 	background-color: var(--bg-primary);
 	color: var(--text-primary);
@@ -72,10 +73,11 @@ body {
 	-moz-osx-font-smoothing: grayscale;
 }
 
-/* 网页边界边框 */
+/* 网页边界边框：随文档延伸（admin 等文档流页面滚动时框与背景一体），
+   不钉视口；公开站文档高度=视口高度，视觉不变 */
 body::before {
 	content: "";
-	position: fixed;
+	position: absolute;
 	inset: 8px;
 	border: 1px solid var(--accent-blue);
 	border-radius: 0;
