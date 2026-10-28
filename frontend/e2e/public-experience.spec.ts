@@ -127,7 +127,8 @@ test("desktop renders nonblank 3D around the one real host and preserves it acro
 	const canvas = page.locator('canvas[data-three-canvas="public"]');
 	await expect(host).toHaveCount(1);
 	await expect(host).toBeVisible();
-	await expect(host).toContainText("double click to enter articles");
+	await expect(host.locator("a[href=\"/articles\"]")).toBeVisible();
+	await expect(host).toContainText("$ cat about.md");
 	await expect(host.getByLabel("Terminal command")).toBeVisible();
 	await expect
 		.poll(() =>
@@ -269,9 +270,9 @@ test("mobile and touch layouts keep complete ordinary DOM and request no 3D asse
 		page.locator('[data-public-experience="ordinary"]'),
 	).toBeVisible();
 	await expect(page.locator("#screen-host")).toHaveCount(1);
-	await expect(page.locator("#screen-host")).toContainText(
-		"double click to enter articles",
-	);
+	await expect(
+		page.locator("#screen-host").locator("a[href=\"/articles\"]"),
+	).toBeVisible();
 	await expect(
 		page.locator("#screen-host").getByLabel("Terminal command"),
 	).toBeVisible();

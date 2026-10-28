@@ -12,7 +12,7 @@ function Education({ items = [] }: EducationProps) {
 
   return (
     <Box sx={{ mb: 3 }}>
-      <SectionTitle>Education</SectionTitle>
+      <SectionTitle>Experience</SectionTitle>
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
         {educationList.length === 0 && (
           <Typography
@@ -23,19 +23,36 @@ function Education({ items = [] }: EducationProps) {
           </Typography>
         )}
         {educationList.map((edu) => (
-          <Box
-            key={`${edu.school}-${edu.period}`}
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1,
-              fontFamily: 'JetBrains Mono, monospace',
-              fontSize: '0.875rem',
-              color: 'text.secondary',
-              '&::before': { content: '"▸ "', color: 'accent.green' },
-            }}
-          >
-            {edu.school} ({edu.period})
+          <Box key={`${edu.school}-${edu.period}`} sx={{ display: 'flex', flexDirection: 'column', gap: 0.25 }}>
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
+                fontFamily: 'JetBrains Mono, monospace',
+                fontSize: '0.875rem',
+                color: 'text.secondary',
+                '&::before': { content: '"▸ "', color: 'accent.green' },
+              }}
+            >
+              {edu.school} ({edu.period})
+            </Box>
+            {edu.points?.map((point) => (
+              <Box
+                key={point}
+                sx={{
+                  pl: 2.25,
+                  fontFamily: 'JetBrains Mono, monospace',
+                  fontSize: '0.8125rem',
+                  color: 'text.muted',
+                  '&::before': { content: '"· "', color: 'text.disabled' },
+                  whiteSpace: 'normal',
+                  wordBreak: 'break-word',
+                }}
+              >
+                {point}
+              </Box>
+            ))}
           </Box>
         ))}
       </Box>

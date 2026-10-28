@@ -128,4 +128,22 @@ describe("ArticleListMore", () => {
 		);
 		expect(links[0].parentElement?.parentElement).toHaveStyle({ gap: "12px" });
 	});
+
+	it("keeps loading from the initial page when entering through ?page=N", async () => {
+		getMock.mockResolvedValueOnce({ items: [articles[1]], total: 4 });
+		render(
+			<ArticleListMore
+				initialArticles={[articles[0]]}
+				initialPage={3}
+				total={4}
+				pageSize={1}
+			/>,
+		);
+
+		act(() => triggerIntersect());
+
+		await waitFor(() =>
+			expect(getMock).toHaveBeenCalledWith("/api/articles?page=4&per_page=1"),
+		);
+	});
 });

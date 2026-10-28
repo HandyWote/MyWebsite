@@ -192,11 +192,12 @@ export default function FrontendConfigManager() {
   const removeSidebarSocialLink = (index: number) => updateForm(removeArrayItem('social_links', index));
   const moveSidebarSocialLink = (index: number, offset: number) => updateForm(moveArrayItem('social_links', index, index + offset));
 
-  // 教育经历（前台只渲染 school/period）
+  // 经历（沿用 education 字段;前台渲染 school/period/points）
   const setSidebarEducationField = (index: number, field: 'school' | 'period', value: string) => updateForm(updateArrayField('education', index, field, value));
   const addSidebarEducationItem = () => updateForm(addArrayItem('education', { school: '', period: '' }));
   const removeSidebarEducationItem = (index: number) => updateForm(removeArrayItem('education', index));
   const moveSidebarEducationItem = (index: number, offset: number) => updateForm(moveArrayItem('education', index, index + offset));
+  const setSidebarEducationPoints = (index: number, value: string) => updateForm(updateArrayField('education', index, 'points', value.split('\n').map((line) => line.trim()).filter(Boolean)));
 
   // 技术栈（前台只渲染 name）
   const setSidebarTechField = (index: number, field: 'name', value: string) => updateForm(updateArrayField('tech_stack', index, field, value));
@@ -332,7 +333,7 @@ export default function FrontendConfigManager() {
         </AdminSection>
 
         <AdminSection
-          title="侧边栏教育经历"
+          title="侧边栏经历（学校/实习）"
           actions={(
             <PixelButton
               variant="outline"
@@ -340,7 +341,7 @@ export default function FrontendConfigManager() {
               data-testid="add-sidebar-education-item"
               onClick={addSidebarEducationItem}
             >
-              添加教育经历
+              添加经历
             </PixelButton>
           )}
         >
@@ -350,16 +351,25 @@ export default function FrontendConfigManager() {
                 <PixelInput
                   fullWidth
                   data-testid={`field-sidebar-education-school-${index}`}
-                  label={`教育${index + 1}学校`}
+                  label={`经历${index + 1}名称（学校/实习）`}
                   value={item.school || ''}
                   onChange={(event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setSidebarEducationField(index, 'school', event.target.value)}
                 />
                 <PixelInput
                   fullWidth
                   data-testid={`field-sidebar-education-period-${index}`}
-                  label={`教育${index + 1}时间`}
+                  label={`经历${index + 1}时间`}
                   value={item.period || ''}
                   onChange={(event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setSidebarEducationField(index, 'period', event.target.value)}
+                />
+                <PixelInput
+                  fullWidth
+                  multiline
+                  minRows={2}
+                  data-testid={`field-sidebar-education-points-${index}`}
+                  label={`经历${index + 1}要点（每行一条）`}
+                  value={(item.points || []).join('\n')}
+                  onChange={(event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setSidebarEducationPoints(index, event.target.value)}
                 />
                 <ArrayItemActions
                   index={index}

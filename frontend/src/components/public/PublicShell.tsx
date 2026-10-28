@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { getArticlePage } from "@/api/publicApi.server";
 import { ArticleDetailNav } from "./ArticleDetailNav";
 import { ScreenFrame } from "./ScreenFrame";
+import { ShellFlipProvider } from "./ShellFlipProvider";
 import { TerminalCommandBar } from "./TerminalCommandBar";
 import {
 	navButtonSx,
@@ -42,10 +43,13 @@ const getShellState = (
 	if (activePath.startsWith("/projects")) {
 		return { cwd: "~/app/projects", detail: false };
 	}
+	if (activePath.startsWith("/games")) {
+		return { cwd: "~/app/games", detail: false };
+	}
 	if (activePath.startsWith("/articles")) {
 		return { cwd: "~/app/articles", detail: false };
 	}
-	return { cwd: "~/app", detail: false };
+	return { cwd: "~/about", detail: false };
 };
 
 async function getShellArticles(): Promise<ShellArticle[]> {
@@ -82,6 +86,7 @@ export async function PublicShell({
 
 	return (
 		<ScreenFrame>
+			<ShellFlipProvider>
 			<Box
 				sx={{
 					display: "grid",
@@ -92,12 +97,17 @@ export async function PublicShell({
 				<Box
 					component="aside"
 					sx={{
-						display: { xs: "none", md: "block" },
+						display: "flex",
+						flexDirection: { xs: "row", md: "column" },
+						alignItems: { xs: "center", md: "stretch" },
+						gap: { xs: 0.75, md: 0 },
 						minHeight: 0,
-						overflow: "auto",
-						p: 1.5,
+						overflowX: { xs: "auto", md: "visible" },
+						overflowY: { xs: "hidden", md: "auto" },
+						p: { xs: 1, md: 1.5 },
 						bgcolor: "background.paper",
-						borderRight: 1,
+						borderRight: { xs: 0, md: 1 },
+						borderBottom: { xs: 1, md: 0 },
 						borderColor: "divider",
 					}}
 				>
@@ -110,15 +120,17 @@ export async function PublicShell({
 						<>
 							<Box
 								sx={{
+									display: { xs: "none", md: "block" },
 									color: "text.disabled",
 									fontFamily: "JetBrains Mono, monospace",
 									fontSize: "0.75rem",
-									mb: 1.25,
+									mb: { xs: 0, md: 1.25 },
 								}}
 							>
 								explorer
 							</Box>
 							<Box
+								className="explorer-tree"
 								sx={{
 									display: "flex",
 									flexDirection: "column",
@@ -156,10 +168,12 @@ export async function PublicShell({
 				</Box>
 				<Box
 					component="main"
+					data-shell-main
 					sx={{ minWidth: 0, minHeight: 0, overflow: "auto" }}
 				>
 					<Box
-						sx={{
+						data-shell-status
+					sx={{
 							minHeight: 34,
 							px: 1.5,
 							display: "flex",
@@ -176,7 +190,7 @@ export async function PublicShell({
 						<span>{shell.cwd}/</span>
 						<span>NORMAL</span>
 					</Box>
-					<Box sx={{ p: { xs: 1, sm: 2.5 }, pl: { xs: 1, sm: 3 } }}>
+					<Box data-shell-content sx={{ p: { xs: 1, sm: 2.5 }, pl: { xs: 1, sm: 3 } }}>
 						{children}
 					</Box>
 				</Box>
@@ -187,6 +201,7 @@ export async function PublicShell({
 				articles={articles}
 				currentArticleId={currentArticleId}
 			/>
+			</ShellFlipProvider>
 		</ScreenFrame>
 	);
 }

@@ -7,6 +7,7 @@ import { authApi } from "@/api/authApi";
 import { ApiError } from "@/api/response";
 import { PixelPromptInput } from "@/components/pixel";
 import { useSession } from "@/hooks/useSession";
+import { flipNavigate } from "./shellTransition";
 import {
 	SHELL_NAV_ITEMS,
 	uniqueCommands,
@@ -275,7 +276,7 @@ export function TerminalCommandBar({
 		}
 
 		if (nextCommand === "cd projects/" || nextCommand === "cd projects") {
-			router.push("/projects");
+			flipNavigate(router, "/projects");
 			return;
 		}
 
@@ -285,24 +286,24 @@ export function TerminalCommandBar({
 				stripTrailingSlash(item.command),
 		);
 		if (navMatch) {
-			router.push(navMatch.href);
+			flipNavigate(router, navMatch.href);
 			return;
 		}
 
 		// 保留历史短别名：home/about 与 'cd about' 同义。
 		if (nextCommand === "home" || nextCommand === "about") {
-			router.push("/");
+			flipNavigate(router, "/");
 			return;
 		}
 
 		if (nextCommand === "exit" || nextCommand === "back") {
-			router.push("/articles");
+			flipNavigate(router, "/articles");
 			return;
 		}
 
 		if (nextCommand === "open latest") {
 			const latest = articles[0];
-			router.push(latest ? `/articles/${latest.id}` : "/articles");
+			flipNavigate(router, latest ? `/articles/${latest.id}` : "/articles");
 			return;
 		}
 
@@ -314,7 +315,7 @@ export function TerminalCommandBar({
 				const neighbor =
 					articles[nextCommand === "open prev" ? index - 1 : index + 1];
 				if (neighbor) {
-					router.push(`/articles/${neighbor.id}`);
+					flipNavigate(router, `/articles/${neighbor.id}`);
 					return;
 				}
 			}
@@ -332,7 +333,7 @@ export function TerminalCommandBar({
 		) {
 			const target = nextCommand.replace(/^open\s+/, "").trim();
 			if (/^\d+$/.test(target)) {
-				router.push(`/articles/${target}`);
+				flipNavigate(router, `/articles/${target}`);
 				return;
 			}
 			const matchedArticle = articles.find(
@@ -341,7 +342,7 @@ export function TerminalCommandBar({
 					toCommandSlug(article.title) === toCommandSlug(target),
 			);
 			if (matchedArticle) {
-				router.push(`/articles/${matchedArticle.id}`);
+				flipNavigate(router, `/articles/${matchedArticle.id}`);
 				return;
 			}
 		}

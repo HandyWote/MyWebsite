@@ -178,10 +178,12 @@ export interface SocialLink {
   href?: string;
 }
 
-/** 教育经历（前台只渲染 school/period）。 */
+/** 经历条目（前台渲染 school/period/points；字段沿用 education，历史数据无 points 也兼容）。 */
 export interface EducationItem {
   school?: string;
   period?: string;
+  /** 要点行（实习/项目成果，每条一行）。 */
+  points?: string[];
 }
 
 /** 技术栈（前台只渲染 name）。 */
