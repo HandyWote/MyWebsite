@@ -43,6 +43,9 @@ export const createPixelThemeOptions = (): ThemeOptions => {
 			primary: colors.text.primary,
 			secondary: colors.text.secondary,
 			disabled: colors.text.muted,
+			/** 段标题/辅助说明的第三级灰:比 secondary 深一档但仍达 AA(5.1:1),
+			    修复既有 12 处 `text.muted` 调用点解析不到而继承正文白色的问题。 */
+			muted: colors.text.tertiary,
 		},
 		divider: colors.border.default,
 	};

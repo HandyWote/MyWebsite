@@ -3,9 +3,8 @@ import { connection } from "next/server";
 import { Box, Typography } from "@mui/material";
 import { getProfileForPage } from "@/seo/data.server";
 import { pageMetadata, SITE_DESCRIPTION, SITE_TITLE } from "@/seo/site";
-import { HomeEnterBoundary } from "@/components/public/HomeEnterBoundary";
-import { ScreenFrame } from "@/components/public/ScreenFrame";
-import { TerminalCommandBar } from "@/components/public/TerminalCommandBar";
+import { renderWebsiteJsonLd } from "@/seo/jsonld";
+import { PublicShell } from "@/components/public/PublicShell";
 import Education from "@/components/sidebar/Education";
 import GitHubActivity from "@/components/sidebar/GitHubActivity";
 import SocialLinks from "@/components/sidebar/SocialLinks";
@@ -30,123 +29,91 @@ export default async function HomePage() {
 	const education = sidebar.education ?? [];
 	const techStack = sidebar.tech_stack ?? [];
 	const githubUsername = normalizeGitHubUsername(home.github_calendar_url);
+
 	return (
-		<HomeEnterBoundary>
-			<ScreenFrame>
-				<Box
-					sx={{
-						overflow: "auto",
-						display: "flex",
-						alignItems: { xs: "flex-start", md: "center" },
-						justifyContent: "center",
-						px: { xs: 1.25, sm: 4 },
-						py: { xs: 2, sm: 5 },
-					}}
-				>
-					<Box sx={{ width: "min(100%, 820px)", textAlign: "center" }}>
-						<Typography
-							component="div"
-							sx={{
-								color: "text.disabled",
-								fontFamily: "JetBrains Mono, monospace",
-								fontSize: "0.75rem",
-								mb: 2,
-							}}
-						>
-							~/intro.md - double click to enter articles
-						</Typography>
-						<img
+		<>
+			{renderWebsiteJsonLd({ home, avatarUrl })}
+			<PublicShell activePath="/">
+				<Box sx={{ maxWidth: 1080, minWidth: 0 }}>
+					{/* 与 /projects、/games 同一句式:$ 后跟命令,下面才是结果 */}
+					<Typography
+						sx={{
+							color: "text.secondary",
+							fontFamily: "JetBrains Mono, monospace",
+							fontSize: "0.875rem",
+							mb: 2.5,
+						}}
+					>
+						$ cat about.md
+					</Typography>
+
+					{/* identity:头像 + 名字 + 一句自述 */}
+					<Box
+						sx={{
+							display: "flex",
+							gap: { xs: 2, sm: 3 },
+							alignItems: "flex-start",
+							mb: { xs: 3, sm: 4.5 },
+						}}
+					>
+						<Box
+							component="img"
 							src={avatarUrl}
 							alt="avatar"
-							width={84}
-							height={84}
-							className="home-avatar"
-							style={{
-								width: "clamp(64px, 20vw, 84px)",
-								height: "clamp(64px, 20vw, 84px)",
+							width={72}
+							height={72}
+							sx={{
+								flex: "none",
+								width: { xs: 56, sm: 72 },
+								height: { xs: 56, sm: 72 },
+								border: 1,
+								borderColor: "divider",
+								backgroundColor: "background.paper",
 							}}
 						/>
-						<Typography
-							component="h1"
-							sx={{
-								mt: 2,
-								mb: 1,
-								color: "text.primary",
-								fontFamily: "JetBrains Mono, monospace",
-								fontSize: { xs: "1.875rem", sm: "2.5rem" },
-								fontWeight: 700,
-							}}
-						>
-							{String(home.title)}
-						</Typography>
-						<Typography
-							component="p"
-							sx={{
-								color: "text.secondary",
-								fontFamily: "JetBrains Mono, monospace",
-								mb: 2,
-							}}
-						>
-							$ {String(home.subtitle)}
-						</Typography>
-						<Box
-							sx={{
-								display: "grid",
-								gridTemplateColumns: "1fr",
-								gap: { xs: 1, sm: 1.75 },
-								textAlign: "center",
-								justifyItems: "center",
-								"& > *": {
-									mb: "0 !important",
-									width: "100%",
-									maxWidth: "100%",
-									minWidth: 0,
-								},
-								"& > * > div:first-of-type": {
-									justifyContent: "center",
-									fontSize: "0.75rem",
-									color: "text.muted",
-									"&::first-letter": {
-										letterSpacing: 0,
-									},
-									"&::before": {
-										content: '""',
-									},
-									"&::after": {
-										display: "none",
-									},
-								},
-								"& > * > div:nth-of-type(2)": {
-									justifyContent: "center",
-									alignItems: "center",
-								},
-								"& a": {
-									justifyContent: "center",
-								},
-							}}
-						>
-							<SocialLinks links={socialLinks} />
-							<Education items={education} />
-							<TechStack items={techStack} />
-							<GitHubActivity username={githubUsername} compact={false} />
+						<Box sx={{ minWidth: 0 }}>
+							<Typography
+								component="h1"
+								sx={{
+									color: "text.primary",
+									fontFamily: "JetBrains Mono, monospace",
+									fontWeight: 700,
+									fontSize: { xs: "1.625rem", sm: "2.125rem" },
+									lineHeight: 1.1,
+									letterSpacing: "-0.02em",
+								}}
+							>
+								{String(home.title)}
+							</Typography>
+							<Typography
+								component="p"
+								sx={{
+									mt: 1,
+									color: "text.secondary",
+									fontFamily: "JetBrains Mono, monospace",
+									fontSize: "0.9375rem",
+								}}
+							>
+								$ {String(home.subtitle)}
+							</Typography>
 						</Box>
-						<Typography
-							sx={{
-								mt: { xs: 1.75, sm: 2.5 },
-								fontFamily: "JetBrains Mono, monospace",
-								color: "text.muted",
-								fontSize: "0.75rem",
-							}}
-						>
-							Double click anywhere, type a command, or click a hint below.
-						</Typography>
+					</Box>
+
+					{/* 资料:单列,从上到下 */}
+					<Box
+						sx={{
+							display: "flex",
+							flexDirection: "column",
+							"& > *": { minWidth: 0 },
+						}}
+					>
+						<Education items={education} />
+						<TechStack items={techStack} />
+						<SocialLinks links={socialLinks} />
+						<GitHubActivity username={githubUsername} compact={false} />
 					</Box>
 				</Box>
-				<TerminalCommandBar
-					cwd="~/app"
-					commands={["cd articles/", "cd projects/", "help"]}
-				/>
-			</ScreenFrame>
-		</HomeEnterBoundary>
+			</PublicShell>
+		</>
 	);
 }

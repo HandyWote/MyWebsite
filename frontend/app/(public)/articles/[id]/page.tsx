@@ -20,6 +20,7 @@ import {
 	getArticlePdfUrl,
 	serializeJsonLd,
 } from "@/seo/site";
+import { renderBreadcrumbJsonLd } from "@/seo/jsonld";
 
 export const dynamicParams = true;
 export const revalidate = 86_400;
@@ -59,6 +60,11 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
 					__html: serializeJsonLd(articleJsonLd(article)),
 				}}
 			/>
+			{renderBreadcrumbJsonLd([
+				{ name: "Home", path: "/" },
+				{ name: "Articles", path: "/articles" },
+				{ name: article.title, path: `/articles/${article.id}` },
+			])}
 			<PublicShell activePath={`/articles/${id}`}>
 				<Typography
 					sx={{

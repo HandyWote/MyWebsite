@@ -119,7 +119,7 @@ describe('FrontendConfigManager', () => {
     expect(screen.getByLabelText('首页副标题')).toBeInTheDocument();
     expect(screen.getByLabelText('GitHub 日历源')).toBeInTheDocument();
     expect(screen.getByText('侧边栏社交链接')).toBeInTheDocument();
-    expect(screen.getByText('侧边栏教育经历')).toBeInTheDocument();
+    expect(screen.getByText('侧边栏经历（学校/实习）')).toBeInTheDocument();
     expect(screen.getByText('侧边栏技术栈')).toBeInTheDocument();
 
     expect(screen.queryByLabelText('作者信息')).not.toBeInTheDocument();
@@ -206,12 +206,12 @@ describe('FrontendConfigManager', () => {
     render(<FrontendConfigManager />);
 
     await waitFor(() => {
-      expect(screen.getByLabelText('教育2学校')).toHaveValue('学校B');
+      expect(screen.getByLabelText('经历2名称（学校/实习）')).toHaveValue('学校B');
     });
 
     await user.click(screen.getByTestId('move-up-sidebar-education-1'));
-    expect(screen.getByLabelText('教育1学校')).toHaveValue('学校B');
-    expect(screen.getByLabelText('教育2学校')).toHaveValue('学校A');
+    expect(screen.getByLabelText('经历1名称（学校/实习）')).toHaveValue('学校B');
+    expect(screen.getByLabelText('经历2名称（学校/实习）')).toHaveValue('学校A');
 
     await user.click(getSaveButton());
 
@@ -286,7 +286,7 @@ describe('FrontendConfigManager', () => {
     });
 
     await user.click(screen.getByTestId('add-sidebar-education-item'));
-    await user.type(screen.getByLabelText('教育1学校'), '汕大');
+    await user.type(screen.getByLabelText('经历1名称（学校/实习）'), '汕大');
     await user.click(screen.getByTestId('add-sidebar-tech-item'));
     await user.type(screen.getByLabelText('技术1名称'), 'Go');
 
@@ -302,6 +302,31 @@ describe('FrontendConfigManager', () => {
     // content 是开放记录（Record<string, unknown>），取首项断言字段集合
     expect((sidebarContent.education as unknown[])[0]).not.toHaveProperty('desc');
     expect((sidebarContent.tech_stack as unknown[])[0]).not.toHaveProperty('level');
+  });
+
+  it('经历要点按行编辑并随保存提交为 points 数组', async () => {
+    const user = userEvent.setup();
+    api.get.mockResolvedValue([]);
+
+    render(<FrontendConfigManager />);
+
+    await waitFor(() => {
+      expect(api.get).toHaveBeenCalled();
+    });
+
+    await user.click(screen.getByTestId('add-sidebar-education-item'));
+    await user.type(screen.getByLabelText('经历1名称（学校/实习）'), '示例科技');
+    const pointsField = screen.getByLabelText('经历1要点（每行一条）');
+    fireEvent.change(pointsField, { target: { value: '第一要点\n第二要点' } });
+
+    await user.click(getSaveButton());
+
+    await waitFor(() => {
+      expect(api.put).toHaveBeenCalled();
+    });
+
+    const first = (savedSidebarBlock().content.education as Array<Record<string, unknown>>)[0];
+    expect(first.points).toEqual(['第一要点', '第二要点']);
   });
 
   it('首次拉取失败时保存被禁用，且不会发起 PUT 覆盖线上数据', async () => {

@@ -2,7 +2,7 @@ export const tokens = {
   color: {
     bg: { primary: '#0d1117', secondary: '#161b22', tertiary: '#21262d' },
     accent: { blue: '#58a6ff', blueBright: '#79b8ff', blueDim: '#388bfd' },
-    text: { primary: '#f0f6fc', secondary: '#8b949e', muted: '#484f58' },
+    text: { primary: '#f0f6fc', secondary: '#8b949e', muted: '#484f58', tertiary: '#7d8590' },
     border: { default: '#30363d', muted: '#21262d', accent: '#58a6ff' },
     status: { success: '#3fb950', warning: '#d29922', error: '#f85149' },
     interactive: { hover: '#1f2428', active: '#2d333b' },

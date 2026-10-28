@@ -11,23 +11,26 @@ export function ArticleListMore({
 	initialArticles,
 	total,
 	pageSize = 10,
+	initialPage = 1,
 }: {
 	initialArticles: ArticleSummary[];
 	total: number;
 	pageSize?: number;
+	/** 服务端渲染进场的页码（?page=N），无限滚动从这里往后接着加载。 */
+	initialPage?: number;
 }) {
 	const [articles, setArticles] = useState<ArticleSummary[]>(initialArticles);
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState("");
 	const sentinelRef = useRef<HTMLDivElement | null>(null);
 	const loadingRef = useRef(false);
-	const pageRef = useRef(1);
+	const pageRef = useRef(initialPage);
 	const hasMore = articles.length < total;
 
 	useEffect(() => {
 		setArticles(initialArticles);
-		pageRef.current = 1;
-	}, [initialArticles]);
+		pageRef.current = initialPage;
+	}, [initialArticles, initialPage]);
 
 	const loadMore = useCallback(async () => {
 		if (loadingRef.current || !hasMore) return;

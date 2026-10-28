@@ -1,7 +1,7 @@
 "use client";
 
+import Link from "next/link";
 import { Box, Typography } from "@mui/material";
-import { useRouter } from "next/navigation";
 import { navButtonSx, type ShellArticle } from "./shellUtils";
 
 export function ArticleDetailNav({
@@ -13,8 +13,6 @@ export function ArticleDetailNav({
 	currentId?: number | string;
 	loading?: boolean;
 }) {
-	const router = useRouter();
-
 	return (
 		<Box sx={{ p: 1.5 }}>
 			<Typography
@@ -45,10 +43,9 @@ export function ArticleDetailNav({
 						const active = String(article.id) === String(currentId);
 						return (
 							<Box
-								component="button"
-								type="button"
+								component={Link}
+								href={`/articles/${article.id}`}
 								key={article.id}
-								onClick={() => router.push(`/articles/${article.id}`)}
 								data-active={active ? "true" : "false"}
 								sx={navButtonSx(active, { fontSize: "0.75rem" })}
 							>

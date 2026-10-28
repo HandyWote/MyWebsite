@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import nextConfig from '../next.config';
 import robots from './robots';
 import sitemap from './sitemap';
 
@@ -10,6 +11,18 @@ describe('SEO metadata routes', () => {
   afterEach(() => {
     delete process.env.PUBLIC_SITE_URL;
     getAllSitemapArticlesMock.mockReset();
+  });
+
+  it('redirects www hosts to the bare canonical domain', async () => {
+    expect(nextConfig.redirects).toBeTypeOf('function');
+    const redirects = await nextConfig.redirects?.();
+
+    expect(redirects).toContainEqual({
+      source: '/:path*',
+      has: [{ type: 'host', value: 'www.handywote.top' }],
+      destination: 'https://handywote.top/:path*',
+      permanent: true,
+    });
   });
 
   it('uses PUBLIC_SITE_URL for robots and excludes private routes', () => {
@@ -38,10 +51,24 @@ describe('SEO metadata routes', () => {
       'https://portfolio.example/',
       'https://portfolio.example/articles',
       'https://portfolio.example/projects',
+      'https://portfolio.example/games',
       'https://portfolio.example/articles/1',
       'https://portfolio.example/articles/2',
     ]);
     expect(entries.every((entry) => entry.lastModified instanceof Date)).toBe(true);
     expect(entries.some((entry) => entry.url.includes('/app'))).toBe(false);
+  });
+
+  it('lists the games page as a crawlable weekly entry', async () => {
+    process.env.PUBLIC_SITE_URL = 'https://portfolio.example';
+    getAllSitemapArticlesMock.mockResolvedValue([]);
+
+    const entries = await sitemap();
+    const games = entries.find(
+      (entry) => entry.url === 'https://portfolio.example/games',
+    );
+    expect(games).toBeDefined();
+    expect(games?.changeFrequency).toBe('weekly');
+    expect(games?.priority).toBe(0.6);
   });
 });

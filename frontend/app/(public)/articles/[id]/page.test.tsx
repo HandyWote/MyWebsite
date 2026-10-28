@@ -120,6 +120,42 @@ describe("article page SEO rendering", () => {
 		);
 	});
 
+	it("embeds a Home → Articles → article BreadcrumbList in the initial HTML", async () => {
+		getArticleForPageMock.mockResolvedValue(markdownArticle);
+
+		const html = renderToStaticMarkup(
+			await ArticlePage({ params: Promise.resolve({ id: "7" }) }),
+		);
+		const breadcrumb = html.match(
+			/<script type="application\/ld\+json" data-jsonld="breadcrumb">(.*?)<\/script>/s,
+		);
+		expect(breadcrumb).not.toBeNull();
+		expect(JSON.parse(breadcrumb?.[1] ?? "null")).toEqual({
+			"@context": "https://schema.org",
+			"@type": "BreadcrumbList",
+			itemListElement: [
+				{
+					"@type": "ListItem",
+					position: 1,
+					name: "Home",
+					item: "https://portfolio.example/",
+				},
+				{
+					"@type": "ListItem",
+					position: 2,
+					name: "Articles",
+					item: "https://portfolio.example/articles",
+				},
+				{
+					"@type": "ListItem",
+					position: 3,
+					name: "SSR article",
+					item: "https://portfolio.example/articles/7",
+				},
+			],
+		});
+	});
+
 	it("turns a missing backend article into the Next not-found response", async () => {
 		getArticleForPageMock.mockRejectedValue(new ServerApiError(404, "missing"));
 		notFoundMock.mockImplementation(() => {

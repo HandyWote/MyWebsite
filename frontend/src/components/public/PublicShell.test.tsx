@@ -64,11 +64,12 @@ describe("PublicShell", () => {
 		expect(screen.getByText("~/app/articles/")).toBeInTheDocument();
 		expect(screen.getByText("Next.js 数据流")).toBeInTheDocument();
 
-		const buttons = screen.getAllByRole("button");
-		const activeButton = buttons.find((button) =>
-			button.textContent?.includes("Next.js 数据流"),
+		const links = screen.getAllByRole("link");
+		const activeLink = links.find((link) =>
+			link.textContent?.includes("Next.js 数据流"),
 		);
-		expect(activeButton).toHaveAttribute("data-active", "true");
+		expect(activeLink).toHaveAttribute("data-active", "true");
+		expect(activeLink).toHaveAttribute("href", "/articles/7");
 	});
 
 	it("uses the projects cwd and explorer on the projects page", async () => {
@@ -81,7 +82,7 @@ describe("PublicShell", () => {
 		getArticlePageMock.mockRejectedValue(new Error("backend down"));
 		await renderShell("/articles/7");
 		expect(screen.getByText("~/app/articles/")).toBeInTheDocument();
-		expect(screen.queryAllByRole("button")).toHaveLength(0);
+		expect(screen.queryAllByRole("link")).toHaveLength(0);
 	});
 
 	it("renders the page body", async () => {
